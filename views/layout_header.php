@@ -17,18 +17,18 @@ $currentUser = $_SESSION['user'] ?? null;
         <div class="container header-inner">
             <div class="logo">VR Mall</div>
             <nav class="nav">
-                <a href="../views/products.php">Products</a>
-                <a href="../views/profile.php">Profile</a>
+                <a href="../views/products.php">商品</a>
+                <a href="../views/profile.php">個人資料</a>
                 <?php if ($currentUser && ($currentUser['role'] ?? '') === 'admin'): ?>
-                    <a href="../views/admin.php">Admin</a>
+                    <a href="../views/admin.php">管理</a>
                 <?php endif; ?>
             </nav>
             <div class="user-info">
                 <?php if ($currentUser): ?>
-                    <span>Hello, <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?></span>
-                    <button class="btn btn-secondary" id="logoutBtn">Logout</button>
+                    <span>歡迎 <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?></span>
+                    <button class="btn btn-secondary" id="logoutBtn">登出</button>
                 <?php else: ?>
-                    <a class="btn" href="../views/login.php">Login</a>
+                    <a class="btn" href="../views/login.php">登入</a>
                 <?php endif; ?>
             </div>
         </div>
