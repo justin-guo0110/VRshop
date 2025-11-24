@@ -157,3 +157,8 @@ input, select, textarea {
     .header-inner { flex-direction: column; align-items: flex-start; gap: 10px; }
     .nav { display: flex; gap: 10px; flex-wrap: wrap; }
 }
+
+.cart-link { font-weight: bold; margin-left: 10px; }
+.add-to-cart { margin-top: 6px; }
+.btn-primary { background-color: #ff6600; color: #fff; }
+.cart-item, .checkout-section { margin-bottom: 20px; }

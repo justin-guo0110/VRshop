@@ -19,6 +19,12 @@ $currentUser = $_SESSION['user'] ?? null;
             <nav class="nav">
                 <a href="../views/products.php">商品</a>
                 <a href="../views/profile.php">個人資料</a>
+                
+                <?php if ($currentUser && ($currentUser['role'] ?? '') === 'member'): ?>
+                    <a href="../views/cart.php">購物車</a>
+                    <a href="../views/orders.php">訂單</a>
+                <?php endif; ?>
+
                 <?php if ($currentUser && ($currentUser['role'] ?? '') === 'admin'): ?>
                     <a href="../views/admin.php">管理</a>
                 <?php endif; ?>
