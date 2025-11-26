@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 if (!isset($_SESSION['user'])) {
-    header('Location: /test/views/login.php');
+    header('Location: /project/views/login.php');
     exit;
 }
 ?>
@@ -23,13 +23,13 @@ if (!isset($_SESSION['user'])) {
 <section class="card checkout-section">
     <h3>選擇送貨方式</h3>
     <label><input type="radio" name="shipping_method" value="宅配" checked> 宅配</label>
-    <label><input type="radio" name="shipping_method" value="超商取貨"> 超商取貨</label>
+    <label><input type="radio" name="shipping_method" value="超商取貨" checked> 超商取貨</label>
 </section>
 
 <section class="card checkout-section">
     <h3>選擇支付方式</h3>
     <label><input type="radio" name="payment_method" value="信用卡" checked> 信用卡</label>
-    <label><input type="radio" name="payment_method" value="貨到付款"> 貨到付款</label>
+    <label><input type="radio" name="payment_method" value="貨到付款" checked> 貨到付款</label>
 </section>
 
 <section class="card checkout-section">
@@ -42,7 +42,7 @@ if (!isset($_SESSION['user'])) {
 
 <script>
 function loadCheckoutCart() {
-    fetch('/test/api/cart.php?action=get')
+    fetch('/project/api/cart.php?action=get')
         .then(res => res.json())
         .then(data => {
             const box = document.getElementById('checkoutCart');
@@ -62,7 +62,7 @@ function loadCheckoutCart() {
 }
 
 function loadCheckoutAddresses() {
-    fetch('/test/api/member.php?action=list_addresses')
+    fetch('/project/api/member.php?action=list_addresses')
         .then(res => res.json())
         .then(data => {
             const box = document.getElementById('checkoutAddresses');
@@ -100,7 +100,7 @@ document.getElementById('placeOrderBtn').addEventListener('click', function () {
     formData.append("payment_method", payment_method);
     formData.append("address_id", addressRadio.value);
 
-    fetch('/test/api/orders.php?action=place_order', {
+    fetch('/project/api/orders.php?action=place_order', {
         method: 'POST',
         body: formData
     })
@@ -113,7 +113,7 @@ document.getElementById('placeOrderBtn').addEventListener('click', function () {
 
         alert("訂單建立成功！訂單編號：" + data.order_id);
 
-        window.location.href = '/test/views/orders.php';
+        window.location.href = '/project/views/orders.php';
     })
     .catch(err => {
         alert("發生錯誤：" + err);
