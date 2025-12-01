@@ -2,11 +2,14 @@ class ChatWidget {
     constructor() {
         this.isOpen = false;
         this.pollingInterval = null;
+        this.unreadInterval = null;
+        this.unreadCount = 0;
         // Use a relative path so it works even when the project folder contains spaces
         this.apiUrl = '../api/chat.php';
 
         this.createElements();
         this.bindEvents();
+        this.startUnreadPolling();
     }
 
     createElements() {
@@ -31,6 +34,7 @@ class ChatWidget {
                 </form>
             </div>
             <button class="chat-toggle-btn" id="chatToggleBtn">
+                <span class="chat-badge chat-badge-hidden" id="chatBadge"></span>
                 <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"></path></svg>
             </button>
         `;
@@ -42,6 +46,7 @@ class ChatWidget {
         this.toggleBtn = document.getElementById('chatToggleBtn');
         this.closeBtn = document.getElementById('chatCloseBtn');
         this.formEl = document.getElementById('chatForm');
+        this.badgeEl = document.getElementById('chatBadge');
     }
 
     bindEvents() {
@@ -58,6 +63,7 @@ class ChatWidget {
         this.windowEl.classList.toggle('open', this.isOpen);
 
         if (this.isOpen) {
+            this.setUnreadCount(0);
             this.loadMessages();
             this.startPolling();
             setTimeout(() => this.inputEl.focus(), 300);
@@ -76,6 +82,36 @@ class ChatWidget {
         this.pollingInterval = null;
     }
 
+    startUnreadPolling() {
+        this.checkUnread();
+        if (this.unreadInterval) clearInterval(this.unreadInterval);
+        this.unreadInterval = setInterval(() => this.checkUnread(), 5000);
+    }
+
+    async checkUnread() {
+        if (this.isOpen) return; // 開啟視窗時會自動把未讀歸零
+        try {
+            const res = await fetch(`${this.apiUrl}?action=get_unread_count`);
+            const data = await res.json();
+            if (data.success && typeof data.unread_count === 'number') {
+                this.setUnreadCount(data.unread_count);
+            }
+        } catch (e) {
+            console.error('Failed to check unread messages', e);
+        }
+    }
+
+    setUnreadCount(count) {
+        this.unreadCount = count;
+        if (!this.badgeEl) return;
+        if (count > 0) {
+            this.badgeEl.textContent = count > 99 ? '99+' : count;
+            this.badgeEl.classList.remove('chat-badge-hidden');
+        } else {
+            this.badgeEl.classList.add('chat-badge-hidden');
+        }
+    }
+
     async loadMessages() {
         try {
             const res = await fetch(`${this.apiUrl}?action=get_messages`);
@@ -83,6 +119,7 @@ class ChatWidget {
 
             if (data.success && data.messages) {
                 this.renderMessages(data.messages);
+                this.setUnreadCount(0);
             }
         } catch (e) {
             console.error('Failed to load messages', e);

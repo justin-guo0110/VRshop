@@ -52,4 +52,7 @@
     </section>
     <script src="../public/js/admin_chat.js"></script>
 <?php endif; ?>
-<?php require_once __DIR__ . '/layout_footer.php'; ?>
+<?php
+$disableChatWidget = true;
+require_once __DIR__ . '/layout_footer.php';
+?>

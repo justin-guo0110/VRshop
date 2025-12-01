@@ -19,6 +19,9 @@ switch ($action) {
     case 'get_messages':
         get_messages($userId, $sessionId);
         break;
+    case 'get_unread_count':
+        get_unread_count($userId, $sessionId);
+        break;
     case 'send_message':
         send_message($userId, $sessionId);
         break;
@@ -40,6 +43,8 @@ function get_messages($userId, $sessionId) {
     $stmt->execute();
     $result = $stmt->get_result();
     $messages = $result->fetch_all(MYSQLI_ASSOC);
+
+    mark_admin_messages_read($db, $userId, $sessionId);
     
     echo json_encode(['success' => true, 'messages' => $messages]);
 }
@@ -66,4 +71,34 @@ function send_message($userId, $sessionId) {
     } else {
         echo json_encode(['success' => false, 'error' => 'Database error']);
     }
+}
+
+function get_unread_count($userId, $sessionId) {
+    $db = get_db();
+    $count = fetch_unread_count($db, $userId, $sessionId);
+    echo json_encode(['success' => true, 'unread_count' => $count]);
+}
+
+function mark_admin_messages_read(mysqli $db, $userId, $sessionId): void {
+    if ($userId) {
+        $stmt = $db->prepare("UPDATE chat_messages SET is_read = 1 WHERE user_id = ? AND sender = 'admin' AND is_read = 0");
+        $stmt->bind_param("i", $userId);
+    } else {
+        $stmt = $db->prepare("UPDATE chat_messages SET is_read = 1 WHERE session_id = ? AND user_id IS NULL AND sender = 'admin' AND is_read = 0");
+        $stmt->bind_param("s", $sessionId);
+    }
+    $stmt->execute();
+}
+
+function fetch_unread_count(mysqli $db, $userId, $sessionId): int {
+    if ($userId) {
+        $stmt = $db->prepare("SELECT COUNT(*) as cnt FROM chat_messages WHERE user_id = ? AND sender = 'admin' AND is_read = 0");
+        $stmt->bind_param("i", $userId);
+    } else {
+        $stmt = $db->prepare("SELECT COUNT(*) as cnt FROM chat_messages WHERE session_id = ? AND user_id IS NULL AND sender = 'admin' AND is_read = 0");
+        $stmt->bind_param("s", $sessionId);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    return (int)($result['cnt'] ?? 0);
 }

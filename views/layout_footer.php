@@ -4,8 +4,12 @@
             <p>© <?php echo date('Y'); ?> VR Mall</p>
         </div>
     </footer>
-    <link rel="stylesheet" href="../public/css/chat.css">
+    <?php if (empty($disableChatWidget)): ?>
+        <link rel="stylesheet" href="../public/css/chat.css">
+    <?php endif; ?>
     <script src="../public/js/app.js"></script>
-    <script src="../public/js/chat.js"></script>
+    <?php if (empty($disableChatWidget)): ?>
+        <script src="../public/js/chat.js"></script>
+    <?php endif; ?>
 </body>
 </html>
