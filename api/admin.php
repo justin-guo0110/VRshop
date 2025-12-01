@@ -19,6 +19,15 @@ switch ($action) {
     case 'update_product':
         update_product();
         break;
+    case 'get_all_chats':
+        get_all_chats();
+        break;
+    case 'get_chat_history':
+        get_chat_history();
+        break;
+    case 'reply_chat':
+        reply_chat();
+        break;
     default:
         respond_json(['error' => 'Unknown action'], 400);
 }
@@ -101,4 +110,91 @@ function update_product(): void {
         respond_json(['success' => true]);
     }
     respond_json(['error' => 'Update failed'], 500);
+}
+
+function get_all_chats(): void {
+    $db = get_db();
+    
+    // Group by user_id or session_id to get unique conversations
+    // We want the last message time and content for the list
+    $sql = "
+        SELECT 
+            COALESCE(user_id, session_id) as chat_id,
+            MAX(created_at) as last_activity,
+            (SELECT message FROM chat_messages m2 WHERE (m2.user_id = m1.user_id OR m2.session_id = m1.session_id) ORDER BY created_at DESC LIMIT 1) as last_message
+        FROM chat_messages m1
+        GROUP BY COALESCE(user_id, session_id)
+        ORDER BY last_activity DESC
+    ";
+    
+    $res = $db->query($sql);
+    if ($res) {
+        $chats = $res->fetch_all(MYSQLI_ASSOC);
+        respond_json(['success' => true, 'chats' => $chats]);
+    } else {
+        respond_json(['error' => 'Db error'], 500);
+    }
+}
+
+function get_chat_history(): void {
+    $db = get_db();
+    $chatId = $_GET['chat_id'] ?? '';
+    
+    if (!$chatId) {
+        respond_json(['error' => 'Missing chat_id'], 400);
+    }
+    
+    $isUser = is_numeric($chatId);
+    
+    if ($isUser) {
+        $stmt = $db->prepare("SELECT * FROM chat_messages WHERE user_id = ? ORDER BY created_at ASC");
+        $stmt->bind_param("i", $chatId);
+    } else {
+        $stmt = $db->prepare("SELECT * FROM chat_messages WHERE session_id = ? ORDER BY created_at ASC");
+        $stmt->bind_param("s", $chatId);
+    }
+    
+    $stmt->execute();
+    $messages = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    
+    respond_json(['success' => true, 'messages' => $messages]);
+}
+
+function reply_chat(): void {
+    $db = get_db();
+
+    // 後台使用 api.post(...)，傳的是 x-www-form-urlencoded，所以用 $_POST 讀取
+    $message = trim($_POST['message'] ?? '');
+    $userId = $_POST['user_id'] ?? null;
+    $sessionId = $_POST['session_id'] ?? null;
+
+    if ($userId !== null && $userId !== '') {
+        $userId = (int)$userId;
+    } else {
+        $userId = null;
+    }
+
+    if ($sessionId !== null && $sessionId !== '') {
+        $sessionId = (string)$sessionId;
+    } else {
+        $sessionId = null;
+    }
+
+    if ($message === '' || ($userId === null && $sessionId === null)) {
+        respond_json(['error' => 'Invalid data'], 400);
+    }
+
+    if ($userId !== null) {
+        $stmt = $db->prepare("INSERT INTO chat_messages (user_id, sender, message) VALUES (?, 'admin', ?)");
+        $stmt->bind_param("is", $userId, $message);
+    } else {
+        $stmt = $db->prepare("INSERT INTO chat_messages (session_id, sender, message) VALUES (?, 'admin', ?)");
+        $stmt->bind_param("ss", $sessionId, $message);
+    }
+
+    if ($stmt->execute()) {
+        respond_json(['success' => true]);
+    }
+
+    respond_json(['error' => 'Db error'], 500);
 }
