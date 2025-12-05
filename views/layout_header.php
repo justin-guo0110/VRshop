@@ -15,10 +15,9 @@ $currentUser = $_SESSION['user'] ?? null;
 <body>
     <header class="site-header">
         <div class="container header-inner">
-            <a href="../index.php" class="logo" style="text-decoration: none;">VR Mall</a>
-            <?php if (!$currentUser || ($currentUser['role'] ?? '') !== 'admin'): ?>
+            <a href="./index.php" class="logo" style="text-decoration: none;">VR Mall</a>
             <nav class="nav">
-                <a href="../index.php">首頁</a>
+                <a href="../views/index.php">首頁</a>
                 <a href="../views/products.php">商品</a>
                 <a href="../views/profile.php">個人資料</a>
                 
@@ -31,7 +30,6 @@ $currentUser = $_SESSION['user'] ?? null;
                     <a href="../views/admin.php">管理</a>
                 <?php endif; ?>
             </nav>
-            <?php endif; ?>
             <div class="user-info">
                 <?php if ($currentUser): ?>
                     <span>歡迎 <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?></span>

@@ -165,7 +165,7 @@ function bindAddresses() {
             div.innerHTML = `
                 <p><strong>${addr.recipient_name}</strong> ${addr.phone || ''}</p>
                 <p>${addr.address_line}</p>
-                <p>${addr.is_default ? '<span class="badge">Default</span>' : ''}</p>
+                <p></p>
                 <button class="btn-secondary btn-sm" data-edit="${addr.address_id}">Edit</button>
                 <button class="btn-secondary btn-sm" data-delete="${addr.address_id}">Delete</button>
             `;

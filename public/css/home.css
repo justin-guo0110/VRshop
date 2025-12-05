@@ -1,0 +1,127 @@
+.hero-section {
+    background: linear-gradient(135deg, #ff7a18 0%, #ff9b32 100%);
+    color: white;
+    padding: 80px 20px;
+    text-align: center;
+    margin: 16px -16px 40px -16px;
+    border-radius: 0;
+}
+
+.hero-section h1 {
+    font-size: 3rem;
+    margin: 0 0 20px;
+    font-weight: 700;
+}
+
+.hero-section p {
+    font-size: 1.3rem;
+    margin: 0 0 30px;
+    opacity: 0.95;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.hero-buttons .btn {
+    background: white;
+    color: var(--primary);
+    padding: 14px 28px;
+    font-size: 1.1rem;
+}
+
+.hero-buttons .btn:hover {
+    background: #f0f0f0;
+    transform: translateY(-2px);
+}
+
+.hero-buttons .btn-secondary {
+    background: transparent;
+    border: 2px solid white;
+    color: white;
+}
+
+.hero-buttons .btn-secondary:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.features-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+    margin: 40px 0;
+}
+
+.feature-card {
+    text-align: center;
+    padding: 30px 20px;
+    background: var(--card);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.feature-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+
+.feature-card h3 {
+    margin: 0 0 12px;
+    color: var(--secondary);
+}
+
+.feature-card p {
+    color: #666;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 2.2rem;
+    margin: 60px 0 40px;
+    color: var(--secondary);
+}
+
+.section-title::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 4px;
+    background: var(--primary);
+    margin: 16px auto 0;
+    border-radius: 2px;
+}
+
+.home-products {
+    margin: 40px 0;
+}
+
+.promo-banner {
+    background: linear-gradient(135deg, var(--secondary) 0%, #2d3e50 100%);
+    color: white;
+    padding: 40px 20px;
+    border-radius: 12px;
+    text-align: center;
+    margin: 40px 0;
+}
+
+.promo-banner h2 {
+    margin: 0 0 16px;
+    font-size: 2rem;
+}
+
+.promo-banner p {
+    font-size: 1.1rem;
+    margin: 0 0 24px;
+    opacity: 0.9;
+}
