@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS order_items (
   FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE RESTRICT
 );
 
+CREATE TABLE IF NOT EXISTS password_resets (
+  reset_id INT AUTO_INCREMENT PRIMARY KEY,
+  member_id INT NOT NULL,
+  token CHAR(64) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (member_id) REFERENCES members(member_id) ON DELETE CASCADE,
+  INDEX idx_password_resets_token (token)
+);
+
 INSERT INTO members (email, password_hash, name, phone, role)
 VALUES ('admin@example.com', SHA2('admin123', 256), 'Admin', '', 'admin');
 

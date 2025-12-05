@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindSearch();
     loadProductDetail();
     bindAdmin();
+    bindResetPassword();
 });
 
 function setupTabs() {
@@ -33,6 +34,8 @@ function bindAuth() {
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
     const message = document.getElementById('authMessage');
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    const forgotMsg = document.getElementById('forgotPasswordMessage');
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -47,6 +50,31 @@ function bindAuth() {
             const data = Object.fromEntries(new FormData(registerForm));
             const res = await api.post('../api/auth.php?action=register', data);
             handleAuthResponse(res, message);
+        });
+    }
+    if (forgotForm) {
+        forgotForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                if (forgotMsg) {
+                    forgotMsg.textContent = '寄送中，請稍候...';
+                    forgotMsg.className = 'message';
+                }
+                const data = Object.fromEntries(new FormData(forgotForm));
+                const res = await api.post('../api/auth.php?action=request_password_reset', data);
+                if (forgotMsg) {
+                    forgotMsg.textContent = res.message || (res.success ? '若帳號存在，將寄送重設連結。' : res.error || '送出失敗');
+                    forgotMsg.className = 'message ' + (res.success ? 'success' : 'error');
+                }
+                if (res.success) {
+                    forgotForm.reset();
+                }
+            } catch (err) {
+                if (forgotMsg) {
+                    forgotMsg.textContent = '發生錯誤，請稍後再試';
+                    forgotMsg.className = 'message error';
+                }
+            }
         });
     }
 }
@@ -87,6 +115,36 @@ function bindProfile() {
         } else {
             msg.textContent = res.error || 'Update failed';
             msg.className = 'message error';
+        }
+    });
+}
+
+function bindResetPassword() {
+    const form = document.getElementById('resetPasswordForm');
+    const message = document.getElementById('resetPasswordMessage');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            if (message) {
+                message.textContent = '更新中...';
+                message.className = 'message';
+            }
+            const data = Object.fromEntries(new FormData(form));
+            const res = await api.post('../api/auth.php?action=reset_password', data);
+            if (message) {
+                message.textContent = res.message || (res.success ? '密碼已更新' : res.error || '更新失敗');
+                message.className = 'message ' + (res.success ? 'success' : 'error');
+            }
+            if (res.success) {
+                form.reset();
+                setTimeout(() => location.href = 'login.php', 1200);
+            }
+        } catch (err) {
+            if (message) {
+                message.textContent = '發生錯誤，請稍後再試';
+                message.className = 'message error';
+            }
         }
     });
 }
