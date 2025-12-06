@@ -31,21 +31,26 @@ switch ($action) {
 
 function get_messages($userId, $sessionId) {
     $db = get_db();
-    
-    if ($userId) {
-        $stmt = $db->prepare("SELECT * FROM chat_messages WHERE user_id = ? ORDER BY created_at ASC");
-        $stmt->bind_param("i", $userId);
-    } else {
+    $currentUser = current_user();
+
+    // 如果是管理員 → 撈全部訊息
+    if ($currentUser['role'] === 'admin') {
+        $stmt = $db->prepare("SELECT * FROM chat_messages ORDER BY created_at ASC");
+    }
+    // 如果是登入會員 → 撈自己的訊息
+    else if ($userId) {
+        $stmt = $db->prepare("SELECT * FROM chat_messages ORDER BY created_at ASC");
+    }
+    // 未登入 → 用 session 查詢
+    else {
         $stmt = $db->prepare("SELECT * FROM chat_messages WHERE session_id = ? AND user_id IS NULL ORDER BY created_at ASC");
         $stmt->bind_param("s", $sessionId);
     }
-    
+
     $stmt->execute();
     $result = $stmt->get_result();
     $messages = $result->fetch_all(MYSQLI_ASSOC);
 
-    mark_admin_messages_read($db, $userId, $sessionId);
-    
     echo json_encode(['success' => true, 'messages' => $messages]);
 }
 
