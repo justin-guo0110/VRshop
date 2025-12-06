@@ -100,14 +100,15 @@ INSERT INTO `order_items` (`order_item_id`, `order_id`, `product_id`, `quantity`
 
 -- 商品資料表
 CREATE TABLE `products` (
-  `product_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
   `category` varchar(100) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `price` decimal(10,2) NOT NULL DEFAULT 0.00,
   `stock` int(11) NOT NULL DEFAULT 0,
   `image_url` varchar(500) DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT 1
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`product_id`)
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
