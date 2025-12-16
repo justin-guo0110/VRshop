@@ -5,15 +5,41 @@ SET time_zone = "+00:00";
 USE vr_mall;
 
 
+-- 會員資料表
+CREATE TABLE `members` (
+  `member_id` int(11) NOT NULL AUTO_INCREMENT,
+  `email` varchar(255) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `phone` varchar(50) DEFAULT NULL,
+  `role` enum('member','admin') NOT NULL DEFAULT 'member',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`member_id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+-- 預設會員資料
+INSERT INTO `members` (`member_id`, `email`, `password_hash`, `name`, `phone`, `role`, `created_at`) VALUES
+(1, '123@gmail.com', SHA2('123', 256), 'Tom', '0987655341', 'admin', '2025-11-24 06:51:29'),
+(2, '456@gmail.com', SHA2('456', 256), 'John', '0965548121', 'member', '2025-11-24 06:51:53');
+
+
 -- 聊天紀錄資料表
 CREATE TABLE `chat_messages` (
-  `message_id` int(11) NOT NULL,
+  `message_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
   `session_id` varchar(255) DEFAULT NULL,
   `sender` enum('user','admin') NOT NULL,
   `message` text NOT NULL,
   `is_read` tinyint(1) DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`message_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `fk_chat_user`
+    FOREIGN KEY (`user_id`) REFERENCES `members`(`member_id`)
+    ON DELETE SET NULL
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
@@ -27,33 +53,19 @@ INSERT INTO `chat_messages` (`message_id`, `user_id`, `session_id`, `sender`, `m
 (5, 2, NULL, 'admin', '請您稍等，現在就幫您查看', 1, '2025-12-01 07:55:24');
 
 
--- 會員資料表
-CREATE TABLE `members` (
-  `member_id` int(11) NOT NULL,
-  `email` varchar(255) NOT NULL,
-  `password_hash` varchar(255) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `phone` varchar(50) DEFAULT NULL,
-  `role` enum('member','admin') NOT NULL DEFAULT 'member',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB
-DEFAULT CHARSET=utf8mb4
-COLLATE=utf8mb4_unicode_ci;
-
--- 預設會員資料
-INSERT INTO `members` (`member_id`, `email`, `password_hash`, `name`, `phone`, `role`, `created_at`) VALUES
-(1, '123@gmail.com', SHA2('123', 256), 'Tom', '0987655341', 'admin', '2025-11-24 06:51:29'),
-(2, '456@gmail.com', SHA2('456', 256), 'John', '0965548121', 'member', '2025-11-24 06:51:53');
-
-
 -- 會員地址資料表
 CREATE TABLE `member_addresses` (
-  `address_id` int(11) NOT NULL,
+  `address_id` int(11) NOT NULL AUTO_INCREMENT,
   `member_id` int(11) NOT NULL,
   `recipient_name` varchar(255) NOT NULL,
   `phone` varchar(50) DEFAULT NULL,
   `address_line` varchar(500) NOT NULL,
-  `is_default` tinyint(1) DEFAULT 0
+  `is_default` tinyint(1) DEFAULT 0,
+  PRIMARY KEY (`address_id`),
+  KEY `member_id` (`member_id`),
+  CONSTRAINT `fk_address_member`
+    FOREIGN KEY (`member_id`) REFERENCES `members`(`member_id`)
+    ON DELETE CASCADE
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
@@ -61,41 +73,6 @@ COLLATE=utf8mb4_unicode_ci;
 -- 預設地址資料
 INSERT INTO `member_addresses` (`address_id`, `member_id`, `recipient_name`, `phone`, `address_line`, `is_default`) VALUES
 (1, 2, 'John', '0965548121', '台中市北屯區文心路四段800號', 1);
-
-
--- 訂單資料表
-CREATE TABLE `orders` (
-  `order_id` int(11) NOT NULL,
-  `member_id` int(11) NOT NULL,
-  `address_id` int(11) DEFAULT NULL,
-  `total_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `status` enum('pending','preparing','shipping','done') NOT NULL DEFAULT 'pending',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB
-DEFAULT CHARSET=utf8mb4
-COLLATE=utf8mb4_unicode_ci;
-
--- 預設訂單資料
-INSERT INTO `orders` (`order_id`, `member_id`, `address_id`, `total_amount`, `status`, `created_at`) VALUES
-(1, 2, 1, 299.00, 'pending', '2025-11-29 15:29:20'),
-(2, 2, 1, 199.00, 'pending', '2025-12-01 08:01:51');
-
-
--- 訂單項目資料表
-CREATE TABLE `order_items` (
-  `order_item_id` int(11) NOT NULL,
-  `order_id` int(11) NOT NULL,
-  `product_id` int(11) NOT NULL,
-  `quantity` int(11) NOT NULL DEFAULT 1,
-  `unit_price` decimal(10,2) NOT NULL DEFAULT 0.00
-) ENGINE=InnoDB
-DEFAULT CHARSET=utf8mb4
-COLLATE=utf8mb4_unicode_ci;
-
--- 預設訂單明細資料
-INSERT INTO `order_items` (`order_item_id`, `order_id`, `product_id`, `quantity`, `unit_price`) VALUES
-(1, 1, 4, 1, 299.00),
-(2, 2, 5, 1, 199.00);
 
 
 -- 商品資料表
@@ -131,3 +108,58 @@ INSERT INTO `products` (`name`, `category`, `description`, `price`, `stock`, `im
 ('義美 純麥取向蘇打餅乾', '零食', '健康型蘇打餅乾商品', 42.00, 120, '../image/14.jpg', 1),
 ('哈根達斯迷你杯 香草', '冰品', '便利店固定陳列款口味', 95.00, 60, '../image/15.jpg', 1),
 ('哈根達斯迷你杯 草莓', '冰品', '人氣果香迷你杯款', 95.00, 60, '../image/16.jpg', 1);
+
+
+-- 訂單資料表
+CREATE TABLE `orders` (
+  `order_id` int(11) NOT NULL AUTO_INCREMENT,
+  `member_id` int(11) NOT NULL,
+  `address_id` int(11) DEFAULT NULL,
+  `total_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `status` enum('pending','preparing','shipping','done') NOT NULL DEFAULT 'pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`order_id`),
+  KEY `member_id` (`member_id`),
+  KEY `address_id` (`address_id`),
+  CONSTRAINT `fk_order_member`
+    FOREIGN KEY (`member_id`) REFERENCES `members`(`member_id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_order_address`
+    FOREIGN KEY (`address_id`) REFERENCES `member_addresses`(`address_id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+-- 預設訂單資料
+INSERT INTO `orders` (`order_id`, `member_id`, `address_id`, `total_amount`, `status`, `created_at`) VALUES
+(1, 2, 1, 299.00, 'pending', '2025-11-29 15:29:20'),
+(2, 2, 1, 199.00, 'pending', '2025-12-01 08:01:51');
+
+
+-- 訂單項目資料表
+CREATE TABLE `order_items` (
+  `order_item_id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL DEFAULT 1,
+  `unit_price` decimal(10,2) NOT NULL DEFAULT 0.00,
+  PRIMARY KEY (`order_item_id`),
+  KEY `order_id` (`order_id`),
+  KEY `product_id` (`product_id`),
+  CONSTRAINT `fk_item_order`
+    FOREIGN KEY (`order_id`) REFERENCES `orders`(`order_id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_item_product`
+    FOREIGN KEY (`product_id`) REFERENCES `products`(`product_id`)
+    ON DELETE RESTRICT
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+-- 預設訂單明細資料
+INSERT INTO `order_items` (`order_item_id`, `order_id`, `product_id`, `quantity`, `unit_price`) VALUES
+(1, 1, 4, 1, 299.00),
+(2, 2, 5, 1, 199.00);
+
+COMMIT;
