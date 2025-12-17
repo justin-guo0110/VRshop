@@ -44,14 +44,6 @@ CREATE TABLE `chat_messages` (
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
 
--- 預設聊天紀錄資料
-INSERT INTO `chat_messages` (`message_id`, `user_id`, `session_id`, `sender`, `message`, `is_read`, `created_at`) VALUES
-(1, 2, NULL, 'user', '你好', 0, '2025-12-01 07:39:01'),
-(2, 1, NULL, 'user', '我有問題需要幫助', 0, '2025-12-01 07:50:17'),
-(3, 2, NULL, 'admin', '是的，有甚麼能幫助您的嗎?', 1, '2025-12-01 07:50:26'),
-(4, 2, NULL, 'user', '我的訂單有問題，等了很久都還沒到', 0, '2025-12-01 07:53:34'),
-(5, 2, NULL, 'admin', '請您稍等，現在就幫您查看', 1, '2025-12-01 07:55:24');
-
 
 -- 會員地址資料表
 CREATE TABLE `member_addresses` (
