@@ -19,6 +19,27 @@ switch ($action) {
     case 'update_product':
         update_product();
         break;
+    case 'dashboard_stats':
+        dashboard_stats();
+        break;
+    case 'receiving_products':
+        receiving_products();
+        break;
+    case 'receiving_create':
+        receiving_create();
+        break;
+    case 'receiving_list':
+        receiving_list();
+        break;
+    case 'receiving_detail':
+        receiving_detail();
+        break;
+    case 'stock_movements_list':
+        stock_movements_list();
+        break;
+    case 'stock_adjust':
+        stock_adjust();
+        break;
     case 'get_all_chats':
         get_all_chats();
         break;
@@ -62,11 +83,60 @@ function update_order_status(): void {
     if (!$order_id || !in_array($status, $allowed, true)) {
         respond_json(['error' => 'Invalid data'], 422);
     }
+    $db->begin_transaction();
+    $currentStmt = $db->prepare('SELECT status FROM orders WHERE order_id = ? FOR UPDATE');
+    $currentStmt->bind_param('i', $order_id);
+    $currentStmt->execute();
+    $currentRes = $currentStmt->get_result();
+    $current = $currentRes->fetch_assoc();
+    if (!$current) {
+        $db->rollback();
+        respond_json(['error' => 'Order not found'], 404);
+    }
+
+    $wasFinal = in_array($current['status'], ['shipping', 'done'], true);
+    $willFinal = in_array($status, ['shipping', 'done'], true);
+
+    if ($willFinal && !$wasFinal) {
+        $itemsStmt = $db->prepare('SELECT oi.product_id, oi.quantity, p.stock FROM order_items oi JOIN products p ON oi.product_id = p.product_id WHERE oi.order_id = ? FOR UPDATE');
+        $itemsStmt->bind_param('i', $order_id);
+        $itemsStmt->execute();
+        $itemsRes = $itemsStmt->get_result();
+        $items = $itemsRes->fetch_all(MYSQLI_ASSOC);
+        foreach ($items as $item) {
+            if ($item['stock'] < $item['quantity']) {
+                $db->rollback();
+                respond_json(['error' => 'Insufficient stock for order items'], 422);
+            }
+        }
+        foreach ($items as $item) {
+            $updateStock = $db->prepare('UPDATE products SET stock = stock - ? WHERE product_id = ?');
+            $qty = intval($item['quantity']);
+            $pid = intval($item['product_id']);
+            $updateStock->bind_param('ii', $qty, $pid);
+            if (!$updateStock->execute()) {
+                $db->rollback();
+                respond_json(['error' => 'Stock update failed'], 500);
+            }
+
+            $mv = $db->prepare('INSERT INTO stock_movements (product_id, movement_type, delta, ref_type, ref_id, note) VALUES (?, \'ship\', ?, \'order\', ?, ?)');
+            $delta = -$qty;
+            $note = 'Order #' . $order_id;
+            $mv->bind_param('iiis', $pid, $delta, $order_id, $note);
+            if (!$mv->execute()) {
+                $db->rollback();
+                respond_json(['error' => 'Movement log failed'], 500);
+            }
+        }
+    }
+
     $stmt = $db->prepare('UPDATE orders SET status = ? WHERE order_id = ?');
     $stmt->bind_param('si', $status, $order_id);
     if ($stmt->execute()) {
+        $db->commit();
         respond_json(['success' => true]);
     }
+    $db->rollback();
     respond_json(['error' => 'Update failed'], 500);
 }
 
@@ -110,6 +180,196 @@ function update_product(): void {
         respond_json(['success' => true]);
     }
     respond_json(['error' => 'Update failed'], 500);
+}
+
+function dashboard_stats(): void {
+    $db = get_db();
+    $stats = [
+        'pending_count' => 0,
+        'today_orders_count' => 0,
+        'today_revenue' => 0.0,
+        'low_stock_count' => 0
+    ];
+
+    $res1 = $db->query("SELECT COUNT(*) AS c FROM orders WHERE status IN ('pending','preparing')");
+    $stats['pending_count'] = intval($res1->fetch_assoc()['c'] ?? 0);
+
+    $res2 = $db->query("SELECT COUNT(*) AS c, COALESCE(SUM(total_amount),0) AS revenue FROM orders WHERE DATE(created_at) = CURDATE()");
+    $row2 = $res2->fetch_assoc();
+    $stats['today_orders_count'] = intval($row2['c'] ?? 0);
+    $stats['today_revenue'] = floatval($row2['revenue'] ?? 0);
+
+    $res3 = $db->query('SELECT COUNT(*) AS c FROM products WHERE stock < 10');
+    $stats['low_stock_count'] = intval($res3->fetch_assoc()['c'] ?? 0);
+
+    respond_json(['stats' => $stats]);
+}
+
+function receiving_products(): void {
+    $db = get_db();
+    $res = $db->query('SELECT product_id, name, category, price, stock FROM products ORDER BY product_id DESC');
+    respond_json(['products' => $res->fetch_all(MYSQLI_ASSOC)]);
+}
+
+function receiving_create(): void {
+    global $user;
+    $db = get_db();
+    $product_id = intval($_POST['product_id'] ?? 0);
+    $qty = intval($_POST['qty'] ?? 0);
+    $supplier_name = trim($_POST['supplier_name'] ?? '');
+    $unit_cost_raw = $_POST['unit_cost'] ?? '';
+    $unit_cost = $unit_cost_raw === '' ? null : floatval($unit_cost_raw);
+    $note = trim($_POST['note'] ?? '');
+    $received_at = trim($_POST['received_at'] ?? '');
+
+    if (!$product_id || $qty <= 0 || ($unit_cost !== null && $unit_cost < 0)) {
+        respond_json(['error' => 'Invalid data'], 422);
+    }
+
+    if ($received_at !== '') {
+        $dt = DateTime::createFromFormat('Y-m-d H:i:s', $received_at);
+        if (!$dt) {
+            respond_json(['error' => 'Invalid received_at'], 422);
+        }
+        $received_at = $dt->format('Y-m-d H:i:s');
+    } else {
+        $received_at = date('Y-m-d H:i:s');
+    }
+
+    $db->begin_transaction();
+    $productStmt = $db->prepare('SELECT product_id FROM products WHERE product_id = ? FOR UPDATE');
+    $productStmt->bind_param('i', $product_id);
+    $productStmt->execute();
+    $productRow = $productStmt->get_result()->fetch_assoc();
+    if (!$productRow) {
+        $db->rollback();
+        respond_json(['error' => 'Product not found'], 404);
+    }
+
+    $subtotal = $unit_cost !== null ? $unit_cost * $qty : null;
+    $total_lines = 1;
+    $total_cost = $subtotal;
+    $noteVal = $note === '' ? null : $note;
+    $supplierVal = $supplier_name === '' ? null : $supplier_name;
+    $adminId = $user['member_id'] ?? null;
+
+    $headerStmt = $db->prepare('INSERT INTO receiving_headers (supplier_name, total_lines, total_cost, note, received_at, created_by_admin_id) VALUES (?, ?, ?, ?, ?, ?)');
+    $headerStmt->bind_param('sidssi', $supplierVal, $total_lines, $total_cost, $noteVal, $received_at, $adminId);
+    if (!$headerStmt->execute()) {
+        $db->rollback();
+        respond_json(['error' => 'Create receiving header failed'], 500);
+    }
+    $receiving_id = $headerStmt->insert_id;
+
+    $itemStmt = $db->prepare('INSERT INTO receiving_items (receiving_id, product_id, qty, unit_cost, subtotal_cost) VALUES (?, ?, ?, ?, ?)');
+    $itemStmt->bind_param('iiidd', $receiving_id, $product_id, $qty, $unit_cost, $subtotal);
+    if (!$itemStmt->execute()) {
+        $db->rollback();
+        respond_json(['error' => 'Create receiving item failed'], 500);
+    }
+
+    $stockStmt = $db->prepare('UPDATE products SET stock = stock + ? WHERE product_id = ?');
+    $stockStmt->bind_param('ii', $qty, $product_id);
+    if (!$stockStmt->execute()) {
+        $db->rollback();
+        respond_json(['error' => 'Stock update failed'], 500);
+    }
+
+    $mvStmt = $db->prepare('INSERT INTO stock_movements (product_id, movement_type, delta, ref_type, ref_id, note) VALUES (?, \'receive\', ?, \'receiving\', ?, ?)');
+    $delta = $qty;
+    $mvStmt->bind_param('iiis', $product_id, $delta, $receiving_id, $noteVal);
+    if (!$mvStmt->execute()) {
+        $db->rollback();
+        respond_json(['error' => 'Movement log failed'], 500);
+    }
+
+    $db->commit();
+    respond_json(['success' => true, 'receiving_id' => $receiving_id]);
+}
+
+function receiving_list(): void {
+    $db = get_db();
+    $res = $db->query('SELECT receiving_id, supplier_name, total_lines, total_cost, note, received_at, created_by_admin_id, created_at FROM receiving_headers ORDER BY received_at DESC LIMIT 200');
+    respond_json(['receivings' => $res->fetch_all(MYSQLI_ASSOC)]);
+}
+
+function receiving_detail(): void {
+    $db = get_db();
+    $receiving_id = intval($_GET['receiving_id'] ?? 0);
+    if (!$receiving_id) {
+        respond_json(['error' => 'Invalid receiving id'], 422);
+    }
+    $headerStmt = $db->prepare('SELECT receiving_id, supplier_name, total_lines, total_cost, note, received_at, created_by_admin_id, created_at FROM receiving_headers WHERE receiving_id = ?');
+    $headerStmt->bind_param('i', $receiving_id);
+    $headerStmt->execute();
+    $header = $headerStmt->get_result()->fetch_assoc();
+    if (!$header) {
+        respond_json(['error' => 'Receiving not found'], 404);
+    }
+
+    $itemsStmt = $db->prepare('SELECT ri.product_id, p.name, ri.qty, ri.unit_cost, ri.subtotal_cost FROM receiving_items ri JOIN products p ON ri.product_id = p.product_id WHERE ri.receiving_id = ?');
+    $itemsStmt->bind_param('i', $receiving_id);
+    $itemsStmt->execute();
+    $items = $itemsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    respond_json(['header' => $header, 'items' => $items]);
+}
+
+function stock_movements_list(): void {
+    $db = get_db();
+    $product_id = intval($_GET['product_id'] ?? 0);
+    if ($product_id > 0) {
+        $stmt = $db->prepare('SELECT sm.movement_id, sm.product_id, p.name, sm.movement_type, sm.delta, sm.ref_type, sm.ref_id, sm.note, sm.created_at FROM stock_movements sm JOIN products p ON sm.product_id = p.product_id WHERE sm.product_id = ? ORDER BY sm.created_at DESC, sm.movement_id DESC LIMIT 200');
+        $stmt->bind_param('i', $product_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+    } else {
+        $res = $db->query('SELECT sm.movement_id, sm.product_id, p.name, sm.movement_type, sm.delta, sm.ref_type, sm.ref_id, sm.note, sm.created_at FROM stock_movements sm JOIN products p ON sm.product_id = p.product_id ORDER BY sm.created_at DESC, sm.movement_id DESC LIMIT 200');
+    }
+    respond_json(['movements' => $res->fetch_all(MYSQLI_ASSOC)]);
+}
+
+function stock_adjust(): void {
+    $db = get_db();
+    $product_id = intval($_POST['product_id'] ?? 0);
+    $delta = intval($_POST['delta'] ?? 0);
+    $reason = trim($_POST['reason'] ?? '');
+    if (!$product_id || $delta === 0 || $reason === '') {
+        respond_json(['error' => 'Invalid data'], 422);
+    }
+
+    $db->begin_transaction();
+    $stmt = $db->prepare('SELECT stock FROM products WHERE product_id = ? FOR UPDATE');
+    $stmt->bind_param('i', $product_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    if (!$row) {
+        $db->rollback();
+        respond_json(['error' => 'Product not found'], 404);
+    }
+    $current = intval($row['stock']);
+    $newStock = $current + $delta;
+    if ($newStock < 0) {
+        $db->rollback();
+        respond_json(['error' => 'Stock cannot be negative'], 422);
+    }
+
+    $update = $db->prepare('UPDATE products SET stock = ? WHERE product_id = ?');
+    $update->bind_param('ii', $newStock, $product_id);
+    if (!$update->execute()) {
+        $db->rollback();
+        respond_json(['error' => 'Stock update failed'], 500);
+    }
+
+    $mv = $db->prepare('INSERT INTO stock_movements (product_id, movement_type, delta, ref_type, ref_id, note) VALUES (?, \'adjust\', ?, \'manual\', NULL, ?)');
+    $mv->bind_param('iis', $product_id, $delta, $reason);
+    if (!$mv->execute()) {
+        $db->rollback();
+        respond_json(['error' => 'Movement log failed'], 500);
+    }
+
+    $db->commit();
+    respond_json(['success' => true]);
 }
 
 function get_all_chats(): void {

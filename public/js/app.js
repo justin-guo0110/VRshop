@@ -319,13 +319,20 @@ function bindAdmin() {
                 <td><input data-field="name" data-id="${p.product_id}" value="${p.name}"></td>
                 <td><input data-field="category" data-id="${p.product_id}" value="${p.category || ''}"></td>
                 <td><input data-field="price" data-id="${p.product_id}" value="${p.price}"></td>
-                <td><input data-field="stock" data-id="${p.product_id}" value="${p.stock}"></td>
+                <td>
+                    <span class="stock-value" data-id="${p.product_id}">${p.stock}</span>
+                    <input type="hidden" data-field="stock" data-id="${p.product_id}" value="${p.stock}">
+                </td>
                 <td>
                     <label class="checkbox">
                         <input type="checkbox" data-toggle="${p.product_id}" ${p.is_active == 1 ? 'checked' : ''}> Active
                     </label>
                 </td>
                 <td><button class="btn-secondary btn-sm" data-save="${p.product_id}">Save</button></td>
+                <td>
+                    <button class="btn-secondary btn-sm" data-restock="${p.product_id}">Restock</button>
+                    <button class="btn-secondary btn-sm" data-adjust="${p.product_id}">Adjust</button>
+                </td>
             `;
             tbody.appendChild(row);
         });

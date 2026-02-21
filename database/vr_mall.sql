@@ -102,6 +102,61 @@ INSERT INTO `products` (`name`, `category`, `description`, `price`, `stock`, `im
 ('哈根達斯迷你杯 草莓', '冰品', '人氣果香迷你杯款', 95.00, 60, '../image/16.jpg', 1);
 
 
+-- 進貨資料表
+CREATE TABLE IF NOT EXISTS `receiving_headers` (
+  `receiving_id` int NOT NULL AUTO_INCREMENT,
+  `supplier_name` varchar(100) DEFAULT NULL,
+  `total_lines` int NOT NULL DEFAULT 1,
+  `total_cost` decimal(10,2) DEFAULT NULL,
+  `note` text DEFAULT NULL,
+  `received_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_by_admin_id` int DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`receiving_id`),
+  KEY `idx_received_at` (`received_at`),
+  CONSTRAINT `fk_receiving_admin` FOREIGN KEY (`created_by_admin_id`) REFERENCES `members`(`member_id`) ON DELETE SET NULL
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- 進貨項目資料表
+CREATE TABLE IF NOT EXISTS `receiving_items` (
+  `receiving_item_id` int NOT NULL AUTO_INCREMENT,
+  `receiving_id` int NOT NULL,
+  `product_id` int NOT NULL,
+  `qty` int NOT NULL,
+  `unit_cost` decimal(10,2) DEFAULT NULL,
+  `subtotal_cost` decimal(10,2) DEFAULT NULL,
+  PRIMARY KEY (`receiving_item_id`),
+  KEY `idx_receiving_id` (`receiving_id`),
+  KEY `idx_product_id` (`product_id`),
+  CONSTRAINT `fk_receiving_item_header` FOREIGN KEY (`receiving_id`) REFERENCES `receiving_headers`(`receiving_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_receiving_item_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`product_id`) ON DELETE RESTRICT
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- 庫存異動資料表
+CREATE TABLE IF NOT EXISTS `stock_movements` (
+  `movement_id` int NOT NULL AUTO_INCREMENT,
+  `product_id` int NOT NULL,
+  `movement_type` enum('receive','ship','adjust') NOT NULL,
+  `delta` int NOT NULL,
+  `ref_type` enum('receiving','order','manual') NOT NULL,
+  `ref_id` int DEFAULT NULL,
+  `note` varchar(255) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`movement_id`),
+  KEY `idx_movement_product` (`product_id`),
+  KEY `idx_movement_created` (`created_at`),
+  CONSTRAINT `fk_movement_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`product_id`) ON DELETE RESTRICT
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
 -- 訂單資料表
 CREATE TABLE `orders` (
   `order_id` int(11) NOT NULL AUTO_INCREMENT,
@@ -148,7 +203,6 @@ CREATE TABLE `order_items` (
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
-
 -- 預設訂單明細資料
 INSERT INTO `order_items` (`order_item_id`, `order_id`, `product_id`, `quantity`, `unit_price`) VALUES
 (1, 1, 4, 1, 299.00),
