@@ -203,6 +203,7 @@ CREATE TABLE `order_items` (
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
+
 -- 預設訂單明細資料
 INSERT INTO `order_items` (`order_item_id`, `order_id`, `product_id`, `quantity`, `unit_price`) VALUES
 (1, 1, 4, 1, 299.00),
