@@ -178,11 +178,6 @@ CREATE TABLE `orders` (
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
 
--- 預設訂單資料
-INSERT INTO `orders` (`order_id`, `member_id`, `address_id`, `total_amount`, `status`, `created_at`) VALUES
-(1, 2, 1, 299.00, 'pending', '2025-11-29 15:29:20'),
-(2, 2, 1, 199.00, 'pending', '2025-12-01 08:01:51');
-
 
 -- 訂單項目資料表
 CREATE TABLE `order_items` (
@@ -204,9 +199,5 @@ CREATE TABLE `order_items` (
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
 
--- 預設訂單明細資料
-INSERT INTO `order_items` (`order_item_id`, `order_id`, `product_id`, `quantity`, `unit_price`) VALUES
-(1, 1, 4, 1, 299.00),
-(2, 2, 5, 1, 199.00);
 
 COMMIT;
