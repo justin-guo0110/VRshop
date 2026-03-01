@@ -1,6 +1,6 @@
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
-SET time_zone = "+00:00";
+SET time_zone = "+08:00";
 
 USE vr_mall;
 
@@ -162,6 +162,11 @@ CREATE TABLE `orders` (
   `order_id` int(11) NOT NULL AUTO_INCREMENT,
   `member_id` int(11) NOT NULL,
   `address_id` int(11) DEFAULT NULL,
+
+  `ship_name` varchar(255) NOT NULL,
+  `ship_phone` varchar(50) DEFAULT NULL,
+  `ship_address_line` varchar(500) NOT NULL,
+
   `total_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
   `status` enum('pending','preparing','shipping','done') NOT NULL DEFAULT 'pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -170,7 +175,7 @@ CREATE TABLE `orders` (
   KEY `address_id` (`address_id`),
   CONSTRAINT `fk_order_member`
     FOREIGN KEY (`member_id`) REFERENCES `members`(`member_id`)
-    ON DELETE CASCADE,
+    ON DELETE NO ACTION,
   CONSTRAINT `fk_order_address`
     FOREIGN KEY (`address_id`) REFERENCES `member_addresses`(`address_id`)
     ON DELETE SET NULL
