@@ -81,7 +81,7 @@
             if (els.statTodayRevenue) els.statTodayRevenue.textContent = `$${Number(stats.today_revenue || 0).toFixed(2)}`;
             if (els.statLowStock) els.statLowStock.textContent = stats.low_stock_count ?? 0;
         } catch (err) {
-            console.error('Dashboard load failed', err);
+            console.error('載入儀表板統計失敗', err);
         }
     }
 
@@ -95,7 +95,7 @@
                 els.receivingProduct.value = selectedId;
             }
         } catch (err) {
-            console.error('Load receiving products failed', err);
+            console.error('載入進貨產品失敗', err);
         }
     }
 
@@ -115,18 +115,18 @@
         try {
             const res = await api.post(`${apiUrl}?action=receiving_create`, formData);
             if (res.success) {
-                showMessage('Receiving saved', true);
+                showMessage('進貨已儲存', true);
                 updateRowStock(formData.product_id, parseInt(formData.qty, 10));
                 loadReceivingList();
                 loadMovements();
                 loadDashboard();
                 els.receivingForm.reset();
             } else {
-                showMessage(res.error || 'Save failed', false);
+                showMessage(res.error || '進貨儲存失敗', false);
             }
         } catch (err) {
             console.error(err);
-            showMessage('Save failed', false);
+            showMessage('進貨儲存失敗', false);
         }
     }
 
@@ -151,12 +151,12 @@
                     <td>${r.total_cost !== null ? Number(r.total_cost).toFixed(2) : '-'}</td>
                     <td>${r.received_at}</td>
                     <td>${r.note || ''}</td>
-                    <td><button class="btn-secondary btn-sm" data-view="${r.receiving_id}">Detail</button></td>
+                    <td><button class="btn btn-sm btn-secondary" data-view="${r.receiving_id}">明細</button></td>
                 `;
                 tbody.appendChild(tr);
             });
         } catch (err) {
-            console.error('Receiving list failed', err);
+            console.error('載入進貨列表失敗', err);
         }
     }
 
@@ -165,18 +165,18 @@
         try {
             const res = await api.get(`${apiUrl}?action=receiving_detail&receiving_id=${encodeURIComponent(id)}`);
             if (!res.header) {
-                els.receivingDetail.textContent = res.error || 'Not found';
+                els.receivingDetail.textContent = res.error || '無法載入進貨明細';
                 return;
             }
             const items = res.items || [];
             let html = `
                 <div class="card small">
-                    <p><strong>Supplier:</strong> ${res.header.supplier_name || '-'}</p>
-                    <p><strong>Received At:</strong> ${res.header.received_at}</p>
-                    <p><strong>Note:</strong> ${res.header.note || ''}</p>
+                    <p><strong>供應商：</strong> ${res.header.supplier_name || '-'}</p>
+                    <p><strong>進貨時間：</strong> ${res.header.received_at}</p>
+                    <p><strong>備註：</strong> ${res.header.note || ''}</p>
                 </div>
                 <table class="data-table">
-                    <thead><tr><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Subtotal</th></tr></thead>
+                    <thead><tr><th>商品名稱</th><th>數量</th><th>單價</th><th>小計</th></tr></thead>
                     <tbody>
                         ${items.map(i => `<tr><td>${i.name}</td><td>${i.qty}</td><td>${i.unit_cost !== null ? Number(i.unit_cost).toFixed(2) : '-'}</td><td>${i.subtotal_cost !== null ? Number(i.subtotal_cost).toFixed(2) : '-'}</td></tr>`).join('')}
                     </tbody>
@@ -184,7 +184,7 @@
             `;
             els.receivingDetail.innerHTML = html;
         } catch (err) {
-            console.error('Receiving detail failed', err);
+            console.error('載入進貨明細失敗', err);
         }
     }
 
@@ -210,7 +210,7 @@
                 tbody.appendChild(tr);
             });
         } catch (err) {
-            console.error('Movements load failed', err);
+            console.error('載入失敗', err);
         }
     }
 
@@ -228,16 +228,16 @@
     }
 
     async function handleAdjust(productId) {
-        const deltaStr = prompt('Enter adjustment (use negative to decrease):', '0');
+        const deltaStr = prompt('調整庫存（使用負數表示減少）：', '0');
         if (deltaStr === null) return;
         const delta = parseInt(deltaStr, 10);
         if (!delta) {
-            alert('Delta must not be zero.');
+            alert('調整數量不能為零');
             return;
         }
-        const reason = prompt('Reason for adjustment:', '');
+        const reason = prompt('調整原因：', '');
         if (reason === null || reason.trim() === '') {
-            alert('Reason is required.');
+            alert('調整原因為必填項目。');
             return;
         }
         try {
@@ -246,13 +246,13 @@
                 updateRowStock(productId, delta);
                 loadMovements();
                 loadDashboard();
-                alert('Stock adjusted.');
+                alert('庫存已調整。');
             } else {
-                alert(res.error || 'Adjust failed');
+                alert(res.error || '調整失敗');
             }
         } catch (err) {
-            console.error('Adjust failed', err);
-            alert('Adjust failed');
+            console.error('調整失敗', err);
+            alert('調整失敗');
         }
     }
 

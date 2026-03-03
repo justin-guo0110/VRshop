@@ -82,11 +82,11 @@ function bindAuth() {
 function handleAuthResponse(res, messageEl) {
     if (!messageEl) return;
     if (res.success) {
-        messageEl.textContent = 'Success! Redirecting...';
+        messageEl.textContent = '登入成功，正在跳轉…';
         messageEl.className = 'message success';
         setTimeout(() => location.href = 'products.php', 500);
     } else {
-        messageEl.textContent = res.error || 'Failed';
+        messageEl.textContent = res.error || '登入失敗';
         messageEl.className = 'message error';
     }
 }
@@ -110,10 +110,10 @@ function bindProfile() {
         const data = Object.fromEntries(new FormData(form));
         const res = await api.post('../api/member.php?action=update_profile', data);
         if (res.success) {
-            msg.textContent = 'Profile updated';
+            msg.textContent = '資料已更新';
             msg.className = 'message success';
         } else {
-            msg.textContent = res.error || 'Update failed';
+            msg.textContent = res.error || '更新失敗';
             msg.className = 'message error';
         }
     });
@@ -143,7 +143,7 @@ function bindResetPassword() {
         } catch (err) {
             if (message) {
                 message.textContent = '發生錯誤，請稍後再試';
-                message.className = 'message error';
+                message.className = '';
             }
         }
     });
@@ -166,8 +166,8 @@ function bindAddresses() {
                 <p><strong>${addr.recipient_name}</strong> ${addr.phone || ''}</p>
                 <p>${addr.address_line}</p>
                 <p></p>
-                <button class="btn-secondary btn-sm" data-edit="${addr.address_id}">Edit</button>
-                <button class="btn-secondary btn-sm" data-delete="${addr.address_id}">Delete</button>
+                <button class="btn-secondary btn-sm" data-edit="${addr.address_id}">編輯</button>
+                <button class="btn-secondary btn-sm" data-delete="${addr.address_id}">刪除</button>
             `;
             list.appendChild(div);
         });
@@ -185,13 +185,13 @@ function bindAddresses() {
             res = await api.post('../api/member.php?action=create_address', data);
         }
         if (res.success) {
-            msg.textContent = 'Saved';
+            msg.textContent = '已儲存';
             msg.className = 'message success';
             form.reset();
             editingAddressId = null;
             loadAddresses();
         } else {
-            msg.textContent = res.error || 'Error';
+            msg.textContent = res.error || '儲存失敗';
             msg.className = 'message error';
         }
     });
@@ -236,7 +236,7 @@ async function bindSearch() {
                 <h3>${p.name}</h3>
                 <p class="price">$${Number(p.price).toFixed(2)}</p>
                 <p>${p.category || ''}</p>
-                <a class="btn" href="product_detail.php?product_id=${p.product_id}">View</a>
+                <a class="btn" href="product_detail.php?product_id=${p.product_id}">查看詳情</a>
             `;
             grid.appendChild(card);
         });
@@ -315,24 +315,38 @@ function bindAdmin() {
         (res.products || []).forEach(p => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${p.product_id}</td>
-                <td><input data-field="name" data-id="${p.product_id}" value="${p.name}"></td>
-                <td><input data-field="category" data-id="${p.product_id}" value="${p.category || ''}"></td>
-                <td><input data-field="price" data-id="${p.product_id}" value="${p.price}"></td>
-                <td>
-                    <span class="stock-value" data-id="${p.product_id}">${p.stock}</span>
-                    <input type="hidden" data-field="stock" data-id="${p.product_id}" value="${p.stock}">
-                </td>
-                <td>
-                    <label class="checkbox">
-                        <input type="checkbox" data-toggle="${p.product_id}" ${p.is_active == 1 ? 'checked' : ''}> Active
-                    </label>
-                </td>
-                <td><button class="btn-secondary btn-sm" data-save="${p.product_id}">Save</button></td>
-                <td>
-                    <button class="btn-secondary btn-sm" data-restock="${p.product_id}">Restock</button>
-                    <button class="btn-secondary btn-sm" data-adjust="${p.product_id}">Adjust</button>
-                </td>
+            <td>${p.product_id}</td>
+            <td><input data-field="name" data-id="${p.product_id}" value="${p.name}"></td>
+            <td><input data-field="category" data-id="${p.product_id}" value="${p.category || ''}"></td>
+            <td><input data-field="price" data-id="${p.product_id}" value="${p.price}"></td>
+            <td>
+                <span class="stock-value" data-id="${p.product_id}">${p.stock}</span>
+                <input type="hidden" data-field="stock" data-id="${p.product_id}" value="${p.stock}">
+            </td>
+
+            <!-- 上架 -->
+            <td class="col-active">
+                <div class="active-wrap">
+                <label class="switch">
+                    <input type="checkbox" data-toggle="${p.product_id}" ${p.is_active == 1 ? 'checked' : ''}>
+                    <span class="slider"></span>
+                </label>
+                <span class="active-text">${p.is_active == 1 ? '上架' : '下架'}</span>
+                </div>
+            </td>
+
+            <!-- 儲存 -->
+            <td class="col-save">
+                <button class="btn btn-sm btn-save" data-save="${p.product_id}">儲存</button>
+            </td>
+
+            <!-- 操作 -->
+            <td class="col-stock-actions">
+                <div class="action-stack">
+                <button class="btn btn-sm btn-restock" data-restock="${p.product_id}">補貨</button>
+                <button class="btn btn-sm btn-adjust" data-adjust="${p.product_id}">手動調整</button>
+                </div>
+            </td>
             `;
             tbody.appendChild(row);
         });
@@ -632,7 +646,7 @@ async function bindSearch() {
                 <h3>${p.name}</h3>
                 <p class="price">$${Number(p.price).toFixed(2)}</p>
                 <p>${p.category || ''}</p>
-                <a class="btn" href="product_detail.php?product_id=${p.product_id}">View</a>
+                <a class="btn" href="product_detail.php?product_id=${p.product_id}">查看詳情</a>
                 <button class="btn btn-sm btn-primary add-to-cart"
                         data-product-id="${p.product_id}">
                    加入購物車

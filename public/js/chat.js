@@ -18,16 +18,16 @@ class ChatWidget {
         container.innerHTML = `
             <div class="chat-window" id="chatWindow">
                 <div class="chat-header">
-                    <h3>Customer Support</h3>
+                    <h3>客服支援</h3>
                     <button class="chat-close-btn" id="chatCloseBtn">✕</button>
                 </div>
                 <div class="chat-messages" id="chatMessages">
                     <div style="text-align:center;color:#999;font-size:12px;margin-top:20px;">
-                        Start a conversation with us!
+                        和我們開始對話吧！
                     </div>
                 </div>
                 <form class="chat-input-area" id="chatForm">
-                    <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." autocomplete="off">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="請輸入訊息…" autocomplete="off">
                     <button type="submit" class="chat-send-btn">
                         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
                     </button>
@@ -167,11 +167,11 @@ class ChatWidget {
             if (data.success) {
                 this.loadMessages();
             } else {
-                alert('Failed to send message: ' + (data.error || 'Unknown error'));
+                alert('訊息送出失敗: ' + (data.error || '未知錯誤'));
             }
         } catch (e) {
             console.error('Send error', e);
-            alert('Network error');
+            alert('網路連線錯誤，請稍後再試');
         }
     }
 

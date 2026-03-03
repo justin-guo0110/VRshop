@@ -1,4 +1,4 @@
-/* Chat Widget Container */
+/*  Chat Widget 容器  */
 .chat-widget {
     position: fixed;
     bottom: 20px;
@@ -7,7 +7,8 @@
     font-family: 'Inter', sans-serif;
 }
 
-/* Toggle Button */
+
+/*  切換按鈕（浮動圓形按鈕）  */
 .chat-toggle-btn {
     width: 60px;
     height: 60px;
@@ -35,7 +36,8 @@
     fill: currentColor;
 }
 
-/* Chat Window */
+
+/*  聊天視窗主體  */
 .chat-window {
     position: absolute;
     bottom: 80px;
@@ -55,13 +57,15 @@
     pointer-events: none;
 }
 
+/* 聊天視窗開啟狀態 */
 .chat-window.open {
     opacity: 1;
     transform: scale(1);
     pointer-events: all;
 }
 
-/* Header */
+
+/*  聊天視窗 Header 區塊  */
 .chat-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -77,6 +81,7 @@
     font-weight: 600;
 }
 
+/* 關閉按鈕 */
 .chat-close-btn {
     background: none;
     border: none;
@@ -90,7 +95,8 @@
     opacity: 1;
 }
 
-/* Messages Area */
+
+/*  訊息顯示區域  */
 .chat-messages {
     flex: 1;
     padding: 16px;
@@ -101,6 +107,7 @@
     gap: 10px;
 }
 
+/* 訊息泡泡（共用樣式） */
 .message {
     max-width: 80%;
     padding: 10px 14px;
@@ -111,6 +118,7 @@
     word-wrap: break-word;
 }
 
+/* 使用者訊息 */
 .message.user {
     align-self: flex-end;
     background: #667eea;
@@ -118,6 +126,7 @@
     border-bottom-right-radius: 2px;
 }
 
+/* 管理員訊息 */
 .message.admin {
     align-self: flex-start;
     background: white;
@@ -127,6 +136,7 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
+/* 訊息時間 */
 .message-time {
     font-size: 10px;
     opacity: 0.7;
@@ -135,7 +145,8 @@
     text-align: right;
 }
 
-/* Input Area */
+
+/*  輸入區域  */
 .chat-input-area {
     padding: 12px;
     background: white;
@@ -144,6 +155,7 @@
     gap: 8px;
 }
 
+/* 輸入框 */
 .chat-input {
     flex: 1;
     border: 1px solid #ddd;
@@ -158,6 +170,7 @@
     border-color: #667eea;
 }
 
+/* 發送按鈕 */
 .chat-send-btn {
     background: #667eea;
     color: white;
@@ -180,9 +193,11 @@
     width: 18px;
     height: 18px;
     fill: currentColor;
-    margin-left: 2px; /* Visual optical adjustment */
+    margin-left: 2px; /* 視覺微調 */
 }
 
+
+/*  未讀訊息提示 Badge  */
 .chat-badge {
     position: absolute;
     top: -4px;
@@ -201,6 +216,8 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
 
+/* 隱藏 Badge 狀態 */
 .chat-badge-hidden {
     display: none;
 }
+

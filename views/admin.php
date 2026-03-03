@@ -46,7 +46,7 @@
             <table class="data-table" id="productsTable">
                 <thead>
                     <tr>
-                        <th>ID</th><th>	商品名稱</th><th>分類</th><th>價格</th><th>庫存</th><th>上架</th><th>儲存</th><th>庫存</th>
+                        <th>ID</th><th>	商品名稱</th><th>分類</th><th>價格</th><th>庫存</th><th>上架</th><th>儲存</th><th>操作</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -75,11 +75,12 @@
                         <label>進貨時間
                             <input type="datetime-local" id="receivingAt">
                         </label>
-                        <button type="submit" class="btn">Save Receiving</button>
+                        <button type="submit" class="btn">儲存</button>
                         <div id="receivingMessage" class="message"></div>
                     </form>
                 </div>
                 <div>
+
                     <h3>最近進貨</h3>
                     <table class="data-table" id="receivingTable">
                         <thead>
@@ -93,12 +94,8 @@
                 </div>
             </div>
             <div style="margin-top:20px;">
+
                 <h3>庫存異動</h3>
-                <div style="margin-bottom:10px;">
-                    <label>Filter by Product ID <input type="number" id="movementFilterProduct" style="width:120px;"></label>
-                    <button id="movementFilterBtn" class="btn btn-secondary btn-sm">Filter</button>
-                    <button id="movementClearBtn" class="btn btn-secondary btn-sm">Clear</button>
-                </div>
                 <table class="data-table" id="movementsTable">
                     <thead>
                         <tr>
@@ -123,7 +120,7 @@
                     </div>
                     <div style="padding:15px; border-top:1px solid #ddd; display:flex; gap:10px; background:#f9f9f9;">
                         <input type="text" id="adminChatInput" placeholder="Type a reply..." style="flex:1; padding:10px; border:1px solid #ddd; border-radius:4px;">
-                        <button id="adminChatSendBtn" style="padding:10px 20px; background:#667eea; color:white; border:none; border-radius:4px; cursor:pointer;">Send</button>
+                        <button id="adminChatSendBtn" style="padding:10px 20px; background:#667eea; color:white; border:none; border-radius:4px; cursor:pointer;">送出</button>
                     </div>
                 </div>
             </div>
