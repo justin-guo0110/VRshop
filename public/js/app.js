@@ -166,8 +166,8 @@ function bindAddresses() {
                 <p><strong>${addr.recipient_name}</strong> ${addr.phone || ''}</p>
                 <p>${addr.address_line}</p>
                 <p></p>
-                <button class="btn-secondary btn-sm" data-edit="${addr.address_id}">編輯</button>
-                <button class="btn-secondary btn-sm" data-delete="${addr.address_id}">刪除</button>
+                <button class="btn btn-edit" data-edit="${addr.address_id}">編輯</button>
+                <button class="btn btn-danger" data-delete="${addr.address_id}">刪除</button>
             `;
             list.appendChild(div);
         });
@@ -337,14 +337,14 @@ function bindAdmin() {
 
             <!-- 儲存 -->
             <td class="col-save">
-                <button class="btn btn-sm btn-save" data-save="${p.product_id}">儲存</button>
+                <button class="btn btn-save" data-save="${p.product_id}">儲存</button>
             </td>
 
             <!-- 操作 -->
             <td class="col-stock-actions">
                 <div class="action-stack">
-                <button class="btn btn-sm btn-restock" data-restock="${p.product_id}">補貨</button>
-                <button class="btn btn-sm btn-adjust" data-adjust="${p.product_id}">手動調整</button>
+                <button class="btn btn-restock" data-restock="${p.product_id}">補貨</button>
+                <button class="btn btn-adjust" data-adjust="${p.product_id}">手動調整</button>
                 </div>
             </td>
             `;
