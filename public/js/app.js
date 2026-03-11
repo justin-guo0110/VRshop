@@ -11,6 +11,7 @@ const api = {
 document.addEventListener('DOMContentLoaded', () => {
     setupTabs();
     setupLoginPageTabs();
+    setupSideAdCarousel();
     bindAuth();
     bindLogout();
     bindProfile();
@@ -57,6 +58,42 @@ window.switchTab = function(target) {
         }
     });
 };
+
+function setupSideAdCarousel() {
+    const carousel = document.getElementById('sideAdCarouselInner');
+    const dotsContainer = document.getElementById('sideAdDots');
+    if (!carousel) return;
+
+    const items = carousel.querySelectorAll('.side-ad-item');
+    let currentIndex = 0;
+
+    // 創建指示點
+    items.forEach((_, idx) => {
+        const dot = document.createElement('div');
+        dot.className = `side-ad-dot ${idx === 0 ? 'active' : ''}`;
+        dot.addEventListener('click', () => showSlide(idx));
+        dotsContainer.appendChild(dot);
+    });
+
+    function showSlide(index) {
+        const itemHeight = items[0].offsetHeight + 12; // 12px 是 gap
+        const offset = -(index * itemHeight);
+        carousel.style.transform = `translateY(${offset}px)`;
+        
+        document.querySelectorAll('.side-ad-dot').forEach(dot => dot.classList.remove('active'));
+        document.querySelectorAll('.side-ad-dot')[index].classList.add('active');
+        currentIndex = index;
+    }
+
+    // 自動播放，每5秒切換一次
+    setInterval(() => {
+        currentIndex = (currentIndex + 1) % items.length;
+        showSlide(currentIndex);
+    }, 5000);
+
+    // 初始顯示第一個
+    showSlide(0);
+}
 
 function bindAuth() {
     const loginForm = document.getElementById('loginForm');

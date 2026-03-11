@@ -23,20 +23,6 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
     <?php endif; ?>
 </head>
 <body>
-    <!-- 左右側廣告（只在首頁使用） -->
-    <div class="side-ads">
-        <a href="./products.php" class="side-ad side-ad-left">
-            <strong>限時優惠</strong>
-            <span>VR 頭盔滿 NT$10,000 折 NT$1,000</span>
-            <small>立即選購 &raquo;</small>
-        </a>
-        <a href="./products.php" class="side-ad side-ad-right">
-            <strong>週末加碼</strong>
-            <span>指定周邊 2 件 9 折</span>
-            <small>看更多優惠 &raquo;</small>
-        </a>
-    </div>
-
     <header class="site-header">
         <div class="container header-inner">
 
@@ -68,8 +54,31 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
         </div>
     </header>
 
-    <main class="container" style="padding-top: 0;">
-        <!-- 上方優惠 / 活動輪播 -->
+    <main class="container" style="padding-top: 0; display: grid; grid-template-columns: 180px 1fr; gap: 20px;">
+        <!-- 左側廣告輪播 -->
+        <div class="side-ad-carousel">
+            <div class="side-ad-carousel-inner" id="sideAdCarouselInner">
+                <a href="./products.php" class="side-ad-item">
+                    <strong>限時優惠</strong>
+                    <span>VR 頭盔滿 NT$10,000 折 NT$1,000</span>
+                    <small>立即選購 &raquo;</small>
+                </a>
+                <a href="./products.php" class="side-ad-item">
+                    <strong>週末加碼</strong>
+                    <span>指定周邊 2 件 9 折</span>
+                    <small>看更多 &raquo;</small>
+                </a>
+                <a href="./products.php" class="side-ad-item">
+                    <strong>新品上市</strong>
+                    <span>最新 VR 遊戲內容上線</span>
+                    <small>馬上體驗 &raquo;</small>
+                </a>
+            </div>
+            <div class="side-ad-dots" id="sideAdDots"></div>
+        </div>
+
+        <!-- 主內容區 -->
+        <div>
         <section class="promo-slider" id="promoSlider">
             <div class="promo-slider-inner" id="promoSliderInner">
                 <div class="promo-slide">
@@ -148,6 +157,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
                 <?php endif; ?>
             </div>
         </section>
+        </div>
 
     </main>
 

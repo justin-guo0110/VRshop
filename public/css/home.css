@@ -159,6 +159,7 @@
     box-shadow: 0 8px 20px rgba(0,0,0,0.08);
     background: linear-gradient(135deg, #1f2933 0%, #111827 100%);
     color: #fff;
+    min-height: 240px;
 }
 
 .promo-slider-inner {
@@ -168,21 +169,23 @@
 
 .promo-slide {
     min-width: 100%;
-    padding: 20px 24px;
+    padding: 60px 40px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 24px;
 }
 
 .promo-slide-text h3 {
-    margin: 0 0 8px;
-    font-size: 1.4rem;
+    margin: 0 0 12px;
+    font-size: 1.8rem;
+    font-weight: 700;
 }
 
 .promo-slide-text p {
     margin: 0;
     color: #e5e7eb;
+    font-size: 1.05rem;
 }
 
 .promo-slide-cta a.btn {
@@ -213,40 +216,90 @@
 }
 
 
-/*  左右側廣告（桌機版）  */
-.side-ads {
-    position: fixed;
-    inset-block-start: 140px;
-    inset-inline: 0;
-    pointer-events: none;
+/*  左側廣告輪播  */
+.side-ad-carousel {
+    position: sticky;
+    top: 80px;
+    height: fit-content;
     z-index: 5;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
 }
 
-.side-ad {
-    position: absolute;
-    width: 140px;
-    padding: 10px;
-    border-radius: 12px;
+.side-ad-carousel-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+    transition: transform 0.5s ease;
+}
+
+.side-ad-item {
+    flex-shrink: 0;
+    width: 180px;
+    min-height: 200px;
+    padding: 16px 12px;
     background: #ffffff;
+    border-radius: 12px;
     box-shadow: 0 8px 18px rgba(0,0,0,0.12);
-    font-size: 0.9rem;
     color: #111827;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.95rem;
     pointer-events: auto;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.side-ad-left {
-    left: max(10px, calc((100vw - 1100px)/2 - 160px));
+.side-ad-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15);
 }
 
-.side-ad-right {
-    right: max(10px, calc((100vw - 1100px)/2 - 160px));
-}
-
-.side-ad small {
+.side-ad-item strong {
     display: block;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: #ff7a18;
+    font-weight: 700;
+}
+
+.side-ad-item span {
+    display: block;
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.side-ad-item small {
+    display: block;
+    font-size: 0.8rem;
     color: #6b7280;
-    margin-top: 4px;
+}
+
+.side-ad-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 12px;
+}
+
+.side-ad-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,122,24,0.3);
+    cursor: pointer;
+    transition: all .2s ease;
+}
+
+.side-ad-dot.active {
+    background: #ff7a18;
+    transform: scale(1.2);
 }
 
 @media (max-width: 1200px) {
