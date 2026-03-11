@@ -7,7 +7,7 @@
     </div>
     <div class="actions">
         <button class="btn btn-secondary" id="clearCartBtn">清空購物車</button>
-        <a class="btn" href="../views/checkout.php">前往結帳</a>
+        <a class="btn" href="./checkout.php">前往結帳</a>
     </div>
 </section>
 <?php require_once __DIR__ . '/layout_footer.php'; ?>

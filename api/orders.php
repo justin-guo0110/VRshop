@@ -46,6 +46,18 @@ function place_order(): void {
     if ($address_id <= 0) {
         respond_json(['error' => 'Address required'], 422);
     }
+    $allowedPayments = ['信用卡', '貨到付款'];
+    $allowedShippings = ['宅配', '超商取貨'];
+    if (!in_array($payment_method, $allowedPayments, true)) {
+        respond_json(['error' => 'Invalid payment method'], 422);
+    }
+    if (!in_array($shipping_method, $allowedShippings, true)) {
+        respond_json(['error' => 'Invalid shipping method'], 422);
+    }
+    // 常見限制：超商取貨不支援貨到付款（前端也會限制）
+    if ($shipping_method === '超商取貨' && $payment_method === '貨到付款') {
+        respond_json(['error' => '超商取貨不支援貨到付款'], 422);
+    }
 
     $db = get_db();
     $addressStmt = $db->prepare('SELECT address_id FROM member_addresses WHERE address_id = ? AND member_id = ?');
@@ -60,7 +72,7 @@ function place_order(): void {
         respond_json(['error' => 'Cart is empty'], 422);
     }
     $placeholders = implode(',', array_fill(0, count($productIds), '?'));
-    $stmt = $db->prepare("SELECT product_id, price, name FROM products WHERE product_id IN ($placeholders) AND is_active = 1");
+    $stmt = $db->prepare("SELECT product_id, price, name, stock FROM products WHERE product_id IN ($placeholders) AND is_active = 1");
     $types = str_repeat('i', count($productIds));
     $stmt->bind_param($types, ...$productIds);
     $stmt->execute();
@@ -80,6 +92,13 @@ function place_order(): void {
     foreach ($cart as $pid => $item) {
         $price = floatval($products[$pid]['price']);
         $qty = intval($item['quantity']);
+        $stock = intval($products[$pid]['stock'] ?? 0);
+        if ($stock <= 0) {
+            respond_json(['error' => '商品缺貨：' . ($products[$pid]['name'] ?? $pid)], 409);
+        }
+        if ($qty > $stock) {
+            respond_json(['error' => '庫存不足：' . ($products[$pid]['name'] ?? $pid)], 409);
+        }
         $orderItems[] = [
             'product_id' => $pid,
             'quantity' => $qty,
@@ -87,6 +106,10 @@ function place_order(): void {
         ];
         $total += $price * $qty;
     }
+
+    $shippingFee = $shipping_method === '宅配' ? 100.0 : 60.0;
+    $paymentFee = $payment_method === '貨到付款' ? 30.0 : 0.0;
+    $total += $shippingFee + $paymentFee;
 
     $hasPayment = column_exists($db, 'orders', 'payment_method');
     $hasShipping = column_exists($db, 'orders', 'shipping_method');
@@ -139,7 +162,13 @@ function place_order(): void {
     }
 
     $_SESSION['cart'] = [];
-    respond_json(['success' => true, 'order_id' => $order_id]);
+    respond_json([
+        'success' => true,
+        'order_id' => $order_id,
+        'shipping_fee' => $shippingFee,
+        'payment_fee' => $paymentFee,
+        'total' => $total
+    ]);
 }
 
 function list_my_orders(): void {

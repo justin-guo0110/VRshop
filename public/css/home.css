@@ -148,3 +148,110 @@
     opacity: 0.9;
 }
 
+
+/*  首頁優惠輪播區  */
+.promo-slider {
+    max-width: 1100px;
+    margin: 20px auto 24px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    background: linear-gradient(135deg, #1f2933 0%, #111827 100%);
+    color: #fff;
+}
+
+.promo-slider-inner {
+    display: flex;
+    transition: transform 0.5s ease;
+}
+
+.promo-slide {
+    min-width: 100%;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.promo-slide-text h3 {
+    margin: 0 0 8px;
+    font-size: 1.4rem;
+}
+
+.promo-slide-text p {
+    margin: 0;
+    color: #e5e7eb;
+}
+
+.promo-slide-cta a.btn {
+    white-space: nowrap;
+}
+
+.promo-dots {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+}
+
+.promo-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.8);
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+.promo-dot.active {
+    background: #fff;
+}
+
+
+/*  左右側廣告（桌機版）  */
+.side-ads {
+    position: fixed;
+    inset-block-start: 140px;
+    inset-inline: 0;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.side-ad {
+    position: absolute;
+    width: 140px;
+    padding: 10px;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+    font-size: 0.9rem;
+    color: #111827;
+    text-align: center;
+    pointer-events: auto;
+}
+
+.side-ad-left {
+    left: max(10px, calc((100vw - 1100px)/2 - 160px));
+}
+
+.side-ad-right {
+    right: max(10px, calc((100vw - 1100px)/2 - 160px));
+}
+
+.side-ad small {
+    display: block;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+@media (max-width: 1200px) {
+    .side-ads {
+        display: none;
+    }
+}
+
