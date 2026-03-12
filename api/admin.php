@@ -78,6 +78,12 @@ function list_orders(): void {
     respond_json(['orders' => array_values($orders)]);
 }
 
+function table_exists(mysqli $db, string $table): bool {
+    $tableEsc = $db->real_escape_string($table);
+    $res = $db->query("SHOW TABLES LIKE '$tableEsc'");
+    return $res && $res->num_rows > 0;
+}
+
 function update_order_status(): void {
     $db = get_db();
     $order_id = intval($_POST['order_id'] ?? 0);
@@ -99,6 +105,7 @@ function update_order_status(): void {
 
     $wasFinal = in_array($current['status'], ['shipping', 'done'], true);
     $willFinal = in_array($status, ['shipping', 'done'], true);
+    $hasStockMovements = table_exists($db, 'stock_movements');
 
     if ($willFinal && !$wasFinal) {
         $itemsStmt = $db->prepare('SELECT oi.product_id, oi.quantity, p.stock FROM order_items oi JOIN products p ON oi.product_id = p.product_id WHERE oi.order_id = ? FOR UPDATE');
@@ -114,6 +121,10 @@ function update_order_status(): void {
         }
         foreach ($items as $item) {
             $updateStock = $db->prepare('UPDATE products SET stock = stock - ? WHERE product_id = ?');
+            if (!$updateStock) {
+                $db->rollback();
+                respond_json(['error' => 'Prepare stock update failed'], 500);
+            }
             $qty = intval($item['quantity']);
             $pid = intval($item['product_id']);
             $updateStock->bind_param('ii', $qty, $pid);
@@ -122,13 +133,19 @@ function update_order_status(): void {
                 respond_json(['error' => 'Stock update failed'], 500);
             }
 
-            $mv = $db->prepare('INSERT INTO stock_movements (product_id, movement_type, delta, ref_type, ref_id, note) VALUES (?, \'ship\', ?, \'order\', ?, ?)');
-            $delta = -$qty;
-            $note = 'Order #' . $order_id;
-            $mv->bind_param('iiis', $pid, $delta, $order_id, $note);
-            if (!$mv->execute()) {
-                $db->rollback();
-                respond_json(['error' => 'Movement log failed'], 500);
+            if ($hasStockMovements) {
+                $mv = $db->prepare('INSERT INTO stock_movements (product_id, movement_type, delta, ref_type, ref_id, note) VALUES (?, \'ship\', ?, \'order\', ?, ?)');
+                if (!$mv) {
+                    $db->rollback();
+                    respond_json(['error' => 'Prepare movement log failed'], 500);
+                }
+                $delta = -$qty;
+                $note = 'Order #' . $order_id;
+                $mv->bind_param('iiis', $pid, $delta, $order_id, $note);
+                if (!$mv->execute()) {
+                    $db->rollback();
+                    respond_json(['error' => 'Movement log failed'], 500);
+                }
             }
         }
     }
