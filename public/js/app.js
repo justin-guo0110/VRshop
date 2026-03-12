@@ -60,11 +60,12 @@ window.switchTab = function(target) {
 };
 
 function setupSideAdCarousel() {
-    const carousel = document.getElementById('sideAdCarouselInner');
+    const carouselInner = document.getElementById('sideAdCarouselInner');
     const dotsContainer = document.getElementById('sideAdDots');
-    if (!carousel) return;
+    if (!carouselInner) return;
 
-    const items = carousel.querySelectorAll('.side-ad-item');
+    const items = carouselInner.querySelectorAll('.side-ad-item');
+    const itemHeight = 200; // 廣告項目高度
     let currentIndex = 0;
 
     // 創建指示點
@@ -76,16 +77,15 @@ function setupSideAdCarousel() {
     });
 
     function showSlide(index) {
-        const itemHeight = items[0].offsetHeight + 12; // 12px 是 gap
-        const offset = -(index * itemHeight);
-        carousel.style.transform = `translateY(${offset}px)`;
+        const offset = index * itemHeight;
+        carouselInner.style.transform = `translateY(-${offset}px)`;
         
         document.querySelectorAll('.side-ad-dot').forEach(dot => dot.classList.remove('active'));
         document.querySelectorAll('.side-ad-dot')[index].classList.add('active');
         currentIndex = index;
     }
 
-    // 自動播放，每5秒切換一次
+    // 自動播放，每5秒切換一次（向下輪播）
     setInterval(() => {
         currentIndex = (currentIndex + 1) % items.length;
         showSlide(currentIndex);

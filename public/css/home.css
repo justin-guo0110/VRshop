@@ -216,33 +216,40 @@
 }
 
 
-/*  左側廣告輪播  */
-.side-ad-carousel {
+/*  左側廣告輪播容器  */
+.side-ad-carousel-container {
     position: sticky;
-    top: 80px;
+    top: 120px;
     height: fit-content;
-    z-index: 5;
+    z-index: 1;
     pointer-events: auto;
     display: flex;
     flex-direction: column;
 }
 
+.side-ad-carousel-wrapper {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+    overflow: hidden;
+    height: 200px;
+    margin-bottom: 12px;
+    position: relative;
+}
+
 .side-ad-carousel-inner {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    overflow: hidden;
+    height: 100%;
     transition: transform 0.5s ease;
 }
 
 .side-ad-item {
     flex-shrink: 0;
-    width: 180px;
-    min-height: 200px;
+    width: 100%;
+    height: 100%;
     padding: 16px 12px;
     background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
     color: #111827;
     text-align: center;
     display: flex;
@@ -251,12 +258,7 @@
     align-items: center;
     font-size: 0.95rem;
     pointer-events: auto;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.side-ad-item:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
 }
 
 .side-ad-item strong {
@@ -303,7 +305,7 @@
 }
 
 @media (max-width: 1200px) {
-    .side-ads {
+    .side-ad-carousel-container {
         display: none;
     }
 }
