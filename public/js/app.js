@@ -623,21 +623,124 @@ app.loadCheckoutCart = async function () {
     const totalsBox = document.getElementById('checkoutTotals');
     const subtotalEl = document.getElementById('checkoutSubtotal');
     if (!items.length) {
-        wrap.innerHTML = '<p>購物車目前為空。</p>';
+        wrap.innerHTML = '<p style="text-align: center; color: var(--muted); padding: 20px;">購物車目前為空。</p>';
         if (totalsBox) totalsBox.style.display = 'none';
         return;
     }
-    let html = '<h3 style="margin-top:0;">購物車摘要</h3><ul style="margin:0;padding-left:18px;">';
-    let subtotal = 0;
-    items.forEach(item => {
+    
+    let html = '';
+    items.forEach((item) => {
         const lineSubtotal = Number(item.price) * Number(item.quantity);
-        subtotal += lineSubtotal;
-        html += `<li>${item.name} x ${item.quantity} - $${lineSubtotal.toFixed(2)}</li>`;
+        const itemId = `checkout-item-${item.product_id}`;
+        html += `
+            <div class="checkout-item" data-product-id="${item.product_id}">
+                <input type="checkbox" class="item-checkbox" data-product-id="${item.product_id}" checked>
+                
+                <div class="checkout-item-info">
+                    <div class="checkout-item-name">${item.name}</div>
+                    <div class="checkout-item-price">$${Number(item.price).toFixed(2)}/件</div>
+                </div>
+                
+                <div class="checkout-item-controls">
+                    <div class="quantity-control">
+                        <button class="qty-btn-minus" data-product-id="${item.product_id}">−</button>
+                        <input type="number" class="qty-input" data-product-id="${item.product_id}" value="${item.quantity}" min="1" max="999">
+                        <button class="qty-btn-plus" data-product-id="${item.product_id}">+</button>
+                    </div>
+                    
+                    <div class="checkout-item-subtotal">$${lineSubtotal.toFixed(2)}</div>
+                    
+                    <button class="btn-delete" data-product-id="${item.product_id}">🗑️ 刪除</button>
+                </div>
+            </div>
+        `;
     });
-    html += `</ul>`;
+    
     wrap.innerHTML = html;
-    app._checkoutSubtotal = subtotal;
-    if (subtotalEl) subtotalEl.textContent = '$' + subtotal.toFixed(2);
+    
+    // 設置購物車數據
+    window.checkoutCartItems = {};
+    items.forEach(item => {
+        window.checkoutCartItems[item.product_id] = {
+            ...item,
+            checked: true,
+            price: Number(item.price),
+            quantity: Number(item.quantity)
+        };
+    });
+    
+    // 綁定複選框事件
+    document.querySelectorAll('.item-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const productId = e.target.dataset.productId;
+            const item = window.checkoutCartItems[productId];
+            if (item) {
+                item.checked = e.target.checked;
+                e.target.closest('.checkout-item').classList.toggle('unchecked', !e.target.checked);
+                app.updateCheckoutTotals();
+            }
+        });
+    });
+    
+    // 綁定數量調整事件
+    document.querySelectorAll('.qty-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const productId = e.target.dataset.productId;
+            const newQty = Math.max(1, parseInt(e.target.value) || 1);
+            const item = window.checkoutCartItems[productId];
+            if (item) {
+                item.quantity = newQty;
+                e.target.value = newQty;
+                
+                // 更新小計和樣式
+                const itemDiv = e.target.closest('.checkout-item');
+                const subtotal = item.price * newQty;
+                itemDiv.querySelector('.checkout-item-subtotal').textContent = '$' + subtotal.toFixed(2);
+                app.updateCheckoutTotals();
+            }
+        });
+    });
+    
+    // 綁定加/減按鈕事件
+    document.querySelectorAll('.qty-btn-plus').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const productId = e.target.dataset.productId;
+            const input = document.querySelector(`.qty-input[data-product-id="${productId}"]`);
+            if (input) {
+                input.value = Math.max(1, parseInt(input.value) || 1) + 1;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    });
+    
+    document.querySelectorAll('.qty-btn-minus').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const productId = e.target.dataset.productId;
+            const input = document.querySelector(`.qty-input[data-product-id="${productId}"]`);
+            if (input) {
+                input.value = Math.max(1, (parseInt(input.value) || 1) - 1);
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    });
+    
+    // 綁定刪除按鈕事件
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const productId = e.target.dataset.productId;
+            if (confirm('確定要刪除此商品嗎？')) {
+                const res = await api.post('../api/cart.php?action=remove', { product_id: productId });
+                if (res.success) {
+                    delete window.checkoutCartItems[productId];
+                    app.loadCheckoutCart();
+                    app.loadCartCount();
+                }
+            }
+        });
+    });
+    
+    app._checkoutSubtotal = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+    if (subtotalEl) subtotalEl.textContent = '$0'; // 將在 updateCheckoutTotals 更新
     if (totalsBox) totalsBox.style.display = '';
     app.updateCheckoutTotals();
 };
@@ -655,16 +758,27 @@ app.updateCheckoutTotals = function () {
     const paymentRadio = document.querySelector('input[name="payment_method"]:checked');
     const shipping = shippingRadio ? shippingRadio.value : '';
     const payment = paymentRadio ? paymentRadio.value : '';
-    const subtotal = Number(app._checkoutSubtotal || 0);
+    
+    // 只計算勾選的商品小計
+    let subtotal = 0;
+    if (window.checkoutCartItems) {
+        Object.values(window.checkoutCartItems).forEach(item => {
+            if (item.checked) {
+                subtotal += item.price * item.quantity;
+            }
+        });
+    }
 
     const shippingFeeEl = document.getElementById('checkoutShippingFee');
     const paymentFeeEl = document.getElementById('checkoutPaymentFee');
     const grandEl = document.getElementById('checkoutGrandTotal');
+    const subtotalEl = document.getElementById('checkoutSubtotal');
     const etaEl = document.getElementById('checkoutEta');
 
     const { shipping_fee, payment_fee } = app.getCheckoutFees(shipping, payment);
     const grand = subtotal + shipping_fee + payment_fee;
 
+    if (subtotalEl) subtotalEl.textContent = '$' + Number(subtotal).toFixed(2);
     if (shippingFeeEl) shippingFeeEl.textContent = '$' + Number(shipping_fee).toFixed(2);
     if (paymentFeeEl) paymentFeeEl.textContent = '$' + Number(payment_fee).toFixed(2);
     if (grandEl) grandEl.textContent = '$' + Number(grand).toFixed(2);
@@ -687,16 +801,39 @@ app.loadCheckoutAddresses = async function () {
     wrap.innerHTML = '';
     const addresses = res.addresses || [];
     if (!addresses.length) {
-        wrap.innerHTML = '<p>尚未建立地址，請先新增地址。</p>';
+        wrap.innerHTML = '<p style="text-align: center; color: var(--muted);">尚未建立地址，請先新增地址。</p>';
         return;
     }
     addresses.forEach((addr, idx) => {
-        const label = document.createElement('label');
-        label.innerHTML = `
-            <input type="radio" name="address_id" value="${addr.address_id}" ${addr.is_default == 1 || idx === 0 ? 'checked' : ''}>
-            ${addr.recipient_name} - ${addr.address_line} ${addr.phone || ''}
+        const isChecked = addr.is_default == 1 || idx === 0;
+        const div = document.createElement('div');
+        div.className = 'address-item' + (isChecked ? ' selected' : '');
+        div.innerHTML = `
+            <input type="radio" name="address_id" value="${addr.address_id}" ${isChecked ? 'checked' : ''}>
+            <div class="address-item-content">
+                <div class="address-item-name">${addr.recipient_name}</div>
+                <div class="address-item-info">
+                    📍 ${addr.address_line}<br>
+                    ☎️ ${addr.phone || '未提供電話'}
+                </div>
+            </div>
         `;
-        wrap.appendChild(label);
+        div.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT') {
+                const radio = div.querySelector('input[type="radio"]');
+                radio.checked = true;
+                radio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+        wrap.appendChild(div);
+    });
+
+    // 監聽地址選擇變化
+    document.querySelectorAll('#checkoutAddresses input[name="address_id"]').forEach(el => {
+        el.addEventListener('change', () => {
+            document.querySelectorAll('.address-item').forEach(item => item.classList.remove('selected'));
+            el.closest('.address-item')?.classList.add('selected');
+        });
     });
 };
 
@@ -726,12 +863,39 @@ app.initCheckoutPage = function () {
         }
     };
 
+    // 為所有廣播按鈕添加事件監聽
     document.querySelectorAll('input[name="shipping_method"], input[name="payment_method"]').forEach(el => {
         el.addEventListener('change', () => {
+            // 更新選項項目的視覺効果
+            const container = el.closest('.options-group');
+            if (container) {
+                container.querySelectorAll('.option-item').forEach(item => {
+                    const radio = item.querySelector('input[type="radio"]');
+                    if (radio?.checked) {
+                        item.classList.add('selected');
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+            }
             enforcePaymentRules();
             app.updateCheckoutTotals();
         });
     });
+
+    // 為所有選項項目添加點擊事件
+    document.querySelectorAll('.option-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT') {
+                const radio = item.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                    radio.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        });
+    });
+
     enforcePaymentRules();
 
     placeBtn.addEventListener('click', async () => {
@@ -747,6 +911,17 @@ app.initCheckoutPage = function () {
             }
             return;
         }
+
+        // 檢查是否至少選擇了一個商品
+        const checkedItems = Object.values(window.checkoutCartItems || {}).filter(item => item.checked);
+        if (!checkedItems.length) {
+            if (msg) {
+                msg.textContent = '請至少選擇一個商品進行結帳';
+                msg.className = 'message error';
+            }
+            return;
+        }
+
         if (msg) {
             msg.textContent = '';
             msg.className = 'message';
@@ -755,12 +930,20 @@ app.initCheckoutPage = function () {
         const originalText = placeBtn.textContent;
         placeBtn.disabled = true;
         placeBtn.textContent = '下單中…';
-        const payload = {
-            address_id: addressRadio.value,
-            shipping_method: shippingRadio.value,
-            payment_method: paymentRadio.value
-        };
+
         try {
+            // 第一步：移除未勾選的商品
+            const uncheckedItems = Object.values(window.checkoutCartItems || {}).filter(item => !item.checked);
+            for (const item of uncheckedItems) {
+                await api.post('../api/cart.php?action=remove', { product_id: item.product_id });
+            }
+
+            // 第二步：下單
+            const payload = {
+                address_id: addressRadio.value,
+                shipping_method: shippingRadio.value,
+                payment_method: paymentRadio.value
+            };
             const res = await api.post('../api/orders.php?action=place_order', payload);
             if (res.success) {
                 if (msg) {
