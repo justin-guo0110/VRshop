@@ -50,12 +50,20 @@ function cart_add(): void {
         respond_json(['error' => 'Invalid data'], 422);
     }
     $db = get_db();
-    $stmt = $db->prepare('SELECT product_id, name, price, image_url FROM products WHERE product_id = ? AND is_active = 1');
+    $stmt = $db->prepare('SELECT product_id, name, price, image_url, stock FROM products WHERE product_id = ? AND is_active = 1');
     $stmt->bind_param('i', $product_id);
     $stmt->execute();
     $product = $stmt->get_result()->fetch_assoc();
     if (!$product) {
         respond_json(['error' => 'Product not found'], 404);
+    }
+    $current_qty = isset($_SESSION['cart'][$product_id]) ? intval($_SESSION['cart'][$product_id]['quantity']) : 0;
+    $stock = intval($product['stock'] ?? 0);
+    if ($stock <= 0) {
+        respond_json(['error' => '目前缺貨，無法加入購物車'], 409);
+    }
+    if (($current_qty + $quantity) > $stock) {
+        respond_json(['error' => '加入數量超過庫存'], 409);
     }
     if (isset($_SESSION['cart'][$product_id])) {
         $_SESSION['cart'][$product_id]['quantity'] += $quantity;

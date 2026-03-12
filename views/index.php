@@ -54,7 +54,94 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
         </div>
     </header>
 
-    <main class="container" style="padding-top: 0;">
+    <main class="container" style="padding-top: 0; display: grid; grid-template-columns: 180px 1fr; gap: 20px;">
+        <!-- 左側廣告區：固定顯示九個方塊，無輪播 -->
+        <div class="side-ad-carousel">
+            <a href="./products.php" class="side-ad-item">
+                <strong>限時優惠</strong>
+                <span>VR 頭盔滿 NT$10,000 折 NT$1,000</span>
+                <small>立即選購 &raquo;</small>
+            </a>
+            <a href="./products.php" class="side-ad-item">
+                <strong>週末加碼</strong>
+                <span>指定周邊 2 件 9 折</span>
+                <small>看更多 &raquo;</small>
+            </a>
+            <a href="./products.php" class="side-ad-item">
+                <strong>新品上市</strong>
+                <span>最新 VR 遊戲內容上線</span>
+                <small>馬上體驗 &raquo;</small>
+            </a>
+            <a href="./products.php" class="side-ad-item">
+                <strong>會員回饋</strong>
+                <span>累積點數可換折扣</span>
+                <small>立即累積 &raquo;</small>
+            </a>
+            <a href="./products.php" class="side-ad-item">
+                <strong>熱門配件</strong>
+                <span>全館滿額免運</span>
+                <small>查看配件 &raquo;</small>
+            </a>
+            <a href="./products.php" class="side-ad-item">
+                <strong>首購禮</strong>
+                <span>新會員第一單 9 折</span>
+                <small>馬上註冊 &raquo;</small>
+            </a>
+            <a href="./products.php" class="side-ad-item">
+                <strong>季末特賣</strong>
+                <span>指定品牌最高 5 折</span>
+                <small>趁現在 &raquo;</small>
+            </a>
+            <a href="./products.php" class="side-ad-item">
+                <strong>VR 遊戲週</strong>
+                <span>購遊戲送周邊</span>
+                <small>立即挑選 &raquo;</small>
+            </a>
+            <a href="./products.php" class="side-ad-item">
+                <strong>社群活動</strong>
+                <span>參加抽大獎</span>
+                <small>詳情 &raquo;</small>
+            </a>
+        </div>
+
+        <!-- 主內容區 -->
+        <div>
+        <section class="promo-slider" id="promoSlider">
+            <div class="promo-slider-inner" id="promoSliderInner">
+                <div class="promo-slide">
+                    <div class="promo-slide-text">
+                        <h3>開站慶｜全館滿額折扣</h3>
+                        <p>單筆滿 NT$5,000 折 NT$300，滿 NT$10,000 折 NT$1,000。</p>
+                    </div>
+                    <div class="promo-slide-cta">
+                        <a href="./products.php" class="btn btn-secondary">馬上逛逛</a>
+                    </div>
+                </div>
+                <div class="promo-slide">
+                    <div class="promo-slide-text">
+                        <h3>VR 套裝組合優惠</h3>
+                        <p>主機 + 控制器 + 周邊一次帶走，組合價更划算。</p>
+                    </div>
+                    <div class="promo-slide-cta">
+                        <a href="./products.php" class="btn btn-secondary">查看套裝</a>
+                    </div>
+                </div>
+                <div class="promo-slide">
+                    <div class="promo-slide-text">
+                        <h3>會員專屬體驗活動</h3>
+                        <p>登入會員即可報名線下 VR 體驗會，名額有限。</p>
+                    </div>
+                    <div class="promo-slide-cta">
+                        <a href="./profile.php" class="btn btn-secondary">前往會員中心</a>
+                    </div>
+                </div>
+            </div>
+            <div class="promo-dots" id="promoDots">
+                <button class="promo-dot active" data-index="0"></button>
+                <button class="promo-dot" data-index="1"></button>
+                <button class="promo-dot" data-index="2"></button>
+            </div>
+        </section>
         
         <!-- Hero 區域 -->
         <section class="hero-section" style="margin: 0; padding: 80px 16px;">
@@ -97,6 +184,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
                 <?php endif; ?>
             </div>
         </section>
+        </div>
 
     </main>
 
@@ -150,7 +238,42 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
             }
         }
 
-        document.addEventListener('DOMContentLoaded', loadFeaturedProducts);
+        function initPromoSlider() {
+            const inner = document.getElementById('promoSliderInner');
+            const dots = Array.from(document.querySelectorAll('#promoDots .promo-dot'));
+            if (!inner || !dots.length) return;
+            let current = 0;
+            const total = dots.length;
+
+            function goTo(index) {
+                current = (index + total) % total;
+                inner.style.transform = 'translateX(' + (-100 * current) + '%)';
+                dots.forEach((d, i) => {
+                    d.classList.toggle('active', i === current);
+                });
+            }
+
+            dots.forEach(d => {
+                d.addEventListener('click', () => {
+                    const idx = parseInt(d.dataset.index, 10) || 0;
+                    goTo(idx);
+                });
+            });
+
+            let timer = setInterval(() => goTo(current + 1), 6000);
+            const slider = document.getElementById('promoSlider');
+            if (slider) {
+                slider.addEventListener('mouseenter', () => clearInterval(timer));
+                slider.addEventListener('mouseleave', () => {
+                    timer = setInterval(() => goTo(current + 1), 6000);
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            loadFeaturedProducts();
+            initPromoSlider();
+        });
     </script>
 
 </body>
