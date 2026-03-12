@@ -136,7 +136,17 @@ function request_password_reset(): void {
     $html = "<p>{$name} 您好：</p><p>請在 30 分鐘內點擊下方連結重設密碼：</p><p><a href=\"{$resetUrl}\">{$resetUrl}</a></p><p>若您未發出此請求，請忽略此信。</p>";
     $text = "{$name} 您好：\n請在 30 分鐘內開啟以下連結重設密碼：\n{$resetUrl}\n若您未發出此請求，請忽略此信。";
 
-    send_mail($email, $subject, $html, $text);
+    // 試著寄送郵件，如果失敗則回傳錯誤給前端
+    $mailResult = send_mail($email, $subject, $html, $text);
+    if (!$mailResult['success']) {
+        // 記錄詳細原因，方便開發或運維檢查
+        error_log('Mail send failed: ' . ($mailResult['message'] ?? 'unknown'));
+        respond_json([
+            'success' => false,
+            'error' => '無法寄出重設信件，請聯絡管理員或稍後再試。',
+            'details' => $mailResult['message'] ?? ''
+        ], 500);
+    }
 
     respond_json(['success' => true, 'message' => '已寄出重設連結，如未收到請檢查垃圾信件匣。']);
 }

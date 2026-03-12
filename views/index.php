@@ -55,29 +55,25 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
     </header>
 
     <main class="container" style="padding-top: 0; display: grid; grid-template-columns: 200px 1fr; gap: 20px;">
-        <!-- 左側廣告輪播 -->
-        <div class="side-ad-carousel-container">
-            <div class="side-ad-carousel-wrapper">
-                <div class="side-ad-carousel-inner" id="sideAdCarouselInner">
-                    <a href="./products.php" class="side-ad-item">
-                        <strong>限時優惠</strong>
-                        <span>VR 頭盔滿 NT$10,000 折 NT$1,000</span>
-                        <small>立即選購 &raquo;</small>
-                    </a>
-                    <a href="./products.php" class="side-ad-item">
-                        <strong>週末加碼</strong>
-                        <span>指定周邊 2 件 9 折</span>
-                        <small>看更多 &raquo;</small>
-                    </a>
-                    <a href="./products.php" class="side-ad-item">
-                        <strong>新品上市</strong>
-                        <span>最新 VR 遊戲內容上線</span>
-                        <small>馬上體驗 &raquo;</small>
-                    </a>
-                </div>
-            </div>
-            <div class="side-ad-dots" id="sideAdDots"></div>
-        </div>
+        <!-- 左側廣告框架 -->
+        <aside class="sidebar-ads-box">
+            <a href="./products.php" class="sidebar-ad">
+                <strong>限時優惠</strong>
+                <span>VR 頭盔滿 NT$10,000 折 NT$1,000</span>
+            </a>
+            <a href="./products.php" class="sidebar-ad">
+                <strong>週末加碼</strong>
+                <span>指定周邊 2 件 9 折</span>
+            </a>
+            <a href="./products.php" class="sidebar-ad">
+                <strong>新品上市</strong>
+                <span>最新 VR 遊戲內容上線</span>
+            </a>
+            <a href="./products.php" class="sidebar-ad">
+                <strong>會員優惠</strong>
+                <span>累計購物點數可折抵</span>
+            </a>
+        </aside>
 
         <!-- 主內容區 -->
         <div>

@@ -216,96 +216,56 @@
 }
 
 
-/*  左側廣告輪播容器  */
-.side-ad-carousel-container {
-    position: sticky;
-    top: 120px;
-    height: fit-content;
-    z-index: 1;
-    pointer-events: auto;
+/*  左側廣告框架  */
+.sidebar-ads-box {
     display: flex;
     flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
 }
 
-.side-ad-carousel-wrapper {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
-    overflow: hidden;
-    height: 200px;
-    margin-bottom: 12px;
-    position: relative;
-}
-
-.side-ad-carousel-inner {
+.sidebar-ad {
     display: flex;
-    flex-direction: column;
-    height: 100%;
-    transition: transform 0.5s ease;
-}
-
-.side-ad-item {
-    flex-shrink: 0;
-    width: 100%;
-    height: 100%;
-    padding: 16px 12px;
-    background: #ffffff;
-    color: #111827;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
     align-items: center;
-    font-size: 0.95rem;
-    pointer-events: auto;
+    justify-content: flex-start;
+    gap: 10px;
+    background: linear-gradient(135deg, rgba(255,122,24,0.05), rgba(255,155,50,0.05));
+    border: 1px solid rgba(255,122,24,0.2);
+    border-radius: 6px;
+    padding: 25px 12px;
+    color: #111827;
+    text-decoration: none;
     transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    min-height: 200px;
 }
 
-.side-ad-item strong {
-    display: block;
-    font-size: 1.1rem;
-    margin-bottom: 8px;
-    color: #ff7a18;
-    font-weight: 700;
+.sidebar-ad:hover {
+    box-shadow: 0 4px 12px rgba(255,122,24,0.15);
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(255,122,24,0.1), rgba(255,155,50,0.1));
 }
 
-.side-ad-item span {
+.sidebar-ad strong {
     display: block;
     font-size: 0.85rem;
-    margin-bottom: 10px;
-    line-height: 1.5;
+    color: var(--primary);
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
-.side-ad-item small {
+.sidebar-ad span {
     display: block;
-    font-size: 0.8rem;
-    color: #6b7280;
-}
-
-.side-ad-dots {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin-top: auto;
-    padding-top: 12px;
-}
-
-.side-ad-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(255,122,24,0.3);
-    cursor: pointer;
-    transition: all .2s ease;
-}
-
-.side-ad-dot.active {
-    background: #ff7a18;
-    transform: scale(1.2);
+    font-size: 0.75rem;
+    color: var(--secondary);
+    line-height: 1.3;
+    flex: 1;
+    text-align: left;
 }
 
 @media (max-width: 1200px) {
-    .side-ad-carousel-container {
+    .sidebar-ads-box {
         display: none;
     }
 }
