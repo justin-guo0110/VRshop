@@ -545,24 +545,36 @@ app.loadCartCount = async function () {
     }
 };
 
-app.renderCartList = function (items) {
+app.renderCartList = function (items, selectedIds = []) {
     const wrap = document.getElementById('cartItems');
     const totalEl = document.getElementById('cartTotalPrice');
     if (!wrap) return;
     wrap.innerHTML = '';
+    const selectedSet = new Set((selectedIds || []).map(id => String(id)));
+    const useSelection = selectedSet.size > 0;
     if (!items || items.length === 0) {
         wrap.innerHTML = '<p>購物車是空的。</p>';
         if (totalEl) totalEl.textContent = '$0';
+        app.updateCartSelectionSummary();
         return;
     }
     let total = 0;
     items.forEach(item => {
         const subtotal = Number(item.price) * Number(item.quantity);
         total += subtotal;
+        const checked = useSelection ? selectedSet.has(String(item.product_id)) : true;
         const div = document.createElement('div');
         div.className = 'cart-item';
         div.innerHTML = `
             <div style="display:flex;gap:10px;align-items:center;">
+                <input
+                    type="checkbox"
+                    class="cart-item-checkbox"
+                    data-product-id="${item.product_id}"
+                    data-subtotal="${subtotal.toFixed(2)}"
+                    ${checked ? 'checked' : ''}
+                    style="width:18px;height:18px;cursor:pointer;"
+                >
                 <img src="${item.image_url || 'https://via.placeholder.com/80'}" alt="${item.name}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">
                 <div>
                     <p><strong>${item.name}</strong></p>
@@ -579,13 +591,36 @@ app.renderCartList = function (items) {
         wrap.appendChild(div);
     });
     if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
+    app.updateCartSelectionSummary();
 };
 
-app.refreshCart = async function () {
+app.getSelectedCartProductIds = function () {
+    return Array.from(document.querySelectorAll('.cart-item-checkbox:checked')).map(el => String(el.dataset.productId));
+};
+
+app.updateCartSelectionSummary = function () {
+    const selectedPriceEl = document.getElementById('cartSelectedPrice');
+    const selectedCountEl = document.getElementById('selectedCount');
+    const checkoutBtn = document.getElementById('checkoutSelectedBtn');
+    const checked = Array.from(document.querySelectorAll('.cart-item-checkbox:checked'));
+    const selectedCount = checked.length;
+    const selectedTotal = checked.reduce((sum, el) => sum + Number(el.dataset.subtotal || 0), 0);
+
+    if (selectedPriceEl) selectedPriceEl.textContent = '$' + selectedTotal.toFixed(2);
+    if (selectedCountEl) selectedCountEl.textContent = String(selectedCount);
+
+    if (checkoutBtn) {
+        checkoutBtn.disabled = selectedCount === 0;
+        checkoutBtn.textContent = selectedCount > 0 ? `前往結帳（${selectedCount} 件）` : '前往結帳（請先勾選商品）';
+    }
+};
+
+app.refreshCart = async function (preserveSelection = false) {
     const wrap = document.getElementById('cartItems');
     if (!wrap) return;
+    const selectedIds = preserveSelection ? app.getSelectedCartProductIds() : [];
     const res = await api.get('../api/cart.php?action=get');
-    app.renderCartList(res.items || []);
+    app.renderCartList(res.items || [], selectedIds);
     app.loadCartCount();
 };
 
@@ -593,19 +628,38 @@ app.initCartPage = function () {
     const wrap = document.getElementById('cartItems');
     if (!wrap) return;
     app.refreshCart();
+    wrap.addEventListener('change', (e) => {
+        if (e.target.classList.contains('cart-item-checkbox')) {
+            app.updateCartSelectionSummary();
+        }
+    });
     wrap.addEventListener('click', async (e) => {
         const updateId = e.target.getAttribute('data-id');
         if (e.target.classList.contains('update-cart')) {
             const qtyInput = wrap.querySelector(`input[data-qty="${updateId}"]`);
             const qty = parseInt(qtyInput.value, 10);
             await api.post('../api/cart.php?action=update', { product_id: updateId, quantity: qty });
-            app.refreshCart();
+            app.refreshCart(true);
         }
         if (e.target.classList.contains('remove-cart')) {
             await api.post('../api/cart.php?action=remove', { product_id: updateId });
-            app.refreshCart();
+            app.refreshCart(true);
         }
     });
+
+    const checkoutBtn = document.getElementById('checkoutSelectedBtn');
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', () => {
+            const selectedIds = app.getSelectedCartProductIds();
+            if (!selectedIds.length) {
+                alert('請至少勾選一個商品再結帳');
+                return;
+            }
+            const selected = encodeURIComponent(selectedIds.join(','));
+            location.href = `./checkout.php?selected=${selected}`;
+        });
+    }
+
     const clearBtn = document.getElementById('clearCartBtn');
     if (clearBtn) {
         clearBtn.addEventListener('click', async () => {
@@ -619,11 +673,20 @@ app.loadCheckoutCart = async function () {
     const wrap = document.getElementById('checkoutCart');
     if (!wrap) return;
     const res = await api.get('../api/cart.php?action=get');
-    const items = res.items || [];
+    const cartItems = res.items || [];
+    const selectedParam = new URLSearchParams(location.search).get('selected') || '';
+    const selectedIds = selectedParam
+        .split(',')
+        .map(v => parseInt(v, 10))
+        .filter(v => Number.isInteger(v) && v > 0);
+    const selectedSet = new Set(selectedIds.map(String));
+    const items = selectedSet.size > 0
+        ? cartItems.filter(item => selectedSet.has(String(item.product_id)))
+        : cartItems;
     const totalsBox = document.getElementById('checkoutTotals');
     const subtotalEl = document.getElementById('checkoutSubtotal');
     if (!items.length) {
-        wrap.innerHTML = '<p style="text-align: center; color: var(--muted); padding: 20px;">購物車目前為空。</p>';
+        wrap.innerHTML = '<p style="text-align: center; color: var(--muted); padding: 20px;">沒有可結帳商品，請先回購物車勾選商品。</p>';
         if (totalsBox) totalsBox.style.display = 'none';
         return;
     }
@@ -739,7 +802,6 @@ app.loadCheckoutCart = async function () {
         });
     });
     
-    app._checkoutSubtotal = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
     if (subtotalEl) subtotalEl.textContent = '$0'; // 將在 updateCheckoutTotals 更新
     if (totalsBox) totalsBox.style.display = '';
     app.updateCheckoutTotals();
@@ -932,17 +994,12 @@ app.initCheckoutPage = function () {
         placeBtn.textContent = '下單中…';
 
         try {
-            // 第一步：移除未勾選的商品
-            const uncheckedItems = Object.values(window.checkoutCartItems || {}).filter(item => !item.checked);
-            for (const item of uncheckedItems) {
-                await api.post('../api/cart.php?action=remove', { product_id: item.product_id });
-            }
-
-            // 第二步：下單
+            // 將已勾選商品清單送到後端，只建立這些商品的訂單
             const payload = {
                 address_id: addressRadio.value,
                 shipping_method: shippingRadio.value,
-                payment_method: paymentRadio.value
+                payment_method: paymentRadio.value,
+                selected_product_ids: checkedItems.map(item => item.product_id).join(',')
             };
             const res = await api.post('../api/orders.php?action=place_order', payload);
             if (res.success) {

@@ -28,7 +28,7 @@ if (!isset($_SESSION['user'])) {
             <div class="address-options" id="checkoutAddresses">
                 <p>載入中...</p>
             </div>
-            <button class="btn" id="addAddressBtn" style="margin-top: 12px; width: 100%;">+ 新增地址</button>
+            <a class="btn" href="./profile.php#addressSection" style="margin-top: 12px; width: 100%; text-align: center; display: block;">+ 新增地址</a>
         </section>
 
         <!-- 3. 送貨方式 -->
@@ -103,4 +103,7 @@ if (!isset($_SESSION['user'])) {
     </aside>
 </div>
 
+<?php // modal removed ?>
+                    <input type="tel" id="modal_phone" name="phone" placeholder="請輸入聯絡電話">
+                </div>
 <?php require_once __DIR__ . '/layout_footer.php'; ?>
