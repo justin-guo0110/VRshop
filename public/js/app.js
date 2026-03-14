@@ -438,106 +438,181 @@ async function loadProductDetail() {
 }
 
 function bindAdmin() {
-    const ordersTable = document.getElementById('ordersTable');
-    const productsTable = document.getElementById('productsTable');
-    if (!ordersTable && !productsTable) return;
+    // 檢查是否在管理頁面
+    const adminContainer = document.querySelector('.admin-container');
+    if (!adminContainer) return;
 
+    // 加載儀表板統計
+    async function loadDashboard() {
+        try {
+            const res = await api.get('../api/admin.php?action=list_orders');
+            const orders = res.orders || [];
+            
+            // 計算統計數據
+            const totalOrders = orders.length;
+            const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'preparing').length;
+            const totalRevenue = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+            
+            // 更新頁面上的統計卡片
+            document.getElementById('statTotalOrders').textContent = totalOrders;
+            document.getElementById('statPending').textContent = pendingOrders;
+            document.getElementById('statTotalRevenue').textContent = '$' + totalRevenue.toFixed(2);
+            
+            // 載入最近訂單
+            const recentOrdersTable = document.getElementById('recentOrdersTable');
+            if (recentOrdersTable) {
+                const tbody = recentOrdersTable.querySelector('tbody');
+                tbody.innerHTML = '';
+                orders.slice(0, 5).forEach(o => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>#${o.order_id}</td>
+                        <td>${o.name || o.email}</td>
+                        <td>$${Number(o.total_amount).toFixed(2)}</td>
+                        <td><span class="badge">${o.status}</span></td>
+                        <td>${o.created_at.split(' ')[0]}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        } catch (e) {
+            console.error('Failed to load dashboard', e);
+        }
+    }
+
+    // 加載訂單表格
     async function loadOrders() {
-        const res = await api.get('../api/admin.php?action=list_orders');
-        const tbody = ordersTable.querySelector('tbody');
-        tbody.innerHTML = '';
-        (res.orders || []).forEach(o => {
-            const row = document.createElement('tr');
-            const items = (o.items || []).map(i => `${i.name} x${i.quantity}`).join('<br>');
-            row.innerHTML = `
-                <td>${o.order_id}</td>
-                <td>${o.name || o.email}</td>
-                <td><span class="badge">${o.status}</span></td>
-                <td>$${Number(o.total_amount).toFixed(2)}</td>
-                <td>${o.created_at}</td>
-                <td>${items}</td>
-                <td>
-                    <select data-order="${o.order_id}">
-                        ${['pending','preparing','shipping','done'].map(s => `<option value="${s}" ${s===o.status?'selected':''}>${s}</option>`).join('')}
-                    </select>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+        try {
+            const res = await api.get('../api/admin.php?action=list_orders');
+            const ordersTable = document.getElementById('ordersTable');
+            if (!ordersTable) return;
+            
+            const tbody = ordersTable.querySelector('tbody');
+            tbody.innerHTML = '';
+            (res.orders || []).forEach(o => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>#${o.order_id}</td>
+                    <td>${o.name || o.email}</td>
+                    <td><span class="badge">${o.status}</span></td>
+                    <td>$${Number(o.total_amount).toFixed(2)}</td>
+                    <td>${o.created_at}</td>
+                    <td>
+                        <select data-order="${o.order_id}">
+                            ${['pending','preparing','shipping','done'].map(s => `<option value="${s}" ${s===o.status?'selected':''}>${s}</option>`).join('')}
+                        </select>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (e) {
+            console.error('Failed to load orders', e);
+        }
     }
 
+    // 加載商品表格
     async function loadProducts() {
-        const res = await api.get('../api/admin.php?action=list_products');
-        const tbody = productsTable.querySelector('tbody');
-        tbody.innerHTML = '';
-        (res.products || []).forEach(p => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-            <td>${p.product_id}</td>
-            <td><input data-field="name" data-id="${p.product_id}" value="${p.name}"></td>
-            <td><input data-field="category" data-id="${p.product_id}" value="${p.category || ''}"></td>
-            <td><input data-field="price" data-id="${p.product_id}" value="${p.price}"></td>
-            <td>
-                <span class="stock-value" data-id="${p.product_id}">${p.stock}</span>
-                <input type="hidden" data-field="stock" data-id="${p.product_id}" value="${p.stock}">
-            </td>
+        try {
+            const res = await api.get('../api/admin.php?action=list_products');
+            const productsTable = document.getElementById('productsTable');
+            if (!productsTable) return;
+            
+            const tbody = productsTable.querySelector('tbody');
+            tbody.innerHTML = '';
+            (res.products || []).forEach(p => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>#${p.product_id}</td>
+                    <td><input data-field="name" data-id="${p.product_id}" value="${p.name}"></td>
+                    <td>${p.category || '-'}</td>
+                    <td>$<input data-field="price" data-id="${p.product_id}" value="${p.price}" type="number" step="0.01"></td>
+                    <td><span class="stock-value">${p.stock}</span></td>
+                    <td><label class="switch"><input type="checkbox" data-toggle="${p.product_id}" ${p.is_active == 1 ? 'checked' : ''}><span class="slider"></span></label></td>
+                    <td><button class="btn btn-primary" data-save="${p.product_id}">儲存</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (e) {
+            console.error('Failed to load products', e);
+        }
+    }
 
-            <!-- 上架 -->
-            <td class="col-active">
-                <div class="active-wrap">
-                <label class="switch">
-                    <input type="checkbox" data-toggle="${p.product_id}" ${p.is_active == 1 ? 'checked' : ''}>
-                    <span class="slider"></span>
-                </label>
-                <span class="active-text">${p.is_active == 1 ? '上架' : '下架'}</span>
-                </div>
-            </td>
+    // 頁面導航
+    document.querySelectorAll('.admin-nav-item').forEach(item => {
+        item.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const page = item.getAttribute('data-page');
+            
+            // 更新導航狀態
+            document.querySelectorAll('.admin-nav-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            
+            // 隱藏所有頁面
+            document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
+            
+            // 顯示目標頁面
+            const targetPage = document.getElementById(page + 'Page');
+            if (targetPage) {
+                targetPage.classList.add('active');
+                
+                // 根據頁面加載相應數據
+                if (page === 'dashboard') loadDashboard();
+                else if (page === 'orders') loadOrders();
+                else if (page === 'products') loadProducts();
+                else if (page === 'inventory') {
+                    // 庫存頁面由 admin_inventory.js 處理
+                }
+            }
+        });
+    });
 
-            <!-- 儲存 -->
-            <td class="col-save">
-                <button class="btn btn-save" data-save="${p.product_id}">儲存</button>
-            </td>
-
-            <!-- 操作 -->
-            <td class="col-stock-actions">
-                <div class="action-stack">
-                <button class="btn btn-restock" data-restock="${p.product_id}">補貨</button>
-                <button class="btn btn-adjust" data-adjust="${p.product_id}">手動調整</button>
-                </div>
-            </td>
-            `;
-            tbody.appendChild(row);
+    // 側邊欄切換（手機版）
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            document.querySelector('.admin-sidebar').classList.toggle('active');
         });
     }
 
-    if (ordersTable) {
-        loadOrders();
-        ordersTable.addEventListener('change', async (e) => {
-            const id = e.target.getAttribute('data-order');
-            if (id) {
-                await api.post('../api/admin.php?action=update_order_status', { order_id: id, status: e.target.value });
-            }
-        });
-    }
+    // 訂單表格事件監聽
+    document.addEventListener('change', async (e) => {
+        const orderId = e.target.getAttribute('data-order');
+        if (orderId) {
+            await api.post('../api/admin.php?action=update_order_status', { order_id: orderId, status: e.target.value });
+        }
+        
+        const toggleId = e.target.getAttribute('data-toggle');
+        if (toggleId) {
+            await api.post('../api/admin.php?action=update_product_status', { product_id: toggleId, is_active: e.target.checked ? 1 : 0 });
+        }
+    });
 
-    if (productsTable) {
-        loadProducts();
-        productsTable.addEventListener('change', async (e) => {
-            const toggleId = e.target.getAttribute('data-toggle');
-            if (toggleId) {
-                await api.post('../api/admin.php?action=update_product_status', { product_id: toggleId, is_active: e.target.checked ? 1 : 0 });
-            }
-        });
-        productsTable.addEventListener('click', async (e) => {
-            const saveId = e.target.getAttribute('data-save');
-            if (saveId) {
+    // 商品保存事件
+    document.addEventListener('click', async (e) => {
+        const saveId = e.target.getAttribute('data-save');
+        if (saveId) {
+            const productsTable = document.getElementById('productsTable');
+            if (productsTable) {
                 const rowInputs = productsTable.querySelectorAll(`input[data-id="${saveId}"]`);
                 const payload = { product_id: saveId };
                 rowInputs.forEach(inp => payload[inp.getAttribute('data-field')] = inp.value);
                 await api.post('../api/admin.php?action=update_product', payload);
             }
+        }
+    });
+
+    // 登出按鈕
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            if (confirm('確定要登出嗎？')) {
+                window.location.href = '../views/index.php?logout=1';
+            }
         });
     }
+
+    // 初始加載儀表板
+    loadDashboard();
 }
 
 // --- Cart & Checkout Enhancements ---
