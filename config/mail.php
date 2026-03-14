@@ -11,17 +11,17 @@ return [
     | - smtp:  使用 PHPMailer 透過 SMTP 寄送，需先在專案根目錄執行
     |          composer require phpmailer/phpmailer
     */
-    'transport' => 'log',
+    'transport' => 'smtp',
 
-    'from_email' => 'no-reply@example.com',
+    'from_email' => 'justinguo0110@gmail.com',
     'from_name'  => 'VR Mall Support',
 
     'smtp' => [
-        'host'       => 'smtp.example.com',
+        'host'       => 'smtp.gmail.com',
         'port'       => 587,
-        'username'   => 'your-account@example.com',
-        'password'   => 'app-password',
-        'encryption' => 'tls', // 支援 tls 或 ssl
+        'username'   => 'justinguo0110@gmail.com',
+        'password'   => 'lozxwwaflhyceiuy',
+        'encryption' => 'tls',
         'timeout'    => 10,
     ],
 

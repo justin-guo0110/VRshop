@@ -84,25 +84,34 @@ function send_via_mail_function(array $config, string $to, string $subject, stri
 function send_via_smtp(array $config, string $to, string $subject, string $html, ?string $text): array
 {
     $autoload = __DIR__ . '/../vendor/autoload.php';
-    if (file_exists($autoload)) {
-        require_once $autoload;
+    if (!file_exists($autoload)) {
+        return ['success' => false, 'message' => 'PHPMailer autoload not found. Run: composer require phpmailer/phpmailer'];
     }
+    
+    require_once $autoload;
 
     if (!class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
-        return ['success' => false, 'message' => 'PHPMailer not installed (composer require phpmailer/phpmailer)'];
+        return ['success' => false, 'message' => 'PHPMailer class not found after autoload'];
     }
 
-    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
     try {
+        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
         $mail->isSMTP();
-        $mail->Host       = $config['smtp']['host'];
+        $mail->Host       = $config['smtp']['host'] ?? 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
         $mail->Username   = $config['smtp']['username'];
         $mail->Password   = $config['smtp']['password'];
-        $mail->SMTPSecure = $config['smtp']['encryption'];
-        $mail->Port       = (int) $config['smtp']['port'];
-        $mail->Timeout    = (int) $config['smtp']['timeout'];
+        $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+        $mail->SMTPOptions = [
+            'ssl' => [
+                'verify_peer'       => false,
+                'verify_peer_name'  => false,
+                'allow_self_signed' => true
+            ]
+        ];
         $mail->CharSet    = 'UTF-8';
+        $mail->Timeout    = 10;
 
         $mail->setFrom($config['from_email'], $config['from_name']);
         $mail->addAddress($to);
@@ -110,11 +119,14 @@ function send_via_smtp(array $config, string $to, string $subject, string $html,
         $mail->isHTML(true);
         $mail->Body = $html;
         $mail->AltBody = $text ?? strip_tags($html);
-        $mail->send();
+        
+        if (!$mail->send()) {
+            return ['success' => false, 'message' => 'Error: ' . $mail->ErrorInfo];
+        }
 
         return ['success' => true, 'message' => 'sent_via_smtp'];
     } catch (\Throwable $e) {
-        return ['success' => false, 'message' => $e->getMessage()];
+        return ['success' => false, 'message' => 'PHPMailer Exception: ' . $e->getMessage()];
     }
 }
 

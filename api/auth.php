@@ -136,19 +136,32 @@ function request_password_reset(): void {
     $html = "<p>{$name} 您好：</p><p>請在 30 分鐘內點擊下方連結重設密碼：</p><p><a href=\"{$resetUrl}\">{$resetUrl}</a></p><p>若您未發出此請求，請忽略此信。</p>";
     $text = "{$name} 您好：\n請在 30 分鐘內開啟以下連結重設密碼：\n{$resetUrl}\n若您未發出此請求，請忽略此信。";
 
-    // 試著寄送郵件，如果失敗則回傳錯誤給前端
+    // 試著寄送郵件
     $mailResult = send_mail($email, $subject, $html, $text);
+    
+    // 在開發環境下，如果失敗，返回詳細的錯誤信息給前端
     if (!$mailResult['success']) {
-        // 記錄詳細原因，方便開發或運維檢查
-        error_log('Mail send failed: ' . ($mailResult['message'] ?? 'unknown'));
+        error_log('Password reset mail failed: ' . ($mailResult['message'] ?? 'unknown error'));
+        
+        // 只在開發環境顯示詳細錯誤（transport = smtp 時）
+        $config = @include(__DIR__ . '/../config/mail.php') ?: [];
+        if (($config['transport'] ?? 'log') === 'smtp') {
+            respond_json([
+                'success' => false,
+                'error' => '寄送重設信件失敗',
+                'debug_message' => $mailResult['message'],
+                'reset_link_dev' => $resetUrl // 開發環境的備用連結
+            ], 500);
+        }
+        
+        // 生產環境隱藏詳細錯誤
         respond_json([
             'success' => false,
-            'error' => '無法寄出重設信件，請聯絡管理員或稍後再試。',
-            'details' => $mailResult['message'] ?? ''
+            'error' => '無法寄出重設信件，請稍後再試或聯絡支援。'
         ], 500);
     }
-
-    respond_json(['success' => true, 'message' => '已寄出重設連結，如未收到請檢查垃圾信件匣。']);
+    
+    respond_json(['success' => true, 'message' => '已寄出重設連結，請檢查您的信箱。']);
 }
 
 function verify_reset_token(): void {

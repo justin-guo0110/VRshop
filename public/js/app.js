@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindLogout();
     bindProfile();
     bindAddresses();
+    setupFilterDropdown();
     bindSearch();
     loadProductDetail();
     bindAdmin();
@@ -92,7 +93,12 @@ function bindAuth() {
                 const data = Object.fromEntries(new FormData(forgotForm));
                 const res = await api.post('../api/auth.php?action=request_password_reset', data);
                 if (forgotMsg) {
-                    forgotMsg.textContent = res.message || (res.success ? '若帳號存在，將寄送重設連結。' : res.error || '送出失敗');
+                    let msgHtml = res.message || (res.success ? '若帳號存在，將寄送重設連結。' : res.error || '送出失敗');
+                    // 如果返回了重設連結（開發模式），顯示為可點擊的連結
+                    if (res.reset_link) {
+                        msgHtml = `${msgHtml}<br><a href="${res.reset_link}" style="color:#0066cc;text-decoration:underline;margin-top:8px;display:inline-block;">點擊此連結重設密碼</a>`;
+                    }
+                    forgotMsg.innerHTML = msgHtml;
                     forgotMsg.className = 'message ' + (res.success ? 'success' : 'error');
                 }
                 if (res.success) {
@@ -247,7 +253,30 @@ function bindAddresses() {
         }
     });
 }
-
+function setupFilterDropdown() {
+    const toggle = document.getElementById('filterToggle');
+    const dropdown = document.getElementById('filterDropdown');
+    if (!toggle || !dropdown) return;
+    
+    toggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isActive = dropdown.classList.toggle('active');
+        toggle.classList.toggle('active', isActive);
+    });
+    
+    // 點擊下拉選單外部時關閉
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.filter-dropdown-wrapper')) {
+            dropdown.classList.remove('active');
+            toggle.classList.remove('active');
+        }
+    });
+    
+    // 點擊下拉選單內的元素不要關閉
+    dropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
 async function bindSearch() {
     const form = document.getElementById('searchForm');
     const grid = document.getElementById('productGrid');
