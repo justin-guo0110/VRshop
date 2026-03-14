@@ -7,7 +7,7 @@
     <?php if (empty($disableChatWidget)): ?>
         <link rel="stylesheet" href="../public/css/chat.css">
     <?php endif; ?>
-    <script src="../public/js/app.js"></script>
+    <script src="../public/js/app.js?v=<?php echo filemtime(__DIR__ . '/../public/js/app.js'); ?>"></script>
     <?php if (empty($disableChatWidget)): ?>
         <script src="../public/js/chat.js"></script>
     <?php endif; ?>

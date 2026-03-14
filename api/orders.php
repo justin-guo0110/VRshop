@@ -32,9 +32,28 @@ function column_exists(mysqli $db, string $table, string $column): bool {
 
 function place_order(): void {
     $user = require_login();
-    $cart = $_SESSION['cart'] ?? [];
-    if (empty($cart)) {
+    $cartAll = $_SESSION['cart'] ?? [];
+    if (empty($cartAll)) {
         respond_json(['error' => 'Cart is empty'], 422);
+    }
+
+    $selectedRaw = trim((string)($_POST['selected_product_ids'] ?? ''));
+    $cart = [];
+    if ($selectedRaw !== '') {
+        $selectedProductIds = array_values(array_unique(array_filter(array_map('intval', explode(',', $selectedRaw)), function ($v) {
+            return $v > 0;
+        })));
+        if (empty($selectedProductIds)) {
+            respond_json(['error' => 'No valid selected products'], 422);
+        }
+        foreach ($selectedProductIds as $pid) {
+            if (!isset($cartAll[$pid])) {
+                respond_json(['error' => 'Selected product not in cart: ' . $pid], 422);
+            }
+            $cart[$pid] = $cartAll[$pid];
+        }
+    } else {
+        $cart = $cartAll;
     }
 
     $payment_method = trim($_POST['payment_method'] ?? '');
@@ -138,8 +157,21 @@ function place_order(): void {
         $itemStmt->execute();
     }
 
+<<<<<<< HEAD
     $_SESSION['cart'] = [];
     respond_json(['success' => true, 'order_id' => $order_id]);
+=======
+    foreach (array_keys($cart) as $orderedPid) {
+        unset($_SESSION['cart'][$orderedPid]);
+    }
+    respond_json([
+        'success' => true,
+        'order_id' => $order_id,
+        'shipping_fee' => $shippingFee,
+        'payment_fee' => $paymentFee,
+        'total' => $total
+    ]);
+>>>>>>> 3a26cb803e8a6afb233c9a406866f29a24b238b8
 }
 
 function list_my_orders(): void {

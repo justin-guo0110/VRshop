@@ -18,7 +18,7 @@
             </form>
             <div class="message" id="profileMessage"></div>
         </div>
-        <div class="card">
+        <div class="card" id="addressSection">
             <h2>地址</h2>
             <div id="addressList"></div>
             <form id="addressForm">
