@@ -142,4 +142,3 @@ function encode_subject(string $subject): string
     return '=?UTF-8?B?' . base64_encode($subject) . '?=';
 }
 
-
