@@ -1,11 +1,21 @@
 const api = {
     get: (url) => fetch(url, { credentials: 'same-origin' }).then(r => r.json()),
-    post: (url, data) => fetch(url, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(data)
-    }).then(r => r.json())
+    post: (url, data) => {
+        const options = {
+            method: 'POST',
+            credentials: 'same-origin'
+        };
+        
+        if (data instanceof FormData) {
+            options.body = data;
+            // Don't set Content-Type header for FormData, browser will set it automatically
+        } else {
+            options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+            options.body = new URLSearchParams(data);
+        }
+        
+        return fetch(url, options).then(r => r.json());
+    }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -523,12 +533,20 @@ function bindAdmin() {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>#${p.product_id}</td>
-                    <td><input data-field="name" data-id="${p.product_id}" value="${p.name}"></td>
-                    <td>${p.category || '-'}</td>
-                    <td>$<input data-field="price" data-id="${p.product_id}" value="${p.price}" type="number" step="0.01"></td>
+                    <td>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <img src="${p.image_url || 'https://via.placeholder.com/40x40?text=No+Image'}" alt="${p.name}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">
+                            <input data-field="name" data-id="${p.product_id}" value="${p.name}" style="flex:1;">
+                        </div>
+                    </td>
+                    <td><input data-field="category" data-id="${p.product_id}" value="${p.category || ''}" style="width:100%;"></td>
+                    <td>$<input data-field="price" data-id="${p.product_id}" value="${p.price}" type="number" step="0.01" style="width:80px;"></td>
                     <td><span class="stock-value">${p.stock}</span></td>
                     <td><label class="switch"><input type="checkbox" data-toggle="${p.product_id}" ${p.is_active == 1 ? 'checked' : ''}><span class="slider"></span></label></td>
-                    <td><button class="btn btn-primary" data-save="${p.product_id}">儲存</button></td>
+                    <td>
+                        <input data-field="image_url" data-id="${p.product_id}" value="${p.image_url || ''}" placeholder="圖片URL" style="width:130px;font-size:11px;">
+                        <button class="btn btn-primary" data-save="${p.product_id}" style="margin:5px 0;width:100%;">儲存</button>
+                    </td>
                 `;
                 tbody.appendChild(row);
             });

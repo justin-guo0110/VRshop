@@ -193,7 +193,7 @@
                     <table class="admin-table" id="productsTable">
                         <thead>
                             <tr>
-                                <th>ID</th><th>名稱</th><th>分類</th><th>價格</th><th>庫存</th><th>狀態</th><th>操作</th>
+                                <th>ID</th><th>名稱/圖片</th><th>分類</th><th>價格</th><th>庫存</th><th>狀態</th><th>圖片URL / 操作</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
