@@ -274,7 +274,7 @@ input:focus {
 /* 商品詳情頁面圖片 */
 .grid.two-cols .media {
     width: 100%;
-    max-height: 500px;
+    max-height: 300px;
     overflow: hidden;
     border-radius: var(--radius);
     display: flex;
