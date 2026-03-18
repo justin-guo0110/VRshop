@@ -19,6 +19,9 @@ switch ($action) {
     case 'update_product':
         update_product();
         break;
+    case 'create_product':
+        create_product();
+        break;
     case 'dashboard_stats':
         dashboard_stats();
         break;
@@ -180,6 +183,27 @@ function update_product(): void {
         respond_json(['success' => true]);
     }
     respond_json(['error' => 'Update failed'], 500);
+}
+
+function create_product(): void {
+    $db = get_db();
+    $name = trim($_POST['name'] ?? '');
+    $category = trim($_POST['category'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $price = floatval($_POST['price'] ?? 0);
+    $stock = intval($_POST['stock'] ?? 0);
+    $image_url = trim($_POST['image_url'] ?? '');
+    
+    if ($name === '' || $price <= 0) {
+        respond_json(['error' => 'Invalid data'], 422);
+    }
+    
+    $stmt = $db->prepare('INSERT INTO products (name, category, description, price, stock, image_url, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)');
+    $stmt->bind_param('sssdis', $name, $category, $description, $price, $stock, $image_url);
+    if ($stmt->execute()) {
+        respond_json(['success' => true, 'product_id' => $stmt->insert_id]);
+    }
+    respond_json(['error' => 'Create failed'], 500);
 }
 
 function dashboard_stats(): void {

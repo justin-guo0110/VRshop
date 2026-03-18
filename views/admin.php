@@ -152,8 +152,44 @@
                 <div class="admin-card">
                     <div class="admin-toolbar">
                         <h3>📦 商品列表</h3>
-                        <button class="btn btn-primary">+ 新增商品</button>
+                        <button class="btn btn-primary" id="newProductBtn">+ 新增商品</button>
                     </div>
+                    
+                    <!-- 新增商品表單 -->
+                    <div id="newProductForm" style="display:none; background:#f9f9f9; padding:20px; margin-bottom:20px; border-radius:8px;">
+                        <h4>新增商品</h4>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                            <div>
+                                <label>商品名稱 *</label>
+                                <input type="text" id="newProductName" placeholder="商品名稱" required>
+                            </div>
+                            <div>
+                                <label>分類 *</label>
+                                <input type="text" id="newProductCategory" placeholder="分類" required>
+                            </div>
+                            <div>
+                                <label>販売価格 ($) *</label>
+                                <input type="number" id="newProductPrice" placeholder="0.00" step="0.01" min="0" required>
+                            </div>
+                            <div>
+                                <label>庫存數量 *</label>
+                                <input type="number" id="newProductStock" placeholder="0" min="0" value="0" required>
+                            </div>
+                            <div style="grid-column:1/-1;">
+                                <label>描述</label>
+                                <textarea id="newProductDescription" placeholder="商品描述" rows="3"></textarea>
+                            </div>
+                            <div style="grid-column:1/-1;">
+                                <label>圖片 URL</label>
+                                <input type="url" id="newProductImageUrl" placeholder="https://...">
+                            </div>
+                            <div style="grid-column:1/-1; display:flex; gap:10px;">
+                                <button class="btn btn-success" id="createProductBtn">確認新增</button>
+                                <button class="btn btn-secondary" id="cancelProductBtn">取消</button>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <table class="admin-table" id="productsTable">
                         <thead>
                             <tr>

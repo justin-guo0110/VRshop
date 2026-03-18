@@ -601,6 +601,61 @@ function bindAdmin() {
         }
     });
 
+    // 新增商品表單
+    const newProductBtn = document.getElementById('newProductBtn');
+    const newProductForm = document.getElementById('newProductForm');
+    const cancelProductBtn = document.getElementById('cancelProductBtn');
+    const createProductBtn = document.getElementById('createProductBtn');
+    
+    if (newProductBtn) {
+        newProductBtn.addEventListener('click', () => {
+            newProductForm.style.display = newProductForm.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+    
+    if (cancelProductBtn) {
+        cancelProductBtn.addEventListener('click', () => {
+            newProductForm.style.display = 'none';
+            document.getElementById('newProductName').value = '';
+            document.getElementById('newProductCategory').value = '';
+            document.getElementById('newProductPrice').value = '';
+            document.getElementById('newProductStock').value = '0';
+            document.getElementById('newProductDescription').value = '';
+            document.getElementById('newProductImageUrl').value = '';
+        });
+    }
+    
+    if (createProductBtn) {
+        createProductBtn.addEventListener('click', async () => {
+            const formData = new FormData();
+            formData.append('name', document.getElementById('newProductName').value);
+            formData.append('category', document.getElementById('newProductCategory').value);
+            formData.append('price', document.getElementById('newProductPrice').value);
+            formData.append('stock', document.getElementById('newProductStock').value);
+            formData.append('description', document.getElementById('newProductDescription').value);
+            formData.append('image_url', document.getElementById('newProductImageUrl').value);
+            
+            try {
+                const res = await api.post('../api/admin.php?action=create_product', formData);
+                if (res.success) {
+                    alert('商品新增成功！');
+                    newProductForm.style.display = 'none';
+                    document.getElementById('newProductName').value = '';
+                    document.getElementById('newProductCategory').value = '';
+                    document.getElementById('newProductPrice').value = '';
+                    document.getElementById('newProductStock').value = '0';
+                    document.getElementById('newProductDescription').value = '';
+                    document.getElementById('newProductImageUrl').value = '';
+                    await loadProducts();
+                } else {
+                    alert('新增失敗：' + (res.error || '未知錯誤'));
+                }
+            } catch (err) {
+                alert('新增失敗：' + err);
+            }
+        });
+    }
+
     // 登出按鈕
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
