@@ -18,6 +18,18 @@ const api = {
     }
 };
 
+// Helper function to fix image URLs based on current page location
+function fixImageUrl(imageUrl) {
+    if (!imageUrl) return 'https://via.placeholder.com/300x200?text=No+Image';
+    // If it's already a full URL, return as-is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+    // If it's a relative path and doesn't start with /, add ../ prefix for paths from views/
+    if (!imageUrl.startsWith('/')) {
+        return '../' + imageUrl;
+    }
+    return imageUrl;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     setupTabs();
     setupLoginPageTabs();
@@ -328,7 +340,7 @@ async function bindSearch() {
             card.className = 'product-card';
             const inStock = Number(p.stock) > 0;
             card.innerHTML = `
-                <div class="media"><img src="${p.image_url || 'https://via.placeholder.com/300x200?text=Product'}" alt="${p.name}"></div>
+                <div class="media"><img src="${fixImageUrl(p.image_url)}" alt="${p.name}"></div>
                 <h3>${p.name}</h3>
                 <p class="meta">${p.category || ''}</p>
                 <p class="price">$${Number(p.price).toFixed(2)}</p>
@@ -412,7 +424,7 @@ async function loadProductDetail() {
         const infoBlocks = document.getElementById('productInfoBlocks');
         container.innerHTML = `
             <div class="grid two-cols">
-                <div class="media"><img src="${p.image_url || 'https://via.placeholder.com/400x260?text=Product'}" alt="${p.name}"></div>
+                <div class="media"><img src="${fixImageUrl(p.image_url)}" alt="${p.name}"></div>
                 <div>
                     <h2>${p.name}</h2>
                     <p class="price">$${Number(p.price).toFixed(2)}</p>
@@ -535,7 +547,7 @@ function bindAdmin() {
                     <td>#${p.product_id}</td>
                     <td>
                         <div style="display:flex;gap:10px;align-items:center;">
-                            <img src="${p.image_url || 'https://via.placeholder.com/40x40?text=No+Image'}" alt="${p.name}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">
+                            <img src="${fixImageUrl(p.image_url)}" alt="${p.name}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">
                             <input data-field="name" data-id="${p.product_id}" value="${p.name}" style="flex:1;">
                         </div>
                     </td>
@@ -748,7 +760,7 @@ app.renderCartList = function (items, selectedIds = []) {
                     ${checked ? 'checked' : ''}
                     style="width:18px;height:18px;cursor:pointer;"
                 >
-                <img src="${item.image_url || 'https://via.placeholder.com/80'}" alt="${item.name}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">
+                <img src="${fixImageUrl(item.image_url)}" alt="${item.name}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">
                 <div>
                     <p><strong>${item.name}</strong></p>
                     <p>單價：$${Number(item.price).toFixed(2)}</p>
