@@ -262,6 +262,9 @@ document.getElementById('sidebarToggle').addEventListener('click', () => {
 });
 </script>
 
+<script src="../public/js/admin_inventory.js"></script>
+<script src="../public/js/admin_chat.js"></script>
+
 <?php endif; ?>
 <?php
 $disableChatWidget = true;
