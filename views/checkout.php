@@ -10,34 +10,7 @@ if (!isset($_SESSION['user'])) {
 
 <?php require_once __DIR__ . '/layout_header.php'; ?>
 
-<<<<<<< HEAD
-<section class="card checkout-section">
-    <h2>結帳</h2>
-    <div id="checkoutCart"></div>
-</section>
 
-<section class="card checkout-section">
-    <h3>選擇送貨地址</h3>
-    <div id="checkoutAddresses">載入中...</div>
-</section>
-
-<section class="card checkout-section">
-    <h3>選擇送貨方式</h3>
-    <label><input type="radio" name="shipping_method" value="宅配" checked> 宅配</label>
-    <label><input type="radio" name="shipping_method" value="超商取貨" checked> 超商取貨</label>
-</section>
-
-<section class="card checkout-section">
-    <h3>選擇支付方式</h3>
-    <label><input type="radio" name="payment_method" value="信用卡" checked> 信用卡</label>
-    <label><input type="radio" name="payment_method" value="貨到付款" checked> 貨到付款</label>
-</section>
-
-<section class="card checkout-section">
-    <button class="btn" id="placeOrderBtn">確認下單</button>
-    <div class="message" id="checkoutMessage"></div>
-</section>
-=======
 <div class="checkout-container">
     <!-- 主要結帳流程 -->
     <div class="checkout-main">
@@ -130,11 +103,7 @@ if (!isset($_SESSION['user'])) {
         </section>
     </aside>
 </div>
->>>>>>> 3a26cb803e8a6afb233c9a406866f29a24b238b8
 
-<?php // modal removed ?>
-                    <input type="tel" id="modal_phone" name="phone" placeholder="請輸入聯絡電話">
-                </div>
 <?php require_once __DIR__ . '/layout_footer.php'; ?>
 
 

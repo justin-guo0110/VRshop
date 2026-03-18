@@ -157,10 +157,6 @@ function place_order(): void {
         $itemStmt->execute();
     }
 
-<<<<<<< HEAD
-    $_SESSION['cart'] = [];
-    respond_json(['success' => true, 'order_id' => $order_id]);
-=======
     foreach (array_keys($cart) as $orderedPid) {
         unset($_SESSION['cart'][$orderedPid]);
     }
@@ -171,7 +167,6 @@ function place_order(): void {
         'payment_fee' => $paymentFee,
         'total' => $total
     ]);
->>>>>>> 3a26cb803e8a6afb233c9a406866f29a24b238b8
 }
 
 function list_my_orders(): void {

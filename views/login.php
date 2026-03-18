@@ -112,10 +112,4 @@ window.switchTab = function(target) {
 };
 </script>
 
-<<<<<<< HEAD
 <?php require_once __DIR__ . '/layout_footer.php'; ?>
-=======
-<?php require_once __DIR__ . '/layout_footer.php'; ?>
-
-<?php require_once __DIR__ . '/layout_header.php'; ?>
->>>>>>> 3a26cb803e8a6afb233c9a406866f29a24b238b8
