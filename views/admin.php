@@ -7,7 +7,7 @@
 
 <div class="admin-container">
     <!-- 側邊欄導航 -->
-    <aside class="admin-sidebar">
+    <aside class="admin-sidebar" style="display:none;">
         <div class="admin-logo">
             <h2>🏢 VR Mall</h2>
             <p>管理後臺</p>
@@ -42,7 +42,6 @@
         <!-- 頂部導航欄 -->
         <header class="admin-topbar">
             <div class="admin-topbar-left">
-                <button class="admin-menu-toggle" id="sidebarToggle">☰</button>
                 <h1 id="pageTitle">儀表板</h1>
             </div>
             <div class="admin-topbar-right">
@@ -127,14 +126,21 @@
                 <div class="admin-card">
                     <h3>📋 訂單列表</h3>
                     <div class="admin-toolbar">
-                        <input type="text" placeholder="搜尋訂單..." class="admin-input">
-                        <select class="admin-select">
-                            <option>所有狀態</option>
-                            <option>pending</option>
-                            <option>preparing</option>
-                            <option>shipping</option>
-                            <option>done</option>
+                        <input type="text" placeholder="搜尋訂單編號或顧客（即將支援）" class="admin-input" disabled>
+                        <select class="admin-select" id="orderStatusFilter">
+                            <option value="all">全部狀態</option>
+                            <option value="pending">已接單</option>
+                            <option value="preparing">準備中</option>
+                            <option value="shipping">運送中</option>
+                            <option value="done">已完成</option>
                         </select>
+                    </div>
+                    <div class="order-status-filters">
+                        <button type="button" class="order-filter-btn active" data-status="all">全部</button>
+                        <button type="button" class="order-filter-btn" data-status="pending">已接單</button>
+                        <button type="button" class="order-filter-btn" data-status="preparing">準備中</button>
+                        <button type="button" class="order-filter-btn" data-status="shipping">運送中</button>
+                        <button type="button" class="order-filter-btn" data-status="done">已完成</button>
                     </div>
                     <table class="admin-table" id="ordersTable">
                         <thead>
@@ -293,9 +299,27 @@ document.querySelectorAll('.admin-nav-item').forEach(item => {
 });
 
 // 側邊欄切換（手機用）
-document.getElementById('sidebarToggle').addEventListener('click', () => {
-    document.querySelector('.admin-sidebar').classList.toggle('active');
-});
+const sidebarToggle = document.getElementById('sidebarToggle');
+if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', () => {
+        const sidebar = document.querySelector('.admin-sidebar');
+        if (sidebar) {
+            sidebar.classList.toggle('active');
+        }
+    });
+}
+
+// 支援從網址參數直接切換管理分頁，例如 admin.php?page=orders
+(function () {
+    const allowed = ['dashboard', 'orders', 'products', 'inventory', 'chat'];
+    const params = new URLSearchParams(window.location.search);
+    const page = params.get('page');
+    if (!page || !allowed.includes(page)) return;
+    const target = document.querySelector('.admin-nav-item[data-page="' + page + '"]');
+    if (target) {
+        target.click();
+    }
+})();
 </script>
 
 <script src="../public/js/admin_inventory.js"></script>

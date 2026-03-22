@@ -14,9 +14,10 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
 
     <!-- 共用樣式 -->
     <link rel="stylesheet" href="../public/css/style.css">
+    <link rel="stylesheet" href="../public/css/enhance.css?v=<?php echo filemtime(__DIR__ . '/../public/css/enhance.css'); ?>">
 
     <!-- 首頁專用樣式 -->
-    <link rel="stylesheet" href="../public/css/home.css">
+    <link rel="stylesheet" href="../public/css/home.css?v=<?php echo filemtime(__DIR__ . '/../public/css/home.css'); ?>">
 
     <?php if (empty($disableChatWidget)): ?>
         <link rel="stylesheet" href="../public/css/chat.css">
@@ -29,17 +30,21 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
             <a href="./index.php" class="logo" style="text-decoration: none;">VR Mall</a>
 
             <nav class="nav">
-                <a href="./index.php">首頁</a>
-                <a href="./products.php">商品</a>
-                <a href="./profile.php">個人資料</a>
-
-                <?php if ($currentUser && ($currentUser['role'] ?? '') === 'member'): ?>
-                    <a href="./cart.php">購物車</a>
-                    <a href="./orders.php">訂單</a>
-                <?php endif; ?>
-
                 <?php if ($currentUser && ($currentUser['role'] ?? '') === 'admin'): ?>
-                    <a href="./admin.php">管理</a>
+                    <a href="./admin.php?page=dashboard">📊 儀表板</a>
+                    <a href="./admin.php?page=orders">📋 訂單管理</a>
+                    <a href="./admin.php?page=products">📦 商品管理</a>
+                    <a href="./admin.php?page=inventory">📚 庫存管理</a>
+                    <a href="./admin.php?page=chat">💬 客服系統</a>
+                <?php else: ?>
+                    <a href="./index.php">首頁</a>
+                    <a href="./products.php">商品</a>
+                    <a href="./profile.php">個人資料</a>
+
+                    <?php if ($currentUser && ($currentUser['role'] ?? '') === 'member'): ?>
+                        <a href="./cart.php">購物車</a>
+                        <a href="./orders.php">訂單</a>
+                    <?php endif; ?>
                 <?php endif; ?>
             </nav>
 
@@ -54,7 +59,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
         </div>
     </header>
 
-    <main class="container" style="padding-top: 0; display: grid; grid-template-columns: 200px 1fr; gap: 20px;">
+    <main class="container" style="padding-top: 0; display: grid; grid-template-columns: 180px 1fr; gap: 12px;">
         <!-- 左側廣告框架 -->
         <aside class="sidebar-ads-box">
             <a href="./products.php" class="sidebar-ad">
@@ -115,7 +120,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
         </section>
         
         <!-- Hero 區域 -->
-        <section class="hero-section" style="margin: 0; padding: 80px 16px;">
+        <section class="hero-section" style="margin: 0; padding: 52px 16px;">
             <div style="max-width: 1100px; margin: 0 auto;">
                 <h1>歡迎來到 VR Mall</h1>
                 <p>探索最新的虛擬實境產品，體驗未來購物的無限可能</p>
@@ -161,13 +166,21 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
 
     <footer class="site-footer">
         <div class="container">
-            <p>© <?php echo date('Y'); ?> VR Mall</p>
+            <div class="footer-grid">
+                <div class="footer-brand">© <?php echo date('Y'); ?> VR Mall</div>
+                <div class="footer-contact">
+                    <p><strong>聯絡我們：</strong><a href="#" class="js-open-chat">開啟客服聊天室</a></p>
+                    <p><strong>電話：</strong>02-2905-2000</p>
+                    <p><strong>地址：</strong>天主教輔仁大學-新北市新莊區中正路510號</p>
+                    <p><strong>電子郵件：</strong><a href="mailto:pubwww@mail.fju.edu.tw">pubwww@mail.fju.edu.tw</a></p>
+                </div>
+            </div>
         </div>
     </footer>
 
 
     <!-- 共用 JS -->
-    <script src="../public/js/app.js"></script>
+    <script src="../public/js/app.js?v=<?php echo filemtime(__DIR__ . '/../public/js/app.js'); ?>"></script>
 
     <?php if (empty($disableChatWidget)): ?>
         <script src="../public/js/chat.js"></script>
@@ -193,11 +206,15 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
                     const card = document.createElement('div');
                     card.className = 'product-card';
                     card.innerHTML = `
-                        <img src="${product.image_url || 'https://via.placeholder.com/300x200?text=Product'}" alt="${product.name}">
-                        <h3>${product.name}</h3>
-                        <p class="price">$${Number(product.price).toFixed(2)}</p>
-                        <p style="color:#666;font-size:0.9rem;">${product.category || ''}</p>
-                        <a class="btn" href="./product_detail.php?product_id=${product.product_id}">查看詳情</a>
+                        <div class="featured-card-media">
+                            <img src="${product.image_url || 'https://via.placeholder.com/300x200?text=Product'}" alt="${product.name}">
+                        </div>
+                        <div class="featured-card-body">
+                            <h3>${product.name}</h3>
+                            <p class="price">$${Number(product.price).toFixed(2)}</p>
+                            <p class="featured-category">${product.category || '未分類'}</p>
+                            <a class="btn btn-secondary" href="./product_detail.php?product_id=${product.product_id}">查看詳情</a>
+                        </div>
                     `;
                     container.appendChild(card);
                 });
@@ -244,6 +261,25 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
         document.addEventListener('DOMContentLoaded', function () {
             loadFeaturedProducts();
             initPromoSlider();
+
+            document.querySelectorAll('.js-open-chat').forEach(function (el) {
+                el.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const toggle = document.getElementById('chatToggleBtn');
+                    const win = document.getElementById('chatWindow');
+                    if (!toggle) {
+                        alert('客服聊天室目前未啟用');
+                        return;
+                    }
+                    if (!win || !win.classList.contains('open')) {
+                        toggle.click();
+                    }
+                    const input = document.getElementById('chatInput');
+                    if (input) {
+                        setTimeout(function () { input.focus(); }, 150);
+                    }
+                });
+            });
         });
     </script>
 
