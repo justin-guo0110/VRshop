@@ -209,9 +209,16 @@ h1, h2, h3, .logo {
 }
 
 #productGrid .product-card .meta {
-    color: #5b6b7f;
-    font-size: 0.88rem;
-    margin-bottom: 6px;
+    margin: 6px 0 0 8px;
+    display: inline-flex;
+    width: fit-content;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #0f5560;
+    background: #e6fbf8;
+    border: 1px solid #99f6e4;
 }
 
 #productGrid .product-card .price {
@@ -700,4 +707,36 @@ a:hover {
     .cart-page {
         animation: none;
     }
+}
+.product-detail-page .two-cols {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 40px;
+    align-items: center;
+}
+.product-detail-page .price {
+    font-size: 32px;
+    font-weight: 800;
+    color: #0f766e;
+    margin: 10px 0;
+}
+
+.product-detail-page .media {
+    background: transparent !important;
+    padding: 0 !important;
+    border: 0 !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.product-detail-page .media img {
+    width: auto !important;
+    height: auto !important;
+    max-width: 320px !important;
+    max-height: 320px !important;
+    object-fit: contain !important;
+    display: block;
 }

@@ -174,7 +174,7 @@
                                 <input type="text" id="newProductCategory" placeholder="分類" required>
                             </div>
                             <div>
-                                <label>販売価格 ($) *</label>
+                                <label>販賣價格 ($) *</label>
                                 <input type="number" id="newProductPrice" placeholder="0.00" step="0.01" min="0" required>
                             </div>
                             <div>

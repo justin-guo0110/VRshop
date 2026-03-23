@@ -340,9 +340,9 @@ async function bindSearch() {
             card.className = 'product-card';
             const inStock = Number(p.stock) > 0;
             card.innerHTML = `
-                <div class="media"><img src="${fixImageUrl(p.image_url)}" alt="${p.name}"></div>
+                <div class="media"><img src="${p.image_url}" alt="${p.name}"></div>
                 <h3>${p.name}</h3>
-                <p class="meta">${p.category || ''}</p>
+                <p class="meta">${p.category || '未分類'}</p>
                 <p class="price">$${Number(p.price).toFixed(2)}</p>
                 <p style="margin:0;"><span class="stock-badge ${inStock ? 'in' : 'out'}">${inStock ? `庫存：${p.stock}` : '缺貨'}</span></p>
                 <div class="card-actions">
@@ -424,7 +424,7 @@ async function loadProductDetail() {
         const infoBlocks = document.getElementById('productInfoBlocks');
         container.innerHTML = `
             <div class="grid two-cols">
-                <div class="media"><img src="${fixImageUrl(p.image_url)}" alt="${p.name}"></div>
+                <div class="media"><img src="${p.image_url}" alt="${p.name}"></div>
                 <div>
                     <h2>${p.name}</h2>
                     <p class="price">$${Number(p.price).toFixed(2)}</p>
@@ -547,7 +547,7 @@ function bindAdmin() {
                     <td>#${p.product_id}</td>
                     <td>
                         <div style="display:flex;gap:10px;align-items:center;">
-                            <img src="${fixImageUrl(p.image_url)}" alt="${p.name}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">
+                            <img src="${p.image_url}" alt="${p.name}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">
                             <input data-field="name" data-id="${p.product_id}" value="${p.name}" style="flex:1;">
                         </div>
                     </td>
