@@ -760,8 +760,8 @@ app.renderCartList = function (items, selectedIds = []) {
                     ${checked ? 'checked' : ''}
                     style="width:18px;height:18px;cursor:pointer;"
                 >
-                <img src="${fixImageUrl(item.image_url)}" alt="${item.name}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">
-                <div>
+                <img src="${item.image_url}" alt="${item.name}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">
+                <div style="padding-left:30px">
                     <p><strong>${item.name}</strong></p>
                     <p>單價：$${Number(item.price).toFixed(2)}</p>
                     <p>小計：$${subtotal.toFixed(2)}</p>

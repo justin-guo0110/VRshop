@@ -12,6 +12,8 @@ $currentUser = $_SESSION['user'] ?? null;
     <title>VR Mall</title>
     <link rel="stylesheet" href="../public/css/style.css">
     <link rel="stylesheet" href="../public/css/enhance.css?v=<?php echo filemtime(__DIR__ . '/../public/css/enhance.css'); ?>">
+    <link rel="stylesheet" href="../public/css/cart.css?v=<?php echo filemtime(__DIR__ . '/../public/css/cart.css'); ?>">
+    <link rel="stylesheet" href="../public/css/checkout.css?v=<?php echo filemtime(__DIR__ . '/../public/css/checkout.css'); ?>">
 </head>
 <body>
     <header class="site-header">
