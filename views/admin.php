@@ -324,7 +324,7 @@ if (sidebarToggle) {
 
 <script src="../public/js/admin_inventory.js"></script>
 <script src="../public/js/admin_chat.js"></script>
-
+<script src="../public/js/admin_orders.js"></script>
 <?php endif; ?>
 <?php
 $disableChatWidget = true;

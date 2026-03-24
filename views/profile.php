@@ -1,10 +1,12 @@
 <?php require_once __DIR__ . '/layout_header.php'; ?>
+
+<div class="profile-page">
 <?php if (!$currentUser): ?>
     <div class="card">
         <p>請 <a href="login.php">登入</a> 以管理您的個人資料。</p>
     </div>
 <?php else: ?>
-    <section class="grid two-cols">
+    <section class="profile-sections">
         <div class="card">
             <h2>個人簡介</h2>
             <form id="profileForm">
@@ -18,6 +20,7 @@
             </form>
             <div class="message" id="profileMessage"></div>
         </div>
+
         <div class="card" id="addressSection">
             <h2>地址</h2>
             <div id="addressList"></div>
@@ -34,4 +37,6 @@
         </div>
     </section>
 <?php endif; ?>
+</div>
+
 <?php require_once __DIR__ . '/layout_footer.php'; ?>

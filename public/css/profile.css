@@ -1,134 +1,164 @@
 .profile-page {
-    padding: 20px;
+    padding: 28px 24px 24px;
 }
 
-.profile-head {
-    margin-bottom: 16px;
+.profile-page h2 {
+    margin: 0 0 22px;
+    font-size: 2rem;
+    color: var(--secondary);
 }
 
-.profile-head h2 {
-    margin: 0;
-}
-
-.profile-subtitle {
-    margin: 6px 0 0;
-    color: var(--muted);
-}
-
-.profile-grid {
+.profile-page .grid.two-cols {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 14px;
+    gap: 24px;
+    align-items: start;
 }
 
-.profile-panel {
+.profile-page .card {
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 16px;
+    padding: 22px 20px;
     background: #fff;
 }
 
-.profile-panel h3 {
-    margin: 0 0 12px;
+.profile-page form {
+    display: grid;
+    gap: 12px;
+}
+
+.profile-page label {
+    font-weight: 700;
+    color: var(--secondary);
+    margin-top: 4px;
+}
+
+.profile-page input[type="text"],
+.profile-page input[type="email"],
+.profile-page input[type="tel"] {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 1rem;
+    background: #fff;
+    color: var(--secondary);
+    outline: none;
+    transition: 0.2s ease;
+    box-sizing: border-box;
+}
+
+.profile-page input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.04);
+}
+
+.profile-page input:disabled {
+    background: #f7f7f7;
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+.profile-page .btn {
+    margin-top: 8px;
+    min-width: 120px;
+}
+
+.profile-page .message {
+    margin-top: 14px;
+    font-size: 0.95rem;
     color: var(--secondary);
 }
 
-.profile-form {
+.profile-sections {
     display: grid;
-    gap: 8px;
+    gap: 24px;
 }
 
-.profile-form label {
-    margin-top: 4px;
-    margin-bottom: 0;
-}
-
-.address-list {
+#addressList {
     display: grid;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: 16px;
+    margin-bottom: 18px;
 }
 
-.address-empty {
-    border: 1px dashed var(--border);
-    border-radius: 10px;
-    padding: 14px;
-    color: var(--muted);
-    text-align: center;
-    background: var(--surface);
-}
-
-.address-list .address-item {
+.address-item {
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 12px;
-    background: #fcfdff;
+    border-radius: 16px;
+    padding: 18px 18px;
+    background: #fff;
+    display: grid;
+    grid-template-columns: 1fr; /* ⭐ 改這裡 */
+    gap: 18px;
+    align-items: center;
 }
 
-.address-item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
+.address-item-content {
+    min-width: 0;
+}
+
+.address-item-name {
+    font-weight: 800;
+    color: var(--secondary);
     margin-bottom: 6px;
 }
 
-.address-name {
-    font-weight: 700;
-    color: var(--secondary);
-}
-
-.address-default {
-    font-size: 0.78rem;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: #ecfeff;
-    border: 1px solid #99f6e4;
-    color: #0f5b68;
-    font-weight: 700;
-}
-
-.address-line,
-.address-phone {
-    margin: 0;
+.address-item-info {
     color: var(--muted);
-    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
-.address-actions {
-    margin-top: 8px;
+.address-item-actions {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-start; /* 靠左（你也可以改成 flex-end 靠右） */
 }
 
-.checkbox-line {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 6px;
-    font-weight: 600;
+.address-item-actions .btn {
+    min-width: 88px;
+}
+.address-item-info div {
+    word-break: normal;
+    overflow-wrap: break-word;
 }
 
-.checkbox-line input {
-    width: auto;
-    margin: 0;
-}
-
-.form-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 6px;
-}
-
-.profile-guest-card {
-    max-width: 620px;
-    margin: 24px auto;
-}
-
-@media (max-width: 900px) {
-    .profile-grid {
+@media (max-width: 768px) {
+    .address-item {
         grid-template-columns: 1fr;
+        gap: 14px;
     }
+
+    .address-item-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .address-item-actions .btn {
+        width: 100%;
+    }
+}
+.profile-page .message {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: none;
+
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+}
+
+.profile-page .message.success {
+    display: block;
+    background: #e6fbf8;
+    color: #0f766e;
+    border: 1px solid #99f6e4;
+}
+
+.profile-page .message.error {
+    display: block;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
 }

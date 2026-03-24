@@ -14,6 +14,7 @@ $currentUser = $_SESSION['user'] ?? null;
     <link rel="stylesheet" href="../public/css/enhance.css?v=<?php echo filemtime(__DIR__ . '/../public/css/enhance.css'); ?>">
     <link rel="stylesheet" href="../public/css/cart.css?v=<?php echo filemtime(__DIR__ . '/../public/css/cart.css'); ?>">
     <link rel="stylesheet" href="../public/css/checkout.css?v=<?php echo filemtime(__DIR__ . '/../public/css/checkout.css'); ?>">
+    <link rel="stylesheet" href="../public/css/profile.css?v=<?php echo filemtime(__DIR__ . '/../public/css/profile.css'); ?>">
 </head>
 <body>
     <header class="site-header">

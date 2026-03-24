@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/cart_helpers.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -32,6 +33,7 @@ function column_exists(mysqli $db, string $table, string $column): bool {
 
 function place_order(): void {
     $user = require_login();
+    init_cart_storage();
     $cartAll = $_SESSION['cart'] ?? [];
     if (empty($cartAll)) {
         respond_json(['error' => 'Cart is empty'], 422);
@@ -163,8 +165,8 @@ function place_order(): void {
     respond_json([
         'success' => true,
         'order_id' => $order_id,
-        'shipping_fee' => $shippingFee,
-        'payment_fee' => $paymentFee,
+        //'shipping_fee' => $shippingFee,
+        //'payment_fee' => $paymentFee,
         'total' => $total
     ]);
 }

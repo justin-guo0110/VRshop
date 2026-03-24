@@ -216,20 +216,29 @@ function bindAddresses() {
     async function loadAddresses() {
         const res = await api.get('../api/member.php?action=list_addresses');
         list.innerHTML = '';
+
         (res.addresses || []).forEach(addr => {
             const div = document.createElement('div');
             div.className = 'address-item';
             div.innerHTML = `
-                <p><strong>${addr.recipient_name}</strong> ${addr.phone || ''}</p>
-                <p>${addr.address_line}</p>
-                <p></p>
-                <button class="btn btn-edit" data-edit="${addr.address_id}">編輯</button>
-                <button class="btn btn-danger" data-delete="${addr.address_id}">刪除</button>
+                <div class="address-item-content">
+                    <div class="address-item-name">${addr.recipient_name}</div>
+                    <div class="address-item-info">
+                        ${addr.phone ? `<div>${addr.phone}</div>` : ''}
+                        <div>${addr.address_line}</div>
+                    </div>
+                </div>
+                <div class="address-item-actions">
+                    <button type="button" class="btn btn-edit" data-edit="${addr.address_id}">編輯</button>
+                    <button type="button" class="btn btn-danger" data-delete="${addr.address_id}">刪除</button>
+                </div>
             `;
             list.appendChild(div);
         });
     }
+
     loadAddresses();
+
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
