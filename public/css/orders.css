@@ -1,5 +1,6 @@
 .orders-page {
     padding: 20px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
 }
 
 .orders-head {
@@ -12,11 +13,14 @@
 
 .orders-head h2 {
     margin: 0;
+    font-size: 2rem;
+    letter-spacing: 0.02em;
 }
 
 .orders-subtitle {
     margin: 6px 0 0;
     color: var(--muted);
+    font-size: 1.05rem;
 }
 
 .orders-empty {
@@ -34,6 +38,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     background: #fff;
+    box-shadow: 0 12px 24px rgba(15, 34, 58, 0.06);
 }
 
 .orders-table {
@@ -43,7 +48,7 @@
 }
 
 .orders-table thead {
-    background: #f8fafc;
+    background: linear-gradient(180deg, #f9fcff, #f4f8fc);
 }
 
 .orders-table th,
@@ -55,13 +60,17 @@
 }
 
 .orders-table th {
-    color: #475569;
-    font-size: 0.9rem;
+    color: #334155;
+    font-size: 1rem;
     font-weight: 700;
 }
 
 .orders-table tbody tr:hover {
-    background: #fcfdfd;
+    background: #f8fbff;
+}
+
+.orders-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
 .orders-amount {
@@ -77,6 +86,7 @@
     font-size: 0.82rem;
     font-weight: 700;
     border: 1px solid transparent;
+    line-height: 1.25;
 }
 
 .status-pending {
@@ -110,7 +120,7 @@
 .order-detail-card {
     border: 1px solid #e6eaf0;
     border-radius: 10px;
-    padding: 12px;
+    padding: 14px;
     background: #fff;
 }
 
@@ -169,10 +179,27 @@
     color: #0f5b68;
 }
 
+.view-order.btn.btn-secondary {
+    min-width: 102px;
+    border-radius: 12px;
+    border-color: rgba(15, 34, 58, 0.14);
+    transition: all 0.2s ease;
+}
+
+.view-order.btn.btn-secondary:hover {
+    border-color: rgba(15, 118, 110, 0.45);
+    color: #0f766e;
+    transform: translateY(-1px);
+}
+
 @media (max-width: 768px) {
     .orders-head {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .orders-head h2 {
+        font-size: 1.8rem;
     }
 
     .order-detail-meta {

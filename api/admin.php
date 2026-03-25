@@ -10,6 +10,9 @@ switch ($action) {
     case 'update_order_status':
         update_order_status();
         break;
+    case 'delete_order':
+        delete_order();
+        break;
     case 'list_products':
         list_products();
         break;
@@ -21,6 +24,9 @@ switch ($action) {
         break;
     case 'create_product':
         create_product();
+        break;
+    case 'delete_product':
+        delete_product();
         break;
     case 'dashboard_stats':
         dashboard_stats();
@@ -52,8 +58,156 @@ switch ($action) {
     case 'reply_chat':
         reply_chat();
         break;
+    case 'get_wheel_prizes':
+        get_wheel_prizes_config();
+        break;
+    case 'save_wheel_prizes':
+        save_wheel_prizes_config();
+        break;
+    case 'list_customers':
+        list_customers();
+        break;
     default:
         respond_json(['error' => 'Unknown action'], 400);
+}
+
+function list_customers(): void {
+    $db = get_db();
+
+    $sql = "SELECT m.member_id, m.name, m.email,
+                   COUNT(o.order_id) AS order_count,
+                   COALESCE(SUM(o.total_amount), 0) AS total_spent,
+                   MAX(o.created_at) AS last_order_at
+            FROM members m
+            LEFT JOIN orders o ON o.member_id = m.member_id
+            WHERE m.role = 'member'
+            GROUP BY m.member_id, m.name, m.email
+            ORDER BY m.member_id DESC";
+
+    $res = $db->query($sql);
+    if (!$res) {
+        respond_json(['error' => 'Load customers failed'], 500);
+    }
+
+    $customers = [];
+    while ($row = $res->fetch_assoc()) {
+        $orderCount = intval($row['order_count'] ?? 0);
+        $totalSpent = floatval($row['total_spent'] ?? 0);
+
+        $labels = [];
+        if ($totalSpent >= 5000) {
+            $labels[] = 'VIP';
+        }
+        if ($orderCount >= 5) {
+            $labels[] = '常購';
+        }
+        if ($orderCount === 0) {
+            $labels[] = '新客';
+        }
+
+        $row['order_count'] = $orderCount;
+        $row['total_spent'] = $totalSpent;
+        $row['labels'] = $labels;
+        $customers[] = $row;
+    }
+
+    respond_json(['customers' => $customers]);
+}
+
+function wheel_prizes_file_path(): string {
+    return __DIR__ . '/../storage/lucky_wheel_prizes.json';
+}
+
+function default_wheel_prizes(): array {
+    return [
+        ['id' => 0, 'name' => '折扣10%', 'discount_type' => 'percent', 'value' => 10, 'min_purchase' => 0],
+        ['id' => 1, 'name' => '折扣15%', 'discount_type' => 'percent', 'value' => 15, 'min_purchase' => 100],
+        ['id' => 2, 'name' => '折扣20%', 'discount_type' => 'percent', 'value' => 20, 'min_purchase' => 200],
+        ['id' => 3, 'name' => '折扣$30', 'discount_type' => 'fixed', 'value' => 30, 'min_purchase' => 200],
+        ['id' => 4, 'name' => '免運費', 'discount_type' => 'fixed', 'value' => 50, 'min_purchase' => 500],
+        ['id' => 5, 'name' => '折扣$50', 'discount_type' => 'fixed', 'value' => 50, 'min_purchase' => 300],
+        ['id' => 6, 'name' => '折扣$20', 'discount_type' => 'fixed', 'value' => 20, 'min_purchase' => 100],
+        ['id' => 7, 'name' => '立減$100', 'discount_type' => 'fixed', 'value' => 100, 'min_purchase' => 500],
+    ];
+}
+
+function normalize_wheel_prizes(array $raw): array {
+    $normalized = [];
+    foreach ($raw as $index => $row) {
+        if (!is_array($row)) continue;
+        $type = ($row['discount_type'] ?? 'fixed') === 'percent' ? 'percent' : 'fixed';
+        $name = trim((string)($row['name'] ?? ''));
+        if ($name === '') {
+            $name = $type === 'percent' ? '折扣10%' : '折扣$10';
+        }
+        $value = max(0, floatval($row['value'] ?? 0));
+        $minPurchase = max(0, floatval($row['min_purchase'] ?? 0));
+        $normalized[] = [
+            'id' => intval($row['id'] ?? $index),
+            'name' => $name,
+            'discount_type' => $type,
+            'value' => $value,
+            'min_purchase' => $minPurchase,
+        ];
+    }
+
+    if (count($normalized) !== 8) {
+        return default_wheel_prizes();
+    }
+    return array_values($normalized);
+}
+
+function load_wheel_prizes_config_array(): array {
+    $path = wheel_prizes_file_path();
+    if (!is_file($path)) {
+        return default_wheel_prizes();
+    }
+
+    $content = @file_get_contents($path);
+    if ($content === false || trim($content) === '') {
+        return default_wheel_prizes();
+    }
+
+    $decoded = json_decode($content, true);
+    if (!is_array($decoded)) {
+        return default_wheel_prizes();
+    }
+
+    return normalize_wheel_prizes($decoded);
+}
+
+function get_wheel_prizes_config(): void {
+    respond_json(['prizes' => load_wheel_prizes_config_array()]);
+}
+
+function save_wheel_prizes_config(): void {
+    $rawJson = $_POST['prizes_json'] ?? '';
+    if (!is_string($rawJson) || trim($rawJson) === '') {
+        respond_json(['error' => 'Missing prizes_json'], 422);
+    }
+
+    $decoded = json_decode($rawJson, true);
+    if (!is_array($decoded)) {
+        respond_json(['error' => 'Invalid prizes_json'], 422);
+    }
+
+    $normalized = normalize_wheel_prizes($decoded);
+    if (count($normalized) !== 8) {
+        respond_json(['error' => 'Prize config must contain 8 items'], 422);
+    }
+
+    $path = wheel_prizes_file_path();
+    $written = @file_put_contents(
+        $path,
+        json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+        LOCK_EX
+    );
+
+    if ($written === false) {
+        respond_json(['error' => 'Failed to save config'], 500);
+    }
+
+    respond_json(['success' => true, 'prizes' => $normalized]);
 }
 
 function list_orders(): void {
@@ -223,13 +377,74 @@ function create_product(): void {
     respond_json(['error' => 'Create failed'], 500);
 }
 
+function delete_product(): void {
+    $db = get_db();
+    $product_id = intval($_POST['product_id'] ?? 0);
+    
+    if (!$product_id) {
+        respond_json(['error' => 'Product id required'], 422);
+    }
+    
+    // 先檢查是否有訂單項目引用此商品
+    $checkStmt = $db->prepare('SELECT COUNT(*) AS cnt FROM order_items WHERE product_id = ?');
+    $checkStmt->bind_param('i', $product_id);
+    $checkStmt->execute();
+    $checkRes = $checkStmt->get_result();
+    $checkRow = $checkRes->fetch_assoc();
+    
+    if ($checkRow['cnt'] > 0) {
+        respond_json(['error' => '此商品已被訂單引用，無法刪除'], 422);
+    }
+    
+    $stmt = $db->prepare('DELETE FROM products WHERE product_id = ?');
+    $stmt->bind_param('i', $product_id);
+    if ($stmt->execute()) {
+        respond_json(['success' => true]);
+    }
+    respond_json(['error' => 'Delete failed'], 500);
+}
+
+function delete_order(): void {
+    $db = get_db();
+    $order_id = intval($_POST['order_id'] ?? 0);
+    
+    if (!$order_id) {
+        respond_json(['error' => 'Order id required'], 422);
+    }
+    
+    $db->begin_transaction();
+    
+    try {
+        // 先刪除訂單項目
+        $deleteItemsStmt = $db->prepare('DELETE FROM order_items WHERE order_id = ?');
+        $deleteItemsStmt->bind_param('i', $order_id);
+        $deleteItemsStmt->execute();
+        
+        // 再刪除訂單
+        $deleteOrderStmt = $db->prepare('DELETE FROM orders WHERE order_id = ?');
+        $deleteOrderStmt->bind_param('i', $order_id);
+        if ($deleteOrderStmt->execute()) {
+            $db->commit();
+            respond_json(['success' => true]);
+        } else {
+            $db->rollback();
+            respond_json(['error' => 'Delete failed'], 500);
+        }
+    } catch (Exception $e) {
+        $db->rollback();
+        respond_json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+    }
+}
+
 function dashboard_stats(): void {
     $db = get_db();
     $stats = [
         'pending_count' => 0,
         'today_orders_count' => 0,
         'today_revenue' => 0.0,
-        'low_stock_count' => 0
+        'low_stock_count' => 0,
+        'total_orders' => 0,
+        'total_revenue' => 0.0
     ];
 
     $res1 = $db->query("SELECT COUNT(*) AS c FROM orders WHERE status IN ('pending','preparing')");
@@ -243,7 +458,60 @@ function dashboard_stats(): void {
     $res3 = $db->query('SELECT COUNT(*) AS c FROM products WHERE stock < 10');
     $stats['low_stock_count'] = intval($res3->fetch_assoc()['c'] ?? 0);
 
-    respond_json(['stats' => $stats]);
+    $res4 = $db->query('SELECT COUNT(*) AS c, COALESCE(SUM(total_amount),0) AS revenue FROM orders');
+    $row4 = $res4->fetch_assoc();
+    $stats['total_orders'] = intval($row4['c'] ?? 0);
+    $stats['total_revenue'] = floatval($row4['revenue'] ?? 0);
+
+    $recentOrders = [];
+    $recentRes = $db->query("SELECT o.order_id, COALESCE(m.name, m.email, '訪客') AS customer_name, o.total_amount, o.status, o.created_at
+                             FROM orders o
+                             LEFT JOIN members m ON m.member_id = o.member_id
+                             ORDER BY o.created_at DESC
+                             LIMIT 8");
+    if ($recentRes) {
+        $recentOrders = $recentRes->fetch_all(MYSQLI_ASSOC);
+    }
+
+    $topProducts = [];
+    $topRes = $db->query("SELECT p.name, p.stock, p.price, COALESCE(SUM(oi.quantity), 0) AS sold_qty
+                          FROM products p
+                          LEFT JOIN order_items oi ON oi.product_id = p.product_id
+                          GROUP BY p.product_id, p.name, p.stock, p.price
+                          ORDER BY sold_qty DESC, p.product_id DESC
+                          LIMIT 8");
+    if ($topRes) {
+        $topProducts = $topRes->fetch_all(MYSQLI_ASSOC);
+    }
+
+    $dailySales = [];
+    $dailyRes = $db->query("SELECT DATE(created_at) AS sale_date, COALESCE(SUM(total_amount),0) AS revenue
+                            FROM orders
+                            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 13 DAY)
+                            GROUP BY DATE(created_at)
+                            ORDER BY sale_date ASC");
+
+    $revenueMap = [];
+    if ($dailyRes) {
+        while ($row = $dailyRes->fetch_assoc()) {
+            $revenueMap[$row['sale_date']] = floatval($row['revenue'] ?? 0);
+        }
+    }
+
+    for ($i = 13; $i >= 0; $i--) {
+        $date = date('Y-m-d', strtotime("-$i day"));
+        $dailySales[] = [
+            'date' => $date,
+            'revenue' => floatval($revenueMap[$date] ?? 0)
+        ];
+    }
+
+    respond_json([
+        'stats' => $stats,
+        'recent_orders' => $recentOrders,
+        'top_products' => $topProducts,
+        'daily_sales' => $dailySales
+    ]);
 }
 
 function receiving_products(): void {

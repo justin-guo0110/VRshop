@@ -277,7 +277,7 @@ input:focus {
 /* 商品詳情頁面圖片 */
 .grid.two-cols .media {
     width: 100%;
-    max-height: 180px;
+    height: 280px;
     overflow: hidden;
     border-radius: var(--radius);
     display: flex;
@@ -1054,7 +1054,7 @@ input:focus {
         border-bottom-color: var(--primary);
         background: none;
     }
-=======
+}
 
 /* 結帳頁面卡片樣式 */
 .card {
@@ -1409,6 +1409,4 @@ input:focus {
     .login-wrapper { 
         padding: 20px 16px; 
     }
-}
->>>>>>> 3a26cb803e8a6afb233c9a406866f29a24b238b8
 }

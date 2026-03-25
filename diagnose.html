@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>後台診斷工具</title>
+    <style>
+        body { font-family: Arial; margin: 20px; background: #f5f5f5; }
+        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .ok { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div style="max-width: 800px; margin: 0 auto;">
+        <h1>🔧 後台系統診斷</h1>
+        
+        <div class="card">
+            <h2>功能檢查</h2>
+            <button onclick="checkAPIEndpoints()">檢查 API 端點</button>
+            <button onclick="checkNavigation()">檢查導航</button>
+            <button onclick="checkDataLoading()">檢查數據加載</button>
+            <button onclick="testLoadProducts()">測試商品加載</button>
+            <button onclick="testLoadOrders()">測試訂單加載</button>
+        </div>
+        
+        <div class="card">
+            <h2>診斷結果</h2>
+            <div id="results"></div>
+        </div>
+    </div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        function log(title, message, isOk = true) {
+            const div = document.createElement('div');
+            div.className = 'result ' + (isOk ? 'ok' : 'error');
+            div.innerHTML = `<strong>${title}:</strong> ${message}`;
+            results.appendChild(div);
+        }
+        
+        async function checkAPIEndpoints() {
+            results.innerHTML = '';
+            
+            try {
+                const res = await fetch('./api/operations.php?action=list_products', {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                
+                if (data.error) {
+                    log('API 端點 - list_products', data.error, false);
+                } else {
+                    const count = (data.products || []).length;
+                    log('API 端點 - list_products', `✅ 成功，返回 ${count} 個商品`);
+                }
+                
+                const res2 = await fetch('./api/operations.php?action=list_orders', {
+                    credentials: 'include'
+                });
+                const data2 = await res2.json();
+                
+                if (data2.error) {
+                    log('API 端點 - list_orders', data2.error, false);
+                } else {
+                    const count = (data2.orders || []).length;
+                    log('API 端點 - list_orders', `✅ 成功，返回 ${count} 個訂單`);
+                }
+            } catch (error) {
+                log('API 端點檢查', error.message, false);
+            }
+        }
+        
+        function checkNavigation() {
+            results.innerHTML = '';
+            
+            // 檢查 operations.php 頁面
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = './views/operations.php';
+            iframe.onload = function() {
+                try {
+                    const doc = iframe.contentDocument;
+                    const sidebar = doc.querySelector('.admin-sidebar');
+                    const navItems = doc.querySelectorAll('[data-page]');
+                    const pages = doc.querySelectorAll('.admin-page');
+                    
+                    log('HTML - 側邊欄', sidebar ? '✅ 存在' : '❌ 不存在', !!sidebar);
+                    log('HTML - 導航項', navItems.length > 0 ? `✅ 找到 ${navItems.length} 個` : '❌ 不存在', navItems.length > 0);
+                    log('HTML - 頁面元素', pages.length > 0 ? `✅ 找到 ${pages.length} 個` : '❌ 不存在', pages.length > 0);
+                } catch (e) {
+                    log('HTML 檢查', e.message, false);
+                }
+                document.body.removeChild(iframe);
+            };
+            document.body.appendChild(iframe);
+        }
+        
+        function checkDataLoading() {
+            results.innerHTML = '';
+            log('數據加載', '請在打開的後台頁面中按 F12 查看控制台，檢查是否有 JavaScript 錯誤');
+        }
+        
+        async function testLoadProducts() {
+            results.innerHTML = '';
+            
+            try {
+                const res = await fetch('./api/operations.php?action=list_products', {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                
+                results.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                log('測試', error.message, false);
+            }
+        }
+        
+        async function testLoadOrders() {
+            results.innerHTML = '';
+            
+            try {
+                const res = await fetch('./api/operations.php?action=list_orders', {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                
+                results.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                log('測試', error.message, false);
+            }
+        }
+    </script>
+</body>
+</html>

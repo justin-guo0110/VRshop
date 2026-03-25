@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>数据库对比检查</title>
+    <style>
+        body { font-family: Arial; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+        .side { padding: 15px; border-radius: 4px; }
+        .backend { background: #e3f2fd; border-left: 4px solid #2196F3; }
+        .frontend { background: #f0f4c3; border-left: 4px solid #FBC02D; }
+        h3 { margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f5f5f5; font-weight: bold; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        .status { padding: 15px; border-radius: 4px; margin: 10px 0; }
+        .ok { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .warn { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 後台 vs 用戶端 - 商品數據對比</h1>
+        
+        <div class="status" id="status">準備檢查...</div>
+        
+        <div style="margin: 20px 0;">
+            <button onclick="compareData()">🔄 比較數據</button>
+            <button onclick="checkAPIs()">⚙️ 檢查 API</button>
+        </div>
+        
+        <div class="comparison" id="comparison" style="display:none;">
+            <div class="side backend">
+                <h3>後台 (Backend)</h3>
+                <p>API: <code>api/operations.php?action=list_products</code></p>
+                <div id="backendData"></div>
+            </div>
+            
+            <div class="side frontend">  
+                <h3>用戶端 (Frontend)</h3>
+                <p>API: <code>api/shop.php?action=search_products</code></p>
+                <div id="frontendData"></div>
+            </div>
+        </div>
+        
+        <div id="analysis" style="display:none;" class="card">
+            <h3>分析結果</h3>
+            <div id="analysisContent"></div>
+        </div>
+    </div>
+    
+    <script>
+        async function compareData() {
+            const status = document.getElementById('status');
+            const comparison = document.getElementById('comparison');
+            const analysis = document.getElementById('analysis');
+            
+            status.innerHTML = '⏳ 正在加載後台数据...';
+            
+            try {
+                // 後台数据
+                const backendRes = await fetch('./api/operations.php?action=list_products', {
+                    credentials: 'include'
+                });
+                const backendData = await backendRes.json();
+                
+                status.innerHTML = '⏳ 正在加載用戶端数据...';
+                
+                // 用戶端数据  
+                const frontendRes = await fetch('./api/shop.php?action=search_products&page_size=100', {
+                    credentials: 'include'
+                });
+                const frontendData = await frontendRes.json();
+                
+                status.innerHTML = '';
+                comparison.style.display = 'grid';
+                analysis.style.display = 'block';
+                
+                const backendProducts = backendData.products || [];
+                const frontendProducts = frontendData.products || [];
+                
+                // 顯示後台數據
+                let backendHtml = `<p><strong>商品總數: ${backendProducts.length}</strong></p>`;
+                backendHtml += '<table><tr><th>ID</th><th>名稱</th><th>價格</th><th>庫存</th><th>狀態</th></tr>';
+                backendProducts.slice(0, 5).forEach(p => {
+                    backendHtml += `<tr>
+                        <td>#${p.product_id}</td>
+                        <td>${p.name.substring(0, 15)}</td>
+                        <td>$${p.price}</td>
+                        <td>${p.stock}</td>
+                        <td>${p.is_active ? '✓' : '✗'}</td>
+                    </tr>`;
+                });
+                if (backendProducts.length > 5) backendHtml += `<tr><td colspan="5">... 還有 ${backendProducts.length - 5} 個</td></tr>`;
+                backendHtml += '</table>';
+                document.getElementById('backendData').innerHTML = backendHtml;
+                
+                // 顯示用戶端數據
+                let frontendHtml = `<p><strong>商品總數: ${frontendProducts.length}</strong></p>`;
+                frontendHtml += '<table><tr><th>ID</th><th>名稱</th><th>價格</th><th>庫存</th><th>是否上架</th></tr>';
+                frontendProducts.slice(0, 5).forEach(p => {
+                    frontendHtml += `<tr>
+                        <td>#${p.product_id}</td>
+                        <td>${p.name.substring(0, 15)}</td>
+                        <td>$${p.price}</td>
+                        <td>${p.stock}</td>
+                        <td>${p.is_active ? '✓' : '✗'}</td>
+                    </tr>`;
+                });
+                if (frontendProducts.length > 5) frontendHtml += `<tr><td colspan="5">... 還有 ${frontendProducts.length - 5} 個</td></tr>`;
+                frontendHtml += '</table>';
+                document.getElementById('frontendData').innerHTML = frontendHtml;
+                
+                // 分析
+                let analysisHtml = '';
+                if (backendProducts.length === frontendProducts.length) {
+                    analysisHtml += '<div class="status ok">✅ 商品總數相同</div>';
+                } else {
+                    analysisHtml += `<div class="status warn">⚠️ 商品數量不同（後台: ${backendProducts.length}, 用戶端: ${frontendProducts.length}）</div>`;
+                }
+                
+                // 檢查 ID 順序
+                const backendIds = backendProducts.map(p => p.product_id);
+                const frontendIds = frontendProducts.map(p => p.product_id);
+                if (JSON.stringify(backendIds) === JSON.stringify(frontendIds)) {
+                    analysisHtml += '<div class="status ok">✅ 商品順序相同</div>';
+                } else {
+                    analysisHtml += '<div class="status warn">⚠️ 商品順序不同</div>';
+                }
+                
+                // 檢查是否是同一個數據庫表
+                if (backendProducts.length > 0 && frontendProducts.length > 0) {
+                    const sampleBackend = backendProducts[0];
+                    const sameFrontend = frontendProducts.find(p => p.product_id === sampleBackend.product_id);
+                    
+                    if (sameFrontend && 
+                        sameFrontend.name === sampleBackend.name &&
+                        sameFrontend.price === sampleBackend.price) {
+                        analysisHtml += '<div class="status ok">✅ 數據完全相同，使用同一數據庫表</div>';
+                    }
+                }
+                
+                analysisHtml += '<h4>技術詳情</h4>';
+                analysisHtml += '<ul>';
+                analysisHtml += '<li><strong>後台來源:</strong> api/operations.php → list_products() 函數</li>';
+                analysisHtml += '<li><strong>用戶端來源:</strong> api/shop.php → search_products() 函數</li>';
+                analysisHtml += '<li><strong>數據庫表:</strong> 都來自 <code>products</code> 表</li>';
+                analysisHtml += '<li><strong>查詢語句:</strong> 後台只查 is_active=1 的商品（用於管理）</li>';
+                analysisHtml += '<li><strong>查詢語句:</strong> 用戶端同樣查 is_active=1 的商品</li>';
+                analysisHtml += '</ul>';
+                
+                document.getElementById('analysisContent').innerHTML = analysisHtml;
+                status.innerHTML = '';
+                
+            } catch (error) {
+                status.innerHTML = `<div class="status warn">❌ 錯誤: ${error.message}</div>`;
+            }
+        }
+        
+        async function checkAPIs() {
+            const status = document.getElementById('status');
+            status.innerHTML = '⏳ 檢查 API...';
+            
+            try {
+                const backends = await fetch('./api/operations.php?action=list_products', {
+                    credentials: 'include'
+                });
+                const fronts = await fetch('./api/shop.php?action=search_products', {
+                    credentials: 'include'
+                });
+                
+                let msg = '<div class="status ok">✅ 兩個 API 都可正常訪問</div>';
+                msg += `<p>後台 API 狀態碼: ${backends.status}</p>`;
+                msg += `<p>用戶端 API 狀態碼: ${fronts.status}</p>`;
+                status.innerHTML = msg;
+            } catch (error) {
+                status.innerHTML = `<div class="status warn">❌ API 檢查失敗: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

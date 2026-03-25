@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>API 测试</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        button { padding: 10px 15px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>API 测试</h1>
+    
+    <button onclick="testProducts()">测试 list_products</button>
+    <button onclick="testOrders()">测试 list_orders</button>
+    <button onclick="testCustomers()">测试 list_customers</button>
+    <button onclick="testDashboard()">测试 get_sales_dashboard</button>
+    
+    <div id="output"></div>
+    
+    <script>
+    async function test(endpoint) {
+        const url = './api/operations.php?action=' + endpoint;
+        const output = document.getElementById('output');
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            output.innerHTML += `
+            <div class="result">
+                <h3>${endpoint}</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            </div>
+            `;
+        } catch (error) {
+            output.innerHTML += `
+            <div class="result" style="color: red;">
+                <h3>${endpoint} - 错误</h3>
+                <p>${error.message}</p>
+            </div>
+            `;
+        }
+    }
+    
+    function testProducts() { test('list_products'); }
+    function testOrders() { test('list_orders'); }
+    function testCustomers() { test('list_customers_with_labels'); }
+    function testDashboard() { test('get_sales_dashboard'); }
+    </script>
+</body>
+</html>

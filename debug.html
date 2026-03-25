@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>API 调试</title>
+    <style>
+        body { font-family: Arial; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        .result { background: #f9f9f9; padding: 15px; margin: 10px 0; border-left: 4px solid #007bff; max-height: 300px; overflow-y: auto; }
+        .error { border-left-color: #dc3545; color: #dc3545; }
+        .success { border-left-color: #28a745; color: #28a745; }
+        pre { margin: 0; font-size: 12px; }
+        h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        .status { padding: 10px; background: #d4edda; color: #155724; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 VR Mall API 调试工具</h1>
+        
+        <div class="card">
+            <h2>系统状态检查</h2>
+            <div id="status" class="status"></div>
+            <button onclick="checkAuth()">检查认证</button>
+            <button onclick="checkConnection()">检查数据库</button>
+        </div>
+        
+        <div class="card">
+            <h2>商品管理 API</h2>
+            <button onclick="testAPI('list_products')">获取商品列表</button>
+            <button onclick="testAPI('list_orders')">获取订单列表</button>
+            <button onclick="testAPI('list_customers_with_labels')">获取客户列表</button>
+            <button onclick="testAPI('get_sales_dashboard')">获取销售仪表板</button>
+        </div>
+        
+        <div class="card">
+            <h2>API 响应</h2>
+            <div id="output"></div>
+        </div>
+    </div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        async function testAPI(action) {
+            output.innerHTML = '⏳ 加载中...';
+            try {
+                const response = await fetch(`./api/operations.php?action=${action}`, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                
+                let html = `<div class="result ${data.error ? 'error' : 'success'}">`;
+                html += `<strong>端点:</strong> ${action}<br>`;
+                html += `<strong>状态码:</strong> ${response.status}<br>`;
+                html += `<strong>响应:</strong><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                html += '</div>';
+                output.innerHTML = html;
+                
+                // 如果有产品数据，显示为表格
+                if (data.products && Array.isArray(data.products)) {
+                    let table = '<h3>📦 商品列表</h3><table style="width:100%; border-collapse:collapse;">';
+                    table += '<tr style="background:#f0f0f0;"><th>ID</th><th>名称</th><th>分类</th><th>价格</th><th>库存</th></tr>';
+                    data.products.forEach(p => {
+                        table += `<tr style="border-bottom:1px solid #ddd;">
+                            <td>${p.product_id}</td>
+                            <td>${p.name}</td>
+                            <td>${p.category}</td>
+                            <td>$${p.price}</td>
+                            <td>${p.stock}</td>
+                        </tr>`;
+                    });
+                    table += '</table>';
+                    output.innerHTML += table;
+                }
+            } catch (error) {
+                output.innerHTML = `<div class="result error"><pre>错误: ${error.message}</pre></div>`;
+            }
+        }
+        
+        async function checkAuth() {
+            const status = document.getElementById('status');
+            status.innerHTML = '检查中...';
+            try {
+                const response = await fetch('./api/operations.php?action=get_sales_dashboard', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (data.error) {
+                    status.innerHTML = `❌ 认证失败: ${data.error}`;
+                } else {
+                    status.innerHTML = `✅ 已认证，可以访问 API`;
+                }
+            } catch (error) {
+                status.innerHTML = `❌ 错误: ${error.message}`;
+            }
+        }
+        
+        async function checkConnection() {
+            const status = document.getElementById('status');
+            status.innerHTML = '检查中...';
+            try {
+                const response = await fetch('./check_products.php');
+                const text = await response.text();
+                status.innerHTML = `✅ 数据库连接正常<br><small>${text.split('\n').slice(0, 5).join('<br>')}</small>`;
+            } catch (error) {
+                status.innerHTML = `❌ 错误: ${error.message}`;
+            }
+        }
+        
+        // 页面加载时检查认证状态
+        window.addEventListener('load', checkAuth);
+    </script>
+</body>
+</html>

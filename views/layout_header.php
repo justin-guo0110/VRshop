@@ -21,13 +21,7 @@ $currentUser = $_SESSION['user'] ?? null;
         <div class="container header-inner">
             <a href="./index.php" class="logo" style="text-decoration: none;">VR Mall</a>
             <nav class="nav">
-                <?php if ($currentUser && ($currentUser['role'] ?? '') === 'admin'): ?>
-                    <a href="../views/admin.php?page=dashboard">📊 儀表板</a>
-                    <a href="../views/admin.php?page=orders">📋 訂單管理</a>
-                    <a href="../views/admin.php?page=products">📦 商品管理</a>
-                    <a href="../views/admin.php?page=inventory">📚 庫存管理</a>
-                    <a href="../views/admin.php?page=chat">💬 客服系統</a>
-                <?php else: ?>
+                <?php if (!($currentUser && ($currentUser['role'] ?? '') === 'admin')): ?>
                     <a href="../views/index.php">首頁</a>
                     <a href="../views/products.php">商品</a>
                     <a href="../views/profile.php">個人資料</a>
@@ -39,6 +33,20 @@ $currentUser = $_SESSION['user'] ?? null;
                 <?php endif; ?>
             </nav>
             <div class="user-info">
+                <?php if ($currentUser && ($currentUser['role'] ?? '') === 'admin'): ?>
+                    <div class="nav-dropdown">
+                        <a href="#" class="nav-dropdown-toggle">⚙️ 管理</a>
+                        <div class="nav-dropdown-menu">
+                            <a href="../views/admin.php?page=dashboard">📊 銷售看板</a>
+                            <a href="../views/admin.php?page=products">📦 商品管理</a>
+                            <a href="../views/admin.php?page=orders">📋 訂單管理</a>
+                            <a href="../views/admin.php?page=inventory">📚 庫存管理</a>
+                            <a href="../views/admin.php?page=customers">👥 客戶管理</a>
+                            <a href="../views/admin.php?page=promotions">🎁 促銷管理</a>
+                            <a href="../views/admin.php?page=chat">💬 客服系統</a>
+                        </div>
+                    </div>
+                <?php endif; ?>
                 <?php if ($currentUser): ?>
                     <span>歡迎 <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?></span>
                     <button class="btn btn-secondary" id="logoutBtn">登出</button>

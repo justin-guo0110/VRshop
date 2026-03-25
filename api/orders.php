@@ -31,6 +31,17 @@ function column_exists(mysqli $db, string $table, string $column): bool {
     return $cache[$key];
 }
 
+function table_exists(mysqli $db, string $table): bool {
+    static $cache = [];
+    if (isset($cache[$table])) {
+        return $cache[$table];
+    }
+    $tableEsc = $db->real_escape_string($table);
+    $result = $db->query("SHOW TABLES LIKE '$tableEsc'");
+    $cache[$table] = $result && $result->num_rows > 0;
+    return $cache[$table];
+}
+
 function place_order(): void {
     $user = require_login();
     init_cart_storage();
@@ -96,7 +107,7 @@ function place_order(): void {
         }
     }
 
-    $total = 0.0;
+    $subtotal = 0.0;
     $orderItems = [];
     foreach ($cart as $pid => $item) {
         $price = floatval($products[$pid]['price']);
@@ -106,8 +117,51 @@ function place_order(): void {
             'quantity' => $qty,
             'price' => $price
         ];
-        $total += $price * $qty;
+        $subtotal += $price * $qty;
     }
+
+    $shippingFees = ['宅配' => 100, '超商取貨' => 60];
+    $paymentFees = ['信用卡' => 0, '貨到付款' => 30];
+    $shippingFee = $shippingFees[$shipping_method] ?? 0;
+    $paymentFee = $paymentFees[$payment_method] ?? 0;
+
+    $couponCode = trim((string)($_POST['coupon_code'] ?? ''));
+    $discount = 0.0;
+    $couponRow = null;
+
+    if ($couponCode !== '' && table_exists($db, 'coupons')) {
+        $couponStmt = $db->prepare('SELECT coupon_id, discount_type, discount_value, min_purchase, used_count, max_usage, expiry_date, is_active FROM coupons WHERE coupon_code = ? AND member_id = ? LIMIT 1');
+        $couponStmt->bind_param('si', $couponCode, $user['member_id']);
+        $couponStmt->execute();
+        $couponRow = $couponStmt->get_result()->fetch_assoc();
+
+        if (!$couponRow) {
+            respond_json(['error' => '優惠券不存在或不屬於您'], 422);
+        }
+        if (intval($couponRow['is_active']) !== 1) {
+            respond_json(['error' => '優惠券已失效'], 422);
+        }
+        if (strtotime((string)$couponRow['expiry_date']) < time()) {
+            respond_json(['error' => '優惠券已過期'], 422);
+        }
+        if (intval($couponRow['used_count']) >= intval($couponRow['max_usage'])) {
+            respond_json(['error' => '優惠券已使用完畢'], 422);
+        }
+        if ($subtotal < floatval($couponRow['min_purchase'])) {
+            respond_json(['error' => '未達優惠券最低消費門檻'], 422);
+        }
+
+        if ($couponRow['discount_type'] === 'percent') {
+            $discount = $subtotal * (floatval($couponRow['discount_value']) / 100);
+        } else {
+            $discount = floatval($couponRow['discount_value']);
+        }
+        if ($discount > $subtotal) {
+            $discount = $subtotal;
+        }
+    }
+
+    $total = $subtotal + $shippingFee + $paymentFee - $discount;
 
     $hasPayment = column_exists($db, 'orders', 'payment_method');
     $hasShipping = column_exists($db, 'orders', 'shipping_method');
@@ -146,17 +200,37 @@ function place_order(): void {
 
     $placeholders = implode(',', array_fill(0, count($columns), '?'));
     $sql = 'INSERT INTO orders (' . implode(',', $columns) . ') VALUES (' . $placeholders . ')';
-    $insertOrder = $db->prepare($sql);
-    $insertOrder->bind_param($types, ...$values);
-    if (!$insertOrder->execute()) {
-        respond_json(['error' => 'Failed to place order'], 500);
-    }
-    $order_id = $insertOrder->insert_id;
+    $db->begin_transaction();
+    try {
+        $insertOrder = $db->prepare($sql);
+        $insertOrder->bind_param($types, ...$values);
+        if (!$insertOrder->execute()) {
+            throw new Exception('Failed to place order');
+        }
+        $order_id = $insertOrder->insert_id;
 
-    $itemStmt = $db->prepare("INSERT INTO order_items (order_id, product_id, quantity, $priceColumn) VALUES (?, ?, ?, ?)");
-    foreach ($orderItems as $oi) {
-        $itemStmt->bind_param('iiid', $order_id, $oi['product_id'], $oi['quantity'], $oi['price']);
-        $itemStmt->execute();
+        $itemStmt = $db->prepare("INSERT INTO order_items (order_id, product_id, quantity, $priceColumn) VALUES (?, ?, ?, ?)");
+        foreach ($orderItems as $oi) {
+            $itemStmt->bind_param('iiid', $order_id, $oi['product_id'], $oi['quantity'], $oi['price']);
+            if (!$itemStmt->execute()) {
+                throw new Exception('Failed to insert order items');
+            }
+        }
+
+        if ($couponRow) {
+            $nextUsedCount = intval($couponRow['used_count']) + 1;
+            $couponId = intval($couponRow['coupon_id']);
+            $updateCouponStmt = $db->prepare('UPDATE coupons SET used_count = ? WHERE coupon_id = ? AND member_id = ?');
+            $updateCouponStmt->bind_param('iii', $nextUsedCount, $couponId, $user['member_id']);
+            if (!$updateCouponStmt->execute()) {
+                throw new Exception('Failed to update coupon usage');
+            }
+        }
+
+        $db->commit();
+    } catch (Throwable $e) {
+        $db->rollback();
+        respond_json(['error' => 'Failed to place order'], 500);
     }
 
     foreach (array_keys($cart) as $orderedPid) {
@@ -165,8 +239,10 @@ function place_order(): void {
     respond_json([
         'success' => true,
         'order_id' => $order_id,
-        //'shipping_fee' => $shippingFee,
-        //'payment_fee' => $paymentFee,
+        'shipping_fee' => $shippingFee,
+        'payment_fee' => $paymentFee,
+        'subtotal' => $subtotal,
+        'discount' => $discount,
         'total' => $total
     ]);
 }

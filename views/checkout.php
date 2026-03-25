@@ -61,6 +61,15 @@ if (!isset($_SESSION['user'])) {
             </section>
 
             <section class="card checkout-section">
+                <h3>🎟️ 優惠券</h3>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <input id="checkoutCouponCode" type="text" placeholder="輸入優惠券代碼" style="flex:1;min-width:180px;">
+                    <button id="applyCouponBtn" type="button" class="btn btn-secondary">套用優惠券</button>
+                </div>
+                <div class="message" id="checkoutCouponMessage"></div>
+            </section>
+
+            <section class="card checkout-section">
                 <div class="checkout-actions">
                     <button class="btn btn-place-order" id="placeOrderBtn">確認下單</button>
                 </div>
@@ -84,6 +93,10 @@ if (!isset($_SESSION['user'])) {
                         <span>支付手續費</span>
                         <strong id="checkoutPaymentFee">$0</strong>
                     </div>
+                    <div class="total-row" id="checkoutDiscountRow" style="display:none;">
+                        <span>優惠折扣</span>
+                        <strong id="checkoutDiscount">-$0</strong>
+                    </div>
                     <div class="total-row grand-total">
                         <span>應付總額</span>
                         <strong id="checkoutGrandTotal">$0</strong>
@@ -95,118 +108,3 @@ if (!isset($_SESSION['user'])) {
     </div>
 </div>
 <?php require_once __DIR__ . '/layout_footer.php'; ?>
-
-
-<script>
-function loadCheckoutCart() {
-    fetch('/project/api/cart.php?action=get')
-        .then(res => res.json())
-        .then(data => {
-            const box = document.getElementById('checkoutCart');
-
-            if (!data.items || data.items.length === 0) {
-                box.innerHTML = `<div class="checkout-empty">購物車是空的</div>`;
-                return;
-            }
-
-            let html = `<div class="checkout-cart-list">`;
-
-            data.items.forEach(item => {
-                const itemSubtotal = Number(item.price) * Number(item.quantity);
-
-                html += `
-                <div class="checkout-cart-item">
-
-                    <div class="checkout-cart-info">
-                        <input type="checkbox" class="checkout-item-check" checked>
-
-                        <img src="${item.image_url}" 
-                             class="checkout-cart-image"
-                             onerror="this.src='/project/public/images/default.png'">
-
-                        <div class="checkout-cart-text">
-                            <p class="checkout-cart-name">${item.name}</p>
-                            <p class="checkout-cart-meta">單價：$${Number(item.price).toFixed(2)}</p>
-                            <p class="checkout-cart-meta">數量：${item.quantity}</p>
-                            <p class="checkout-cart-subtotal">小計：$${itemSubtotal.toFixed(2)}</p>
-                        </div>
-                    </div>
-
-                    <div class="checkout-cart-actions">
-                        <input type="number" value="${item.quantity}" min="1">
-                        <button class="btn btn-secondary">更新數量</button>
-                        <button class="btn btn-secondary">刪除商品</button>
-                    </div>
-
-                </div>
-                `;
-            });
-
-            html += `</div>`;
-
-            box.innerHTML = html;
-        });
-}
-
-function loadCheckoutAddresses() {
-    fetch('/project/api/member.php?action=list_addresses')
-        .then(res => res.json())
-        .then(data => {
-            const box = document.getElementById('checkoutAddresses');
-            if (!data.addresses || data.addresses.length === 0) {
-                box.innerHTML = "<p>尚未新增地址，請至會員中心新增。</p>";
-                return;
-            }
-
-            let html = "";
-            data.addresses.forEach(addr => {
-                html += `
-                    <label style="display:block;margin-bottom:6px;">
-                        <input type="radio" name="address_id" value="${addr.address_id}">
-                        ${addr.recipient_name}｜${addr.phone}｜${addr.address_line}
-                    </label>
-                `;
-            });
-
-            box.innerHTML = html;
-        });
-}
-
-document.getElementById('placeOrderBtn').addEventListener('click', function () {
-    const shipping_method = document.querySelector('input[name="shipping_method"]:checked').value;
-    const payment_method  = document.querySelector('input[name="payment_method"]:checked').value;
-    const addressRadio    = document.querySelector('input[name="address_id"]:checked');
-
-    if (!addressRadio) {
-        alert("請先選擇送貨地址");
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append("shipping_method", shipping_method);
-    formData.append("payment_method", payment_method);
-    formData.append("address_id", addressRadio.value);
-
-    fetch('/project/api/orders.php?action=place_order', {
-        method: 'POST',
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.error) {
-            alert("下單失敗：" + data.error);
-            return;
-        }
-
-        alert("訂單建立成功！訂單編號：" + data.order_id);
-
-        window.location.href = '/project/views/orders.php';
-    })
-    .catch(err => {
-        alert("發生錯誤：" + err);
-    });
-});
-
-loadCheckoutCart();
-loadCheckoutAddresses();
-</script>

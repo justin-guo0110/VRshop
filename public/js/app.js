@@ -21,8 +21,12 @@ const api = {
 // Helper function to fix image URLs based on current page location
 function fixImageUrl(imageUrl) {
     if (!imageUrl) return 'https://via.placeholder.com/300x200?text=No+Image';
-    // If it's already a full URL, return as-is
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+    imageUrl = String(imageUrl).trim().replace(/\\/g, '/');
+    // If it's already a full URL or data URI, return as-is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) return imageUrl;
+    if (imageUrl.startsWith('./')) {
+        imageUrl = imageUrl.slice(2);
+    }
     // If it's a relative path and doesn't start with /, add ../ prefix for paths from views/
     if (!imageUrl.startsWith('/')) {
         return '../' + imageUrl;
@@ -141,11 +145,61 @@ function handleAuthResponse(res, messageEl) {
     if (res.success) {
         messageEl.textContent = '登入成功，正在跳轉…';
         messageEl.className = 'message success';
+        const role = res?.user?.role || '';
+        if (role === 'admin') {
+            sessionStorage.removeItem('showLuckyWheelOnLogin');
+            setTimeout(() => location.href = 'admin.php?page=dashboard', 500);
+            return;
+        }
+
+        sessionStorage.setItem('showLuckyWheelOnLogin', '1');
         setTimeout(() => location.href = 'products.php', 500);
     } else {
         messageEl.textContent = res.error || '登入失敗';
         messageEl.className = 'message error';
     }
+}
+
+async function maybeShowLuckyWheelAfterLogin() {
+    const shouldShow = sessionStorage.getItem('showLuckyWheelOnLogin') === '1';
+    if (!shouldShow) return;
+
+    const path = (location.pathname || '').toLowerCase();
+    if (path.endsWith('/login.php') || path.endsWith('/admin.php')) {
+        sessionStorage.removeItem('showLuckyWheelOnLogin');
+        return;
+    }
+
+    try {
+        const me = await api.get('../api/auth.php?action=me');
+        const role = me?.user?.role || '';
+        if (role === 'admin') {
+            sessionStorage.removeItem('showLuckyWheelOnLogin');
+            return;
+        }
+    } catch (err) {
+        sessionStorage.removeItem('showLuckyWheelOnLogin');
+        return;
+    }
+
+    sessionStorage.removeItem('showLuckyWheelOnLogin');
+
+    const openModal = () => {
+        if (typeof openLuckyWheel === 'function') {
+            setTimeout(() => openLuckyWheel(), 300);
+        }
+    };
+
+    if (typeof openLuckyWheel === 'function') {
+        openModal();
+        return;
+    }
+
+    const script = document.createElement('script');
+    script.src = '../public/js/lucky_wheel.js?v=' + Date.now();
+    script.onload = openModal;
+    script.onerror = () => console.error('無法載入 lucky_wheel.js');
+    document.head.appendChild(script);
 }
 
 function bindLogout() {
@@ -348,8 +402,9 @@ async function bindSearch() {
             const card = document.createElement('div');
             card.className = 'product-card';
             const inStock = Number(p.stock) > 0;
+            const imageUrl = fixImageUrl(p.image_url);
             card.innerHTML = `
-                <div class="media"><img src="${p.image_url}" alt="${p.name}"></div>
+                <div class="media"><img src="${imageUrl}" alt="${p.name}"></div>
                 <h3>${p.name}</h3>
                 <p class="meta">${p.category || '未分類'}</p>
                 <p class="price">$${Number(p.price).toFixed(2)}</p>
@@ -431,9 +486,10 @@ async function loadProductDetail() {
         const p = res.product;
         const inStock = Number(p.stock) > 0;
         const infoBlocks = document.getElementById('productInfoBlocks');
+        const imageUrl = fixImageUrl(p.image_url);
         container.innerHTML = `
             <div class="grid two-cols">
-                <div class="media"><img src="${p.image_url}" alt="${p.name}"></div>
+                <div class="media"><img src="${imageUrl}" alt="${p.name}"></div>
                 <div>
                     <h2>${p.name}</h2>
                     <p class="price">$${Number(p.price).toFixed(2)}</p>
@@ -512,15 +568,38 @@ function bindAdmin() {
     }
 
     // 加載訂單表格
-    async function loadOrders() {
+    async function loadOrders(filterStatus = 'all', searchKeyword = '') {
         try {
             const res = await api.get('../api/admin.php?action=list_orders');
             const ordersTable = document.getElementById('ordersTable');
             if (!ordersTable) return;
             
+            let orders = res.orders || [];
+            
+            // 按狀態篩選
+            if (filterStatus !== 'all') {
+                orders = orders.filter(o => o.status === filterStatus);
+            }
+            
+            // 按關鍵字搜尋
+            if (searchKeyword) {
+                const keyword = searchKeyword.toLowerCase();
+                orders = orders.filter(o => 
+                    String(o.order_id).includes(keyword) ||
+                    (o.name || '').toLowerCase().includes(keyword) ||
+                    (o.email || '').toLowerCase().includes(keyword)
+                );
+            }
+            
             const tbody = ordersTable.querySelector('tbody');
             tbody.innerHTML = '';
-            (res.orders || []).forEach(o => {
+            
+            if (orders.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">沒有找到符合的訂單</td></tr>';
+                return;
+            }
+            
+            orders.forEach(o => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>#${o.order_id}</td>
@@ -529,9 +608,10 @@ function bindAdmin() {
                     <td>$${Number(o.total_amount).toFixed(2)}</td>
                     <td>${o.created_at}</td>
                     <td>
-                        <select data-order="${o.order_id}">
+                        <select data-order="${o.order_id}" style="margin-right:5px;">
                             ${['pending','preparing','shipping','done'].map(s => `<option value="${s}" ${s===o.status?'selected':''}>${s}</option>`).join('')}
                         </select>
+                        <button class="btn btn-sm btn-danger delete-order" data-id="${o.order_id}" style="padding:4px 8px;">刪除</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -567,6 +647,7 @@ function bindAdmin() {
                     <td>
                         <input data-field="image_url" data-id="${p.product_id}" value="${p.image_url || ''}" placeholder="圖片URL" style="width:130px;font-size:11px;">
                         <button class="btn btn-primary" data-save="${p.product_id}" style="margin:5px 0;width:100%;">儲存</button>
+                        <button class="btn btn-danger" data-delete="${p.product_id}" style="margin:5px 0;width:100%;padding:6px 12px;font-size:12px;">刪除</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -613,6 +694,32 @@ function bindAdmin() {
         });
     }
 
+    // 訂單過滤按鈕
+    document.querySelectorAll('.order-filter-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const status = btn.getAttribute('data-status');
+            const searchInput = document.querySelector('.admin-toolbar input[type="text"]');
+            const searchKeyword = searchInput ? searchInput.value : '';
+            
+            document.querySelectorAll('.order-filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            await loadOrders(status, searchKeyword);
+        });
+    });
+    
+    // 訂單搜尋
+    const orderSearchInput = document.querySelector('.admin-toolbar input[type="text"]');
+    if (orderSearchInput) {
+        orderSearchInput.disabled = false;
+        orderSearchInput.placeholder = '搜尋訂單編號或顧客';
+        orderSearchInput.addEventListener('input', async (e) => {
+            const activeBtn = document.querySelector('.order-filter-btn.active');
+            const status = activeBtn ? activeBtn.getAttribute('data-status') : 'all';
+            await loadOrders(status, e.target.value);
+        });
+    }
+
     // 訂單表格事件監聽
     document.addEventListener('change', async (e) => {
         const orderId = e.target.getAttribute('data-order');
@@ -626,7 +733,66 @@ function bindAdmin() {
         }
     });
 
-    // 商品保存事件
+    // 訂單刪除和商品刪除事件
+    document.addEventListener('click', async (e) => {
+        // 商品保存
+        const saveId = e.target.getAttribute('data-save');
+        if (saveId) {
+            const productsTable = document.getElementById('productsTable');
+            if (productsTable) {
+                const rowInputs = productsTable.querySelectorAll(`input[data-id="${saveId}"]`);
+                const payload = { product_id: saveId };
+                rowInputs.forEach(inp => payload[inp.getAttribute('data-field')] = inp.value);
+                const res = await api.post('../api/admin.php?action=update_product', payload);
+                if (res.success) {
+                    alert('商品已儲存');
+                    await loadProducts();
+                } else {
+                    alert('儲存失敗：' + (res.error || '未知錯誤'));
+                }
+            }
+        }
+        
+        // 商品刪除
+        const deleteId = e.target.getAttribute('data-delete');
+        if (deleteId) {
+            if (confirm('確定要刪除此商品嗎？此操作無法復原。')) {
+                try {
+                    const res = await api.post('../api/admin.php?action=delete_product', { product_id: deleteId });
+                    if (res.success) {
+                        alert('商品已刪除');
+                        await loadProducts();
+                    } else {
+                        alert('刪除失敗：' + (res.error || '未知錯誤'));
+                    }
+                } catch (err) {
+                    alert('刪除失敗：' + err);
+                }
+            }
+        }
+        
+        // 訂單刪除
+        const deleteOrderId = e.target.getAttribute('data-id');
+        if (e.target.classList.contains('delete-order') && deleteOrderId) {
+            if (confirm('確定要刪除此訂單嗎？此操作無法復原。')) {
+                try {
+                    const res = await api.post('../api/admin.php?action=delete_order', { order_id: deleteOrderId });
+                    if (res.success) {
+                        alert('訂單已刪除');
+                        const activeBtn = document.querySelector('.order-filter-btn.active');
+                        const status = activeBtn ? activeBtn.getAttribute('data-status') : 'all';
+                        await loadOrders(status);
+                    } else {
+                        alert('刪除失敗：' + (res.error || '未知錯誤'));
+                    }
+                } catch (err) {
+                    alert('刪除失敗：' + err);
+                }
+            }
+        }
+    });
+
+    // 商品保存事件（保留舊的監聽方式）
     document.addEventListener('click', async (e) => {
         const saveId = e.target.getAttribute('data-save');
         if (saveId) {
@@ -1009,6 +1175,27 @@ app.getCheckoutFees = function (shippingMethod, paymentMethod) {
     return { shipping_fee, payment_fee };
 };
 
+app.checkoutCoupon = null;
+
+app.calculateCouponDiscount = function (subtotal) {
+    const coupon = app.checkoutCoupon;
+    if (!coupon) return 0;
+    const minPurchase = Number(coupon.min_purchase || 0);
+    if (subtotal < minPurchase) return 0;
+
+    if (coupon.discount_type === 'percent') {
+        return subtotal * (Number(coupon.discount_value || 0) / 100);
+    }
+    return Number(coupon.discount_value || 0);
+};
+
+app.findActiveCouponByCode = async function (couponCode) {
+    const res = await api.get('../api/lucky_wheel.php?action=list_coupons&only_active=1');
+    const coupons = res.coupons || [];
+    const normalized = String(couponCode || '').trim().toUpperCase();
+    return coupons.find(c => String(c.coupon_code || '').trim().toUpperCase() === normalized) || null;
+};
+
 app.updateCheckoutTotals = function () {
     const shippingRadio = document.querySelector('input[name="shipping_method"]:checked');
     const paymentRadio = document.querySelector('input[name="payment_method"]:checked');
@@ -1030,13 +1217,26 @@ app.updateCheckoutTotals = function () {
     const grandEl = document.getElementById('checkoutGrandTotal');
     const subtotalEl = document.getElementById('checkoutSubtotal');
     const etaEl = document.getElementById('checkoutEta');
+    const discountRow = document.getElementById('checkoutDiscountRow');
+    const discountEl = document.getElementById('checkoutDiscount');
 
     const { shipping_fee, payment_fee } = app.getCheckoutFees(shipping, payment);
-    const grand = subtotal + shipping_fee + payment_fee;
+    let discount = app.calculateCouponDiscount(subtotal);
+    if (discount > subtotal) discount = subtotal;
+    const grand = subtotal + shipping_fee + payment_fee - discount;
 
     if (subtotalEl) subtotalEl.textContent = '$' + Number(subtotal).toFixed(2);
     if (shippingFeeEl) shippingFeeEl.textContent = '$' + Number(shipping_fee).toFixed(2);
     if (paymentFeeEl) paymentFeeEl.textContent = '$' + Number(payment_fee).toFixed(2);
+    if (discountRow && discountEl) {
+        if (discount > 0) {
+            discountRow.style.display = '';
+            discountEl.textContent = '-$' + Number(discount).toFixed(2);
+        } else {
+            discountRow.style.display = 'none';
+            discountEl.textContent = '-$0.00';
+        }
+    }
     if (grandEl) grandEl.textContent = '$' + Number(grand).toFixed(2);
 
     if (etaEl) {
@@ -1098,8 +1298,57 @@ app.initCheckoutPage = function () {
     if (!placeBtn) return;
     app.loadCheckoutCart();
     app.loadCheckoutAddresses();
+    app.checkoutCoupon = null;
     const msg = document.getElementById('checkoutMessage');
+    const couponInput = document.getElementById('checkoutCouponCode');
+    const applyCouponBtn = document.getElementById('applyCouponBtn');
+    const couponMsg = document.getElementById('checkoutCouponMessage');
     let placing = false;
+
+    if (applyCouponBtn && couponInput) {
+        applyCouponBtn.addEventListener('click', async () => {
+            const code = couponInput.value.trim();
+            if (!code) {
+                if (couponMsg) {
+                    couponMsg.textContent = '請先輸入優惠券代碼';
+                    couponMsg.className = 'message error';
+                }
+                return;
+            }
+
+            try {
+                const coupon = await app.findActiveCouponByCode(code);
+                if (!coupon) {
+                    app.checkoutCoupon = null;
+                    if (couponMsg) {
+                        couponMsg.textContent = '優惠券不存在或已失效';
+                        couponMsg.className = 'message error';
+                    }
+                    app.updateCheckoutTotals();
+                    return;
+                }
+
+                app.checkoutCoupon = coupon;
+                app.updateCheckoutTotals();
+                const subtotal = Number((document.getElementById('checkoutSubtotal')?.textContent || '0').replace(/[^\d.]/g, ''));
+                const minPurchase = Number(coupon.min_purchase || 0);
+                if (couponMsg) {
+                    if (subtotal < minPurchase) {
+                        couponMsg.textContent = `已選擇優惠券 ${coupon.coupon_code}，但尚未達最低消費 $${minPurchase.toFixed(0)}`;
+                        couponMsg.className = 'message error';
+                    } else {
+                        couponMsg.textContent = `已套用優惠券 ${coupon.coupon_code}`;
+                        couponMsg.className = 'message success';
+                    }
+                }
+            } catch (err) {
+                if (couponMsg) {
+                    couponMsg.textContent = '套用優惠券失敗，請稍後再試';
+                    couponMsg.className = 'message error';
+                }
+            }
+        });
+    }
 
     const enforcePaymentRules = () => {
         const shipping = document.querySelector('input[name="shipping_method"]:checked')?.value;
@@ -1195,6 +1444,9 @@ app.initCheckoutPage = function () {
                 payment_method: paymentRadio.value,
                 selected_product_ids: checkedItems.map(item => item.product_id).join(',')
             };
+            if (app.checkoutCoupon && app.checkoutCoupon.coupon_code) {
+                payload.coupon_code = app.checkoutCoupon.coupon_code;
+            }
             const res = await api.post('../api/orders.php?action=place_order', payload);
             if (res.success) {
                 if (msg) {
@@ -1230,23 +1482,34 @@ app.statusText = function (status) {
     }
 };
 
+app.escapeHtml = function (value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[char]));
+};
+
 app.loadOrders = async function () {
     const wrap = document.getElementById('ordersList');
     if (!wrap) return;
     const res = await api.get('../api/orders.php?action=list_my_orders');
     const orders = res.orders || [];
     if (!orders.length) {
-        wrap.innerHTML = '<p>目前沒有訂單。</p>';
+        wrap.innerHTML = '<div class="orders-empty">目前還沒有訂單，先去挑選喜歡的商品吧。</div>';
         return;
     }
-    let html = '<table class="data-table"><thead><tr><th>訂單編號</th><th>時間</th><th>金額</th><th>狀態</th><th>操作</th></tr></thead><tbody>';
+    let html = '<div class="orders-table-wrap"><table class="orders-table"><thead><tr><th>訂單編號</th><th>時間</th><th>金額</th><th>狀態</th><th>操作</th></tr></thead><tbody>';
     orders.forEach(o => {
+        const statusClass = `status-${o.status || 'pending'}`;
         html += `
             <tr data-order="${o.order_id}">
-                <td>${o.order_id}</td>
-                <td>${o.created_at}</td>
-                <td>$${Number(o.total_price).toFixed(2)}</td>
-                <td>${app.statusText(o.status)}</td>
+                <td>#${o.order_id}</td>
+                <td>${app.escapeHtml(o.created_at)}</td>
+                <td class="orders-amount">$${Number(o.total_price).toFixed(2)}</td>
+                <td><span class="order-status ${statusClass}">${app.statusText(o.status)}</span></td>
                 <td><button class="btn btn-secondary btn-sm view-order" data-id="${o.order_id}">查看明細</button></td>
             </tr>
             <tr class="order-detail" data-detail="${o.order_id}" style="display:none;">
@@ -1254,7 +1517,7 @@ app.loadOrders = async function () {
             </tr>
         `;
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     wrap.innerHTML = html;
 };
 
@@ -1271,22 +1534,32 @@ app.initOrdersPage = function () {
         if (!detailRow || !detailBox) return;
         if (detailRow.style.display !== 'none') {
             detailRow.style.display = 'none';
+            btn.textContent = '查看明細';
             return;
         }
+        detailBox.innerHTML = '<div class="order-detail-card">明細載入中...</div>';
+        detailRow.style.display = '';
         const res = await api.get(`../api/orders.php?action=get_order_detail&order_id=${orderId}`);
         if (res.order) {
             const items = res.items || [];
-            let list = `<p>狀態：${app.statusText(res.order.status)}</p>`;
-            list += `<p>金額：$${Number(res.order.total_price).toFixed(2)}</p>`;
-            if (res.order.payment_method) list += `<p>支付方式：${res.order.payment_method}</p>`;
-            if (res.order.shipping_method) list += `<p>送貨方式：${res.order.shipping_method}</p>`;
-            list += '<ul>';
+            const statusClass = `status-${res.order.status || 'pending'}`;
+            let list = '<div class="order-detail-card">';
+            list += '<div class="order-detail-meta">';
+            list += `<div><span>狀態</span><strong><span class="order-status ${statusClass}">${app.statusText(res.order.status)}</span></strong></div>`;
+            list += `<div><span>金額</span><strong>$${Number(res.order.total_price).toFixed(2)}</strong></div>`;
+            list += `<div><span>支付方式</span><strong>${app.escapeHtml(res.order.payment_method || '未提供')}</strong></div>`;
+            list += `<div><span>送貨方式</span><strong>${app.escapeHtml(res.order.shipping_method || '未提供')}</strong></div>`;
+            list += '</div>';
+            list += '<p class="order-items-title">商品明細</p>';
+            list += '<ul class="order-items-list">';
             items.forEach(i => {
-                list += `<li>${i.name} x ${i.quantity} - $${Number(i.price).toFixed(2)}</li>`;
+                list += `<li><span>${app.escapeHtml(i.name)} × ${Number(i.quantity)}</span><strong>$${Number(i.price).toFixed(2)}</strong></li>`;
             });
             list += '</ul>';
+            list += '</div>';
             detailBox.innerHTML = list;
             detailRow.style.display = '';
+            btn.textContent = '收合明細';
         }
     });
 };
@@ -1296,4 +1569,5 @@ document.addEventListener('DOMContentLoaded', () => {
     app.initCartPage();
     app.initCheckoutPage();
     app.initOrdersPage();
+    maybeShowLuckyWheelAfterLogin();
 });
