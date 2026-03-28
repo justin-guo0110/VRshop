@@ -207,7 +207,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
                     card.className = 'product-card';
                     card.innerHTML = `
                         <div class="featured-card-media">
-                            <img src="${typeof fixImageUrl === 'function' ? fixImageUrl(product.image_url) : (product.image_url ? '../' + product.image_url : 'https://via.placeholder.com/300x200?text=Product')}" alt="${product.name}">
+                            <img src="${typeof fixImageUrl === 'function' ? fixImageUrl(product.image_url) : (product.image_url || 'https://via.placeholder.com/300x200?text=No+Image')}" alt="${product.name}" onerror="this.onerror=null;this.src='https://via.placeholder.com/300x200?text=No+Image';">
                         </div>
                         <div class="featured-card-body">
                             <h3>${product.name}</h3>

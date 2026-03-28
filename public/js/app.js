@@ -18,20 +18,16 @@ const api = {
     }
 };
 
-// Helper function to fix image URLs based on current page location
+const DEFAULT_PRODUCT_IMAGE = 'https://via.placeholder.com/300x200?text=No+Image';
+
+// Keep the database image_url as-is; only fall back when it's empty.
 function fixImageUrl(imageUrl) {
-    if (!imageUrl) return 'https://via.placeholder.com/300x200?text=No+Image';
-    imageUrl = String(imageUrl).trim().replace(/\\/g, '/');
-    // If it's already a full URL or data URI, return as-is
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) return imageUrl;
-    if (imageUrl.startsWith('./')) {
-        imageUrl = imageUrl.slice(2);
-    }
-    // If it's a relative path and doesn't start with /, add ../ prefix for paths from views/
-    if (!imageUrl.startsWith('/')) {
-        return '../' + imageUrl;
-    }
-    return imageUrl;
+    if (!imageUrl) return DEFAULT_PRODUCT_IMAGE;
+    return String(imageUrl).trim().replace(/\\/g, '/');
+}
+
+function getImageFallbackAttr() {
+    return `this.onerror=null;this.src='${DEFAULT_PRODUCT_IMAGE}';`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -404,7 +400,7 @@ async function bindSearch() {
             const inStock = Number(p.stock) > 0;
             const imageUrl = fixImageUrl(p.image_url);
             card.innerHTML = `
-                <div class="media"><img src="${imageUrl}" alt="${p.name}"></div>
+                <div class="media"><img src="${imageUrl}" alt="${p.name}" onerror="${getImageFallbackAttr()}"></div>
                 <h3>${p.name}</h3>
                 <p class="meta">${p.category || '未分類'}</p>
                 <p class="price">$${Number(p.price).toFixed(2)}</p>
@@ -489,7 +485,7 @@ async function loadProductDetail() {
         const imageUrl = fixImageUrl(p.image_url);
         container.innerHTML = `
             <div class="grid two-cols">
-                <div class="media"><img src="${imageUrl}" alt="${p.name}"></div>
+                <div class="media"><img src="${imageUrl}" alt="${p.name}" onerror="${getImageFallbackAttr()}"></div>
                 <div>
                     <h2>${p.name}</h2>
                     <p class="price">$${Number(p.price).toFixed(2)}</p>
