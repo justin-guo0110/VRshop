@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $currentUser = $_SESSION['user'] ?? null;
- var_dump($_SESSION['user']);
+ //var_dump($_SESSION['user']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
