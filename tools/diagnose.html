@@ -46,7 +46,7 @@
             results.innerHTML = '';
             
             try {
-                const res = await fetch('./api/operations.php?action=list_products', {
+                const res = await fetch('../api/operations.php?action=list_products', {
                     credentials: 'include'
                 });
                 const data = await res.json();
@@ -58,7 +58,7 @@
                     log('API 端點 - list_products', `✅ 成功，返回 ${count} 個商品`);
                 }
                 
-                const res2 = await fetch('./api/operations.php?action=list_orders', {
+                const res2 = await fetch('../api/operations.php?action=list_orders', {
                     credentials: 'include'
                 });
                 const data2 = await res2.json();
@@ -80,7 +80,7 @@
             // 檢查 operations.php 頁面
             const iframe = document.createElement('iframe');
             iframe.style.display = 'none';
-            iframe.src = './views/operations.php';
+            iframe.src = '../views/operations.php';
             iframe.onload = function() {
                 try {
                     const doc = iframe.contentDocument;
@@ -108,7 +108,7 @@
             results.innerHTML = '';
             
             try {
-                const res = await fetch('./api/operations.php?action=list_products', {
+                const res = await fetch('../api/operations.php?action=list_products', {
                     credentials: 'include'
                 });
                 const data = await res.json();
@@ -123,7 +123,7 @@
             results.innerHTML = '';
             
             try {
-                const res = await fetch('./api/operations.php?action=list_orders', {
+                const res = await fetch('../api/operations.php?action=list_orders', {
                     credentials: 'include'
                 });
                 const data = await res.json();

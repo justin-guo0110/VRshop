@@ -63,7 +63,7 @@
             
             try {
                 // 後台数据
-                const backendRes = await fetch('./api/operations.php?action=list_products', {
+                const backendRes = await fetch('../api/operations.php?action=list_products', {
                     credentials: 'include'
                 });
                 const backendData = await backendRes.json();
@@ -71,7 +71,7 @@
                 status.innerHTML = '⏳ 正在加載用戶端数据...';
                 
                 // 用戶端数据  
-                const frontendRes = await fetch('./api/shop.php?action=search_products&page_size=100', {
+                const frontendRes = await fetch('../api/shop.php?action=search_products&page_size=100', {
                     credentials: 'include'
                 });
                 const frontendData = await frontendRes.json();
@@ -166,10 +166,10 @@
             status.innerHTML = '⏳ 檢查 API...';
             
             try {
-                const backends = await fetch('./api/operations.php?action=list_products', {
+                const backends = await fetch('../api/operations.php?action=list_products', {
                     credentials: 'include'
                 });
-                const fronts = await fetch('./api/shop.php?action=search_products', {
+                const fronts = await fetch('../api/shop.php?action=search_products', {
                     credentials: 'include'
                 });
                 
