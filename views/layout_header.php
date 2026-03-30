@@ -3,6 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $currentUser = $_SESSION['user'] ?? null;
+ var_dump($_SESSION['user']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -29,6 +30,12 @@ $currentUser = $_SESSION['user'] ?? null;
                     <?php if ($currentUser): ?>
                         <a href="../views/cart.php">購物車</a>
                         <a href="../views/orders.php">訂單</a>
+                        <?php
+                            $memberId = $currentUser['member_id'] ?? 0;
+                            echo "<!-- debug member_id: " . $memberId . " -->"; // 在瀏覽器原始碼看
+                            $vrUrl = "vrmall://launch?member_id=" . $memberId;
+                        ?>
+                        <a class="btn btn-vr" href="<?php echo $vrUrl; ?>">🥽 進入 VR 商城</a>
                     <?php endif; ?>
                 <?php endif; ?>
             </nav>
@@ -57,3 +64,5 @@ $currentUser = $_SESSION['user'] ?? null;
         </div>
     </header>
     <main class="container">
+
+   

@@ -1,0 +1,18 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\vrmall]
+@="VR Mall Application"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\vrmall\DefaultIcon]
+@="C:\\Users\\4142\\Documents\\VRMall\\shopping one.exe,1"
+
+[HKEY_CLASSES_ROOT\vrmall\shell]
+
+[HKEY_CLASSES_ROOT\vrmall\shell\open]
+
+[HKEY_CLASSES_ROOT\vrmall\shell\open\command]
+@="\"C:\\Users\\4142\\Documents\\VRMall\\shopping one.exe\" \"%1\""
+```
+
+把上面EXE檔的位置改成你放的地方
