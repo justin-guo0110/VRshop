@@ -235,7 +235,7 @@
 .grand-total {
     margin-top: 6px;
     padding-top: 14px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid #d1d5db !important;
     font-size: 1.08rem;
 }
 
@@ -444,4 +444,23 @@
     .checkout-item-subtotal {
         text-align: left;
     }
+}
+#checkoutTotals > div,
+#checkoutTotals .totals-section {
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    border-left: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+}
+
+#checkoutTotals > div::before,
+#checkoutTotals > div::after,
+#checkoutTotals .totals-section::before,
+#checkoutTotals .totals-section::after {
+    content: none !important;
+    display: none !important;
 }
