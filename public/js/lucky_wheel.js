@@ -1,45 +1,48 @@
-/* 幸运转盘系统 */
+/* 幸運轉盤系統 */
 
-// 创建转盘HTML
+// 建立轉盤 HTML
 function createLuckyWheelHTML() {
     return `
     <div id="luckyWheelModal" class="lucky-wheel-modal" style="display:none;">
         <div class="lucky-wheel-container">
             <div class="lucky-wheel-header">
-                <h2>🎉 幸运转盘</h2>
+                <h2>🎉 幸運轉盤</h2>
                 <button class="close-btn" onclick="closeLuckyWheel()">&times;</button>
             </div>
             
             <div class="lucky-wheel-content">
                 <div class="spin-info" id="spinInfo">
-                    <p>加载中...</p>
+                    <p>載入中...</p>
                 </div>
                 
                 <div class="wheel-canvas">
                     <svg id="luckyWheelSvg" width="320" height="320" viewBox="0 0 320 320" style="filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1));">
                         <g id="wheelGroup">
-                            <!-- 8个奖项扇形 -->
+                            <!-- 8 個獎項扇形 -->
                         </g>
                         <!-- 中心圆 -->
                         <circle cx="160" cy="160" r="35" fill="white" stroke="#333" stroke-width="2"/>
-                        <text x="160" y="165" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">转</text>
+                        <text x="160" y="165" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">轉</text>
                     </svg>
-                    <!-- 转盘指针 -->
+                    <!-- 轉盤指針 -->
                     <div class="wheel-pointer"></div>
                 </div>
                 
                 <div class="spin-button-area">
                     <button id="spinBtn" class="btn btn-primary btn-lg" onclick="performSpin()" style="width:100%;padding:15px;font-size:16px;border-radius:8px;">
-                        立即转盘
+                        立即轉盤
                     </button>
                 </div>
                 
                 <div id="spinResult" class="spin-result" style="display:none;text-align:center;margin-top:15px;">
-                    <h3 id="resultTitle">恭喜获奖！</h3>
+                    <h3 id="resultTitle">恭喜獲獎！</h3>
                     <p id="resultMsg" style="margin:10px 0;font-size:14px;color:#666;"></p>
                     <div id="resultCoupon" style="display:none;background:#fef3c7;border:1px solid #fcd34d;padding:10px;border-radius:6px;margin:10px 0;">
-                        <p style="margin:5px 0;font-size:12px;color:#92400e;">优惠券代码</p>
+                        <p style="margin:5px 0;font-size:12px;color:#92400e;">優惠券代碼</p>
                         <p id="couponCode" style="margin:5px 0;font-size:16px;font-weight:bold;color:#b45309;font-family:monospace;"></p>
+                    </div>
+                    <div id="resultActions" style="display:none;margin-top:10px;">
+                        <button id="goShoppingBtn" class="btn btn-primary" type="button" style="padding:10px 16px;border-radius:8px;" onclick="goToProductsPage()">來去逛逛</button>
                     </div>
                 </div>
             </div>
@@ -48,19 +51,19 @@ function createLuckyWheelHTML() {
     `;
 }
 
-// 初始化转盘（加载信息并绘制）
+// 初始化轉盤（載入資訊並繪製）
 async function initLuckyWheel() {
     try {
         const response = await api.get('../api/lucky_wheel.php?action=get_spin_info');
         updateSpinInfo(response);
         drawWheel(response.prizes);
     } catch (error) {
-        console.error('初始化转盘失败:', error);
-        document.getElementById('spinInfo').innerHTML = '<p style="color:red;">加载失败，请刷新重试</p>';
+        console.error('初始化轉盤失敗:', error);
+        document.getElementById('spinInfo').innerHTML = '<p style="color:red;">載入失敗，請重新整理後重試</p>';
     }
 }
 
-// 更新转盘信息显示
+    // 更新轉盤資訊顯示
 function updateSpinInfo(data) {
     const info = document.getElementById('spinInfo');
     if (!info) return;
@@ -69,24 +72,24 @@ function updateSpinInfo(data) {
     let infoHtml = `
         <div class="spin-stats">
             <div class="stat-item">
-                <span class="stat-label">已消费</span>
+                <span class="stat-label">已消費</span>
                 <span class="stat-value">¥${data.total_spent.toFixed(2)}</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">转盘次数</span>
+                <span class="stat-label">轉盤次數</span>
                 <span class="stat-value">${data.spins_today}/${data.spin_count}</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">剩余次数</span>
+                <span class="stat-label">剩餘次數</span>
                 <span class="stat-value" style="color:${remaining > 0 ? '#10b981' : '#ef4444'};">${remaining}</span>
             </div>
         </div>
     `;
     
     if (!data.can_spin) {
-        infoHtml += '<p style="text-align:center;color:#666;font-size:13px;margin-top:10px;">今日转盘次数已用完 💤</p>';
+        infoHtml += '<p style="text-align:center;color:#666;font-size:13px;margin-top:10px;">今日轉盤次數已用完 💤</p>';
     } else {
-        infoHtml += `<p style="text-align:center;color:#10b981;font-size:13px;margin-top:10px;">✨ 还可转盘${remaining}次！</p>`;
+        infoHtml += `<p style="text-align:center;color:#10b981;font-size:13px;margin-top:10px;">✨ 還可轉盤 ${remaining} 次！</p>`;
     }
     
     info.innerHTML = infoHtml;
@@ -95,11 +98,11 @@ function updateSpinInfo(data) {
     const btn = document.getElementById('spinBtn');
     if (btn) {
         btn.disabled = !data.can_spin;
-        btn.textContent = data.can_spin ? '立即转盘' : '今日已转完';
+        btn.textContent = data.can_spin ? '立即轉盤' : '今日已轉完';
     }
 }
 
-// 绘制转盘
+    // 繪製轉盤
 function drawWheel(prizes) {
     const svg = document.getElementById('luckyWheelSvg') || document.querySelector('svg[id="luckyWheelSvg"]');
     if (!svg) return;
@@ -107,7 +110,7 @@ function drawWheel(prizes) {
     const wheelGroup = svg.querySelector('#wheelGroup');
     if (!wheelGroup) return;
     
-    wheelGroup.innerHTML = ''; // 清空之前的条目
+    wheelGroup.innerHTML = ''; // 清空先前的項目
     
     const centerX = 160;
     const centerY = 160;
@@ -133,7 +136,7 @@ function drawWheel(prizes) {
         
         wheelGroup.appendChild(path);
         
-        // 添加文本标签
+        // 加入文字標籤
         const midAngle = (startAngle + endAngle) / 2;
         const textRadius = radius * 0.65;
         const textX = centerX + textRadius * Math.cos(midAngle);
@@ -148,7 +151,7 @@ function drawWheel(prizes) {
         text.setAttribute('font-weight', 'bold');
         text.setAttribute('fill', 'white');
         text.setAttribute('pointer-events', 'none');
-        // 旋转文本以适应扇形
+        // 旋轉文字以符合扇形方向
         text.setAttribute('transform', `rotate(${(midAngle * 180 / Math.PI)}, ${textX}, ${textY})`);
         text.textContent = prize.name;
         
@@ -156,13 +159,13 @@ function drawWheel(prizes) {
     });
 }
 
-// 执行转盘抽奖
+// 執行轉盤抽獎
 async function performSpin() {
     const btn = document.getElementById('spinBtn');
     if (!btn || btn.disabled) return;
     
     btn.disabled = true;
-    btn.textContent = '转动中...';
+    btn.textContent = '轉動中...';
     
     try {
         const response = await api.post('../api/lucky_wheel.php?action=spin', {});
@@ -186,22 +189,22 @@ async function performSpin() {
             }
 
             showSpinResult(response);
-            // 刷新转盘信息
+            // 重新整理轉盤資訊
             await new Promise(resolve => setTimeout(resolve, 1000));
             initLuckyWheel();
         } else {
-            showSpinError(response.error || '转盘失败，请稍后重试');
+            showSpinError(response.error || '轉盤失敗，請稍後重試');
         }
     } catch (error) {
-        console.error('转盘错误:', error);
-        showSpinError('转盘发生错误，请稍后重试');
+        console.error('轉盤錯誤:', error);
+        showSpinError('轉盤發生錯誤，請稍後重試');
     } finally {
         btn.disabled = false;
-        btn.textContent = '立即转盘';
+        btn.textContent = '立即轉盤';
     }
 }
 
-// 显示转盘结果
+// 顯示轉盤結果
 function showSpinResult(data) {
     const resultDiv = document.getElementById('spinResult');
     if (!resultDiv) return;
@@ -211,11 +214,11 @@ function showSpinResult(data) {
     
     let msg = '';
     if (data.prize.discount_type === 'percent') {
-        msg = `获得${data.prize.value}%折扣优惠券`;
+        msg = `獲得 ${data.prize.value}% 折扣優惠券`;
     } else if (data.prize.discount_type === 'fixed') {
-        msg = `获得¥${data.prize.value}折扣优惠券`;
+        msg = `獲得 ¥${data.prize.value} 折扣優惠券`;
     } else if (data.prize.discount_type === 'bonus') {
-        msg = '获得额外一次转盘机会！';
+        msg = '獲得額外一次轉盤機會！';
     }
     
     document.getElementById('resultMsg').textContent = msg;
@@ -224,23 +227,33 @@ function showSpinResult(data) {
         const couponDiv = document.getElementById('resultCoupon');
         couponDiv.style.display = 'block';
         document.getElementById('couponCode').textContent = data.coupon.coupon_code;
+        const actions = document.getElementById('resultActions');
+        if (actions) actions.style.display = 'block';
     } else {
         document.getElementById('resultCoupon').style.display = 'none';
+        const actions = document.getElementById('resultActions');
+        if (actions) actions.style.display = 'none';
     }
 }
 
-// 显示转盘错误
+// 顯示轉盤錯誤
 function showSpinError(errorMsg) {
     const resultDiv = document.getElementById('spinResult');
     if (!resultDiv) return;
     
     resultDiv.style.display = 'block';
-    document.getElementById('resultTitle').textContent = '转盘失败';
+    document.getElementById('resultTitle').textContent = '轉盤失敗';
     document.getElementById('resultMsg').textContent = errorMsg;
     document.getElementById('resultCoupon').style.display = 'none';
+    const actions = document.getElementById('resultActions');
+    if (actions) actions.style.display = 'none';
 }
 
-// 打开转盘弹窗
+function goToProductsPage() {
+    window.location.href = './products.php';
+}
+
+// 開啟轉盤彈窗
 function openLuckyWheel() {
     const modal = document.getElementById('luckyWheelModal');
     if (!modal) {
@@ -256,7 +269,7 @@ function openLuckyWheel() {
     }
 }
 
-// 关闭转盘弹窗
+// 關閉轉盤彈窗
 function closeLuckyWheel() {
     const modal = document.getElementById('luckyWheelModal');
     if (modal) {
@@ -264,7 +277,7 @@ function closeLuckyWheel() {
     }
 }
 
-// 添加转盘CSS样式
+// 加入轉盤 CSS 樣式
 function addLuckyWheelStyles() {
     const styleId = 'luckyWheelStyles';
     if (document.getElementById(styleId)) return;

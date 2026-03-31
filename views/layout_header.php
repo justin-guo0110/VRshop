@@ -25,11 +25,9 @@ $currentUser = $_SESSION['user'] ?? null;
                 <?php if (!($currentUser && ($currentUser['role'] ?? '') === 'admin')): ?>
                     <a href="../views/index.php">首頁</a>
                     <a href="../views/products.php">商品</a>
-                    <a href="../views/profile.php">個人資料</a>
 
                     <?php if ($currentUser): ?>
                         <a href="../views/cart.php">購物車</a>
-                        <a href="../views/orders.php">訂單</a>
                         <?php
                             $memberId = $currentUser['member_id'] ?? 0;
                             echo "<!-- debug member_id: " . $memberId . " -->"; // 在瀏覽器原始碼看
@@ -47,6 +45,7 @@ $currentUser = $_SESSION['user'] ?? null;
                             <a href="../views/admin.php?page=dashboard">📊 銷售看板</a>
                             <a href="../views/admin.php?page=products">📦 商品管理</a>
                             <a href="../views/admin.php?page=orders">📋 訂單管理</a>
+                            <a href="../views/admin.php?page=refunds">↩️ 退單審核</a>
                             <a href="../views/admin.php?page=inventory">📚 庫存管理</a>
                             <a href="../views/admin.php?page=customers">👥 客戶管理</a>
                             <a href="../views/admin.php?page=promotions">🎁 促銷管理</a>
@@ -55,8 +54,26 @@ $currentUser = $_SESSION['user'] ?? null;
                     </div>
                 <?php endif; ?>
                 <?php if ($currentUser): ?>
-                    <span>歡迎 <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?></span>
-                    <button class="btn btn-secondary" id="logoutBtn">登出</button>
+                    <div class="nav-dropdown user-welcome-dropdown" id="userWelcomeDropdown">
+                        <button type="button" class="nav-dropdown-toggle welcome-toggle" id="userWelcomeToggle" aria-expanded="false" aria-controls="userWelcomeMenu">
+                            歡迎 <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?>
+                            <span style="font-size:11px;opacity:.9;">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu user-dropdown-menu" id="userWelcomeMenu">
+                            <a href="../views/profile.php">個人資料</a>
+                            <a href="../views/coupons.php">我的優惠券</a>
+                            <?php if (($currentUser['role'] ?? '') !== 'admin'): ?>
+                                <a href="../views/orders.php">我的訂單</a>
+                            <?php endif; ?>
+                            <div class="coupon-dropdown-block">
+                                <div class="coupon-dropdown-title">我的優惠券</div>
+                                <div id="headerCouponList" class="coupon-dropdown-list">
+                                    <p class="coupon-dropdown-loading">載入中...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" id="logoutBtn" type="button">登出</button>
                 <?php else: ?>
                     <a class="btn" href="../views/login.php">登入</a>
                 <?php endif; ?>

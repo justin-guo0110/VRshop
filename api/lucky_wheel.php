@@ -112,8 +112,8 @@ function get_spin_info(array $user): void {
     $result = $stmt->get_result()->fetch_assoc();
     $total_spent = floatval($result['total'] ?? 0);
 
-    // 购物满500可以转一次，按此类推
-    $spin_count = intval($total_spent / 500);
+    // 每個帳號每天固定可轉 1 次（不看消費）
+    $spin_count = 1;
 
     // 查询今天已转的次数
     $today = date('Y-m-d');
@@ -123,14 +123,17 @@ function get_spin_info(array $user): void {
     $today_result = $stmt->get_result()->fetch_assoc();
     $spins_today = intval($today_result['spins_today'] ?? 0);
 
-    $can_spin = $spin_count > $spins_today;
+    $can_spin = $spins_today < 1;
+    $status_reason = $can_spin ? 'can_spin' : 'used_up';
 
     respond_json([
         'total_spent' => $total_spent,
         'spin_count' => $spin_count,
         'spins_today' => $spins_today,
         'can_spin' => $can_spin,
-        'remaining_spins' => max(0, $spin_count - $spins_today),
+        'remaining_spins' => max(0, 1 - $spins_today),
+        'status_reason' => $status_reason,
+        'amount_to_next_spin' => 0,
         'prizes' => get_wheel_prizes()
     ]);
 }
@@ -145,7 +148,7 @@ function perform_spin(array $user): void {
     // 验证用户是否有转盘次数
     $info = get_spin_info_data($db, $member_id);
     if (!$info['can_spin']) {
-        respond_json(['error' => '今日转盘次数已用完'], 422);
+        respond_json(['error' => '今日轉盤次數已用完'], 422);
     }
 
     // 随机选择奖项（加权随机，让好奖项概率更低）
@@ -159,7 +162,7 @@ function perform_spin(array $user): void {
     $coupon_id = null;
     $coupon_id = create_coupon($db, $member_id, $prize);
     if (!$coupon_id) {
-        respond_json(['error' => '生成优惠券失败'], 500);
+        respond_json(['error' => '產生優惠券失敗'], 500);
     }
 
     // 记录转盘记录
@@ -173,10 +176,10 @@ function perform_spin(array $user): void {
             'prize' => $prize,
             'prize_index' => $selected_index,
             'coupon' => get_coupon_detail($db, $coupon_id),
-            'message' => '恭喜！获得優惠券！'
+            'message' => '恭喜！獲得優惠券！'
         ]);
     } else {
-        respond_json(['error' => '转盘失败，请稍后重试'], 500);
+        respond_json(['error' => '轉盤失敗，請稍後重試'], 500);
     }
 }
 
@@ -202,8 +205,8 @@ function get_spin_info_data($db, $member_id): array {
     $result = $stmt->get_result()->fetch_assoc();
     $total_spent = floatval($result['total'] ?? 0);
 
-    // 购物满500可以转一次，按此类推
-    $spin_count = intval($total_spent / 500);
+    // 每個帳號每天固定可轉 1 次（不看消費）
+    $spin_count = 1;
 
     // 查询今天已转的次数
     $today = date('Y-m-d');
@@ -213,14 +216,17 @@ function get_spin_info_data($db, $member_id): array {
     $today_result = $stmt->get_result()->fetch_assoc();
     $spins_today = intval($today_result['spins_today'] ?? 0);
 
-    $can_spin = $spin_count > $spins_today;
+    $can_spin = $spins_today < 1;
+    $status_reason = $can_spin ? 'can_spin' : 'used_up';
 
     return [
         'total_spent' => $total_spent,
         'spin_count' => $spin_count,
         'spins_today' => $spins_today,
         'can_spin' => $can_spin,
-        'remaining_spins' => max(0, $spin_count - $spins_today)
+        'remaining_spins' => max(0, 1 - $spins_today),
+        'status_reason' => $status_reason,
+        'amount_to_next_spin' => 0
     ];
 }
 

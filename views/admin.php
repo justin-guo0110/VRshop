@@ -84,7 +84,7 @@
                     </div>
                     <div class="order-status-filters">
                         <button type="button" class="order-filter-btn active" data-status="all">全部</button>
-                        <button type="button" class="order-filter-btn" data-status="pending">已接單</button>
+                        <button type="button" class="order-filter-btn" data-status="accepted">已接單</button>
                         <button type="button" class="order-filter-btn" data-status="preparing">準備中</button>
                         <button type="button" class="order-filter-btn" data-status="shipping">運送中</button>
                         <button type="button" class="order-filter-btn" data-status="done">已完成</button>
@@ -93,6 +93,30 @@
                         <thead>
                             <tr>
                                 <th>ID</th><th>顧客</th><th>狀態</th><th>金額</th><th>日期</th><th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 退單審核頁面 -->
+            <div id="refundsPage" class="admin-page">
+                <div class="admin-card">
+                    <h3>↩️ 退單審核</h3>
+                    <div class="admin-toolbar" style="gap:10px;flex-wrap:wrap;">
+                        <input type="text" id="refundSearchInput" placeholder="搜尋申請編號 / 訂單編號 / 顧客" class="admin-input">
+                    </div>
+                    <div class="order-status-filters" id="refundStatusFilters">
+                        <button type="button" class="refund-filter-btn active" data-status="pending">待審核</button>
+                        <button type="button" class="refund-filter-btn" data-status="approved">已同意</button>
+                        <button type="button" class="refund-filter-btn" data-status="rejected">已拒絕</button>
+                        <button type="button" class="refund-filter-btn" data-status="all">全部</button>
+                    </div>
+                    <table class="admin-table" id="refundsTable">
+                        <thead>
+                            <tr>
+                                <th>申請ID</th><th>訂單ID</th><th>顧客</th><th>原因/補充</th><th>申請時間</th><th>狀態</th><th>操作</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -276,14 +300,24 @@ const opsApi = {
 };
 
 const orderStatusLabels = {
-    pending: '已接單',
+    pending: '已接單',      // 舊數據相容
+    accepted: '已接單',
     preparing: '準備中',
     shipping: '運送中',
-    done: '已完成'
+    done: '已完成',
+    cancelled: '已取消'
 };
 
 let currentOrderStatus = 'all';
 let currentOrderKeyword = '';
+let currentRefundStatus = 'pending';
+let currentRefundKeyword = '';
+
+const refundStatusLabels = {
+    pending: '待審核',
+    approved: '已同意',
+    rejected: '已拒絕'
+};
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, function (char) {
@@ -330,6 +364,23 @@ document.addEventListener('DOMContentLoaded', function() {
             loadOrders();
         });
     });
+
+    const refundSearchInput = document.getElementById('refundSearchInput');
+    if (refundSearchInput) {
+        refundSearchInput.addEventListener('input', function () {
+            currentRefundKeyword = refundSearchInput.value.trim();
+            loadRefundRequests();
+        });
+    }
+
+    document.querySelectorAll('#refundsPage .refund-filter-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            currentRefundStatus = btn.getAttribute('data-status') || 'pending';
+            document.querySelectorAll('#refundsPage .refund-filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadRefundRequests();
+        });
+    });
 });
 
 // 顯示指定頁面
@@ -346,6 +397,7 @@ function showPage(page) {
         if (page === 'dashboard') loadDashboard();
         else if (page === 'products') loadProducts();
         else if (page === 'orders') loadOrders();
+        else if (page === 'refunds') loadRefundRequests();
         else if (page === 'inventory') loadInventory();
         else if (page === 'customers') loadCustomers();
         else if (page === 'promotions') loadPromotions();
@@ -641,7 +693,7 @@ async function loadOrders() {
 
         orders.forEach(o => {
             const tr = document.createElement('tr');
-            const status = o.status || 'pending';
+            const status = o.status || 'accepted';
             tr.innerHTML = `
                 <td>#${escapeHtml(o.order_id)}</td>
                 <td>${escapeHtml(o.name || o.email || '-')}</td>
@@ -650,7 +702,7 @@ async function loadOrders() {
                 <td>${escapeHtml(o.created_at || '-')}</td>
                 <td>
                     <select class="order-status-select" data-order-id="${escapeHtml(o.order_id)}" style="margin-right:5px;">
-                        ${['pending', 'preparing', 'shipping', 'done'].map(s => `<option value="${s}" ${s === status ? 'selected' : ''}>${orderStatusLabels[s]}</option>`).join('')}
+                        ${['accepted', 'preparing', 'shipping', 'done', 'cancelled'].map(s => `<option value="${s}" ${s === status ? 'selected' : ''}>${orderStatusLabels[s]}</option>`).join('')}
                     </select>
                     <button class="btn btn-sm btn-danger delete-order-btn" data-order-id="${escapeHtml(o.order_id)}" style="padding:4px 8px;">刪除</button>
                 </td>
@@ -701,6 +753,106 @@ async function loadOrders() {
         });
     } catch (error) {
         console.error('加載訂單:', error);
+    }
+}
+
+async function loadRefundRequests() {
+    try {
+        const data = await opsApi.get('../api/admin.php?action=list_refund_requests');
+        const allRequests = data.requests || [];
+        const tbody = document.querySelector('#refundsTable tbody');
+        if (!tbody) return;
+
+        let requests = allRequests;
+        if (currentRefundStatus !== 'all') {
+            requests = requests.filter(r => r.status === currentRefundStatus);
+        }
+
+        if (currentRefundKeyword !== '') {
+            const keyword = currentRefundKeyword.toLowerCase();
+            requests = requests.filter(r => {
+                const requestId = String(r.request_id || '').toLowerCase();
+                const orderId = String(r.order_id || '').toLowerCase();
+                const name = String(r.member_name || '').toLowerCase();
+                const email = String(r.member_email || '').toLowerCase();
+                return requestId.includes(keyword) || orderId.includes(keyword) || name.includes(keyword) || email.includes(keyword);
+            });
+        }
+
+        tbody.innerHTML = '';
+        if (requests.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#6b7280;">目前沒有符合條件的退單申請</td></tr>';
+            return;
+        }
+
+        requests.forEach(r => {
+            const tr = document.createElement('tr');
+            const status = String(r.status || 'pending');
+            const reason = escapeHtml(r.reason || '-');
+            const note = escapeHtml(r.note || '');
+            const reviewNote = escapeHtml(r.review_note || '');
+            const canReview = status === 'pending';
+
+            tr.innerHTML = `
+                <td>#${escapeHtml(r.request_id)}</td>
+                <td>#${escapeHtml(r.order_id)}</td>
+                <td>
+                    <div>${escapeHtml(r.member_name || '-')}</div>
+                    <small style="color:#64748b;">${escapeHtml(r.member_email || '-')}</small>
+                </td>
+                <td>
+                    <div style="font-weight:600;">${reason}</div>
+                    <small style="color:#64748b;">${note || '-'}</small>
+                </td>
+                <td>${escapeHtml(r.created_at || '-')}</td>
+                <td>
+                    <span class="refund-admin-status refund-admin-${status}">${escapeHtml(refundStatusLabels[status] || status)}</span>
+                    ${reviewNote ? `<div style="margin-top:6px;color:#64748b;"><small>審核備註：${reviewNote}</small></div>` : ''}
+                </td>
+                <td>
+                    ${canReview ? `
+                        <div class="refund-admin-actions">
+                            <button type="button" class="btn btn-sm btn-primary review-refund-btn" data-request-id="${escapeHtml(r.request_id)}" data-decision="approved">同意</button>
+                            <button type="button" class="btn btn-sm btn-danger review-refund-btn" data-request-id="${escapeHtml(r.request_id)}" data-decision="rejected">拒絕</button>
+                        </div>
+                    ` : '<span style="color:#64748b;">已完成審核</span>'}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        tbody.querySelectorAll('.review-refund-btn').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const requestId = btn.getAttribute('data-request-id');
+                const decision = btn.getAttribute('data-decision');
+                const actionText = decision === 'approved' ? '同意' : '拒絕';
+                const reviewNote = prompt(`請輸入審核備註（選填）\n將執行：${actionText}退單申請 #${requestId}`) || '';
+                if (!confirm(`確定要${actionText}退單申請 #${requestId} 嗎？`)) {
+                    return;
+                }
+
+                try {
+                    const result = await opsApi.post('../api/admin.php?action=review_refund_request', {
+                        request_id: requestId,
+                        decision,
+                        review_note: reviewNote
+                    });
+                    if (result.success) {
+                        loadRefundRequests();
+                    } else {
+                        alert('審核失敗：' + (result.error || '未知錯誤'));
+                    }
+                } catch (err) {
+                    alert('審核操作失敗');
+                }
+            });
+        });
+    } catch (error) {
+        console.error('加載退單申請:', error);
+        const tbody = document.querySelector('#refundsTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#dc2626;">退單申請載入失敗</td></tr>';
+        }
     }
 }
 
@@ -1013,6 +1165,40 @@ async function loadChat() {
 
     .btn-primary:hover {
         opacity: 0.85;
+    }
+
+    .refund-admin-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+    }
+
+    .refund-admin-pending {
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    .refund-admin-approved {
+        color: #166534;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .refund-admin-rejected {
+        color: #991b1b;
+        background: #fef2f2;
+        border-color: #fecaca;
+    }
+
+    .refund-admin-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
     /* 表格編輯行 */

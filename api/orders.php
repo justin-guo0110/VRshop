@@ -8,6 +8,9 @@ switch ($action) {
     case 'place_order':
         place_order();
         break;
+    case 'request_refund':
+        request_refund();
+        break;
     case 'list_my_orders':
         list_my_orders();
         break;
@@ -40,6 +43,91 @@ function table_exists(mysqli $db, string $table): bool {
     $result = $db->query("SHOW TABLES LIKE '$tableEsc'");
     $cache[$table] = $result && $result->num_rows > 0;
     return $cache[$table];
+}
+
+function ensure_refund_requests_table(mysqli $db): void {
+    $db->query(
+        'CREATE TABLE IF NOT EXISTS order_refund_requests (
+            request_id INT NOT NULL AUTO_INCREMENT,
+            order_id INT NOT NULL,
+            member_id INT NOT NULL,
+            reason VARCHAR(255) NOT NULL,
+            note TEXT DEFAULT NULL,
+            status ENUM("pending", "approved", "rejected") NOT NULL DEFAULT "pending",
+            review_note TEXT DEFAULT NULL,
+            reviewed_by INT DEFAULT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (request_id),
+            KEY idx_refund_order_member (order_id, member_id),
+            KEY idx_refund_member (member_id),
+            CONSTRAINT fk_refund_order FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
+            CONSTRAINT fk_refund_member FOREIGN KEY (member_id) REFERENCES members(member_id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+}
+
+function request_refund(): void {
+    $user = require_login();
+    
+    // Validate user has member_id
+    if (empty($user['member_id'])) {
+        respond_json(['error' => '用戶信息不完整，請重新登入'], 401);
+    }
+    
+    $orderId = intval($_POST['order_id'] ?? 0);
+    $reason = trim((string)($_POST['reason'] ?? ''));
+    $note = trim((string)($_POST['note'] ?? ''));
+
+    if ($orderId <= 0) {
+        respond_json(['error' => 'Order id required'], 422);
+    }
+    if ($reason === '') {
+        respond_json(['error' => '請填寫退單原因'], 422);
+    }
+
+    $db = get_db();
+    ensure_refund_requests_table($db);
+    
+    // First verify the order exists for this user
+    $checkStmt = $db->prepare('SELECT order_id, member_id, status FROM orders WHERE order_id = ? LIMIT 1');
+    $checkStmt->bind_param('i', $orderId);
+    $checkStmt->execute();
+    $checkOrder = $checkStmt->get_result()->fetch_assoc();
+    
+    if (!$checkOrder) {
+        respond_json(['error' => '找不到此訂單'], 404);
+    }
+    
+    // Verify ownership
+    $userMemberId = intval($user['member_id']);
+    $orderMemberId = intval($checkOrder['member_id']);
+    if ($userMemberId !== $orderMemberId) {
+        respond_json(['error' => '找不到此訂單'], 404);
+    }
+    
+    $order = $checkOrder;
+
+    $allowed = ['accepted', 'preparing'];
+    if (!in_array($order['status'], $allowed, true)) {
+        respond_json(['error' => '目前訂單狀態不可申請退單'], 422);
+    }
+
+    $latestStmt = $db->prepare('SELECT status FROM order_refund_requests WHERE order_id = ? AND member_id = ? ORDER BY request_id DESC LIMIT 1');
+    $latestStmt->bind_param('ii', $orderId, $user['member_id']);
+    $latestStmt->execute();
+    $latest = $latestStmt->get_result()->fetch_assoc();
+    if ($latest && in_array((string)$latest['status'], ['pending', 'approved'], true)) {
+        respond_json(['error' => '此訂單已有進行中的退單申請'], 422);
+    }
+
+    $insertStmt = $db->prepare('INSERT INTO order_refund_requests (order_id, member_id, reason, note, status) VALUES (?, ?, ?, ?, "pending")');
+    $insertStmt->bind_param('iiss', $orderId, $user['member_id'], $reason, $note);
+    if (!$insertStmt->execute()) {
+        respond_json(['error' => '申請退單失敗，請稍後再試'], 500);
+    }
+
+    respond_json(['success' => true]);
 }
 
 function place_order(): void {
@@ -80,10 +168,11 @@ function place_order(): void {
     }
 
     $db = get_db();
-    $addressStmt = $db->prepare('SELECT address_id FROM member_addresses WHERE address_id = ? AND member_id = ?');
+    $addressStmt = $db->prepare('SELECT address_id, recipient_name, phone, address_line FROM member_addresses WHERE address_id = ? AND member_id = ?');
     $addressStmt->bind_param('ii', $address_id, $user['member_id']);
     $addressStmt->execute();
-    if (!$addressStmt->get_result()->fetch_assoc()) {
+    $addressRow = $addressStmt->get_result()->fetch_assoc();
+    if (!$addressRow) {
         respond_json(['error' => 'Address not found'], 404);
     }
 
@@ -168,6 +257,9 @@ function place_order(): void {
     $hasTotalPrice = column_exists($db, 'orders', 'total_price');
     $hasTotalAmount = column_exists($db, 'orders', 'total_amount');
     $hasAddress = column_exists($db, 'orders', 'address_id');
+    $hasShipName = column_exists($db, 'orders', 'ship_name');
+    $hasShipPhone = column_exists($db, 'orders', 'ship_phone');
+    $hasShipAddressLine = column_exists($db, 'orders', 'ship_address_line');
     $priceColumn = column_exists($db, 'order_items', 'price') ? 'price' : 'unit_price';
 
     $columns = ['member_id'];
@@ -178,6 +270,21 @@ function place_order(): void {
         $columns[] = 'address_id';
         $types .= 'i';
         $values[] = $address_id;
+    }
+    if ($hasShipName) {
+        $columns[] = 'ship_name';
+        $types .= 's';
+        $values[] = (string)$addressRow['recipient_name'];
+    }
+    if ($hasShipPhone) {
+        $columns[] = 'ship_phone';
+        $types .= 's';
+        $values[] = (string)($addressRow['phone'] ?? '');
+    }
+    if ($hasShipAddressLine) {
+        $columns[] = 'ship_address_line';
+        $types .= 's';
+        $values[] = (string)$addressRow['address_line'];
     }
     if ($hasPayment) {
         $columns[] = 'payment_method';
@@ -196,7 +303,7 @@ function place_order(): void {
 
     $columns[] = 'status';
     $types .= 's';
-    $values[] = 'pending';
+    $values[] = 'accepted';
 
     $placeholders = implode(',', array_fill(0, count($columns), '?'));
     $sql = 'INSERT INTO orders (' . implode(',', $columns) . ') VALUES (' . $placeholders . ')';
@@ -235,6 +342,9 @@ function place_order(): void {
 
     foreach (array_keys($cart) as $orderedPid) {
         unset($_SESSION['cart'][$orderedPid]);
+        if (!empty($user['member_id'])) {
+            delete_member_cart_item(intval($user['member_id']), intval($orderedPid));
+        }
     }
     respond_json([
         'success' => true,
@@ -250,6 +360,7 @@ function place_order(): void {
 function list_my_orders(): void {
     $user = require_login();
     $db = get_db();
+    ensure_refund_requests_table($db);
     $hasPayment = column_exists($db, 'orders', 'payment_method');
     $hasShipping = column_exists($db, 'orders', 'shipping_method');
     $hasTotalPrice = column_exists($db, 'orders', 'total_price');
@@ -265,6 +376,39 @@ function list_my_orders(): void {
     $stmt->bind_param('i', $user['member_id']);
     $stmt->execute();
     $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    $refundStmt = $db->prepare('SELECT order_id, status, reason, created_at FROM order_refund_requests WHERE member_id = ? ORDER BY request_id DESC');
+    $refundStmt->bind_param('i', $user['member_id']);
+    $refundStmt->execute();
+    $refundRows = $refundStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $refundMap = [];
+    foreach ($refundRows as $row) {
+        $oid = intval($row['order_id']);
+        if (!isset($refundMap[$oid])) {
+            $refundMap[$oid] = $row;
+        }
+    }
+
+    foreach ($orders as &$order) {
+        // Ensure order_id is integer
+        $order['order_id'] = intval($order['order_id']);
+        
+        $oid = $order['order_id'];
+        if (isset($refundMap[$oid])) {
+            $order['refund_status'] = $refundMap[$oid]['status'];
+            $order['refund_reason'] = $refundMap[$oid]['reason'];
+            $order['refund_created_at'] = $refundMap[$oid]['created_at'];
+            if (($order['refund_status'] ?? '') === 'approved') {
+                $order['status'] = 'cancelled';
+            }
+        } else {
+            $order['refund_status'] = null;
+            $order['refund_reason'] = null;
+            $order['refund_created_at'] = null;
+        }
+    }
+    unset($order);
+
     respond_json(['orders' => $orders]);
 }
 
@@ -275,6 +419,7 @@ function get_order_detail(): void {
         respond_json(['error' => 'Order id required'], 422);
     }
     $db = get_db();
+    ensure_refund_requests_table($db);
     $hasPayment = column_exists($db, 'orders', 'payment_method');
     $hasShipping = column_exists($db, 'orders', 'shipping_method');
     $hasTotalPrice = column_exists($db, 'orders', 'total_price');
@@ -300,6 +445,22 @@ function get_order_detail(): void {
     $itemStmt->bind_param('i', $order_id);
     $itemStmt->execute();
     $items = $itemStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    $refundStmt = $db->prepare('SELECT status, reason, note, created_at FROM order_refund_requests WHERE order_id = ? AND member_id = ? ORDER BY request_id DESC LIMIT 1');
+    $refundStmt->bind_param('ii', $order_id, $user['member_id']);
+    $refundStmt->execute();
+    $refund = $refundStmt->get_result()->fetch_assoc();
+    if ($refund) {
+        $order['refund_status'] = $refund['status'];
+        $order['refund_reason'] = $refund['reason'];
+        $order['refund_note'] = $refund['note'];
+        $order['refund_created_at'] = $refund['created_at'];
+        if (($refund['status'] ?? '') === 'approved') {
+            $order['status'] = 'cancelled';
+        }
+    } else {
+        $order['refund_status'] = null;
+    }
 
     respond_json(['order' => $order, 'items' => $items]);
 }

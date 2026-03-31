@@ -120,6 +120,11 @@ h1, h2, h3, .logo {
     animation: slideDown 0.2s ease;
 }
 
+.nav-dropdown.open .nav-dropdown-menu {
+    display: block;
+    animation: slideDown 0.2s ease;
+}
+
 @keyframes slideDown {
     from {
         opacity: 0;
@@ -147,6 +152,91 @@ h1, h2, h3, .logo {
     color: #ffffff;
     border: none;
     padding-left: 20px;
+}
+
+.user-welcome-dropdown .user-dropdown-menu {
+    min-width: 280px;
+    max-width: 320px;
+}
+
+.welcome-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.coupon-dropdown-block {
+    border-top: 1px solid rgba(184, 226, 239, 0.35);
+    margin-top: 6px;
+    padding: 10px 12px 8px;
+}
+
+.coupon-dropdown-title {
+    color: #c8eaf3;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.coupon-dropdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.coupon-dropdown-item {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(184, 226, 239, 0.28);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.coupon-dropdown-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.coupon-dropdown-name {
+    color: #e8f7ff;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.coupon-dropdown-discount {
+    color: #5eead4;
+    font-size: 12px;
+}
+
+.coupon-dropdown-code {
+    color: #bae6fd;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    word-break: break-all;
+}
+
+.coupon-dropdown-loading,
+.coupon-dropdown-empty,
+.coupon-dropdown-error {
+    margin: 0;
+    color: #dbe7f6;
+    font-size: 12px;
+}
+
+.coupon-dropdown-more {
+    margin-top: 2px;
+    color: #7dd3fc !important;
+    text-decoration: underline;
+    font-size: 12px;
+    padding: 0 !important;
+}
+
+.coupon-dropdown-more:hover {
+    background: transparent !important;
+    color: #bae6fd !important;
+    padding: 0 !important;
 }
 
 .user-info {

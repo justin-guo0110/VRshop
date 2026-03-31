@@ -39,11 +39,9 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
                 <?php else: ?>
                     <a href="./index.php">首頁</a>
                     <a href="./products.php">商品</a>
-                    <a href="./profile.php">個人資料</a>
 
                     <?php if ($currentUser && ($currentUser['role'] ?? '') === 'member'): ?>
                         <a href="./cart.php">購物車</a>
-                        <a href="./orders.php">訂單</a>
                                                 <?php
                             $memberId = $currentUser['member_id'] ?? 0;
                             echo "<!-- debug member_id: " . $memberId . " -->"; // 在瀏覽器原始碼看
@@ -56,8 +54,26 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
 
             <div class="user-info">
                 <?php if ($currentUser): ?>
-                    <span>歡迎 <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?></span>
-                    <button class="btn btn-secondary" id="logoutBtn">登出</button>
+                    <div class="nav-dropdown user-welcome-dropdown" id="userWelcomeDropdown">
+                        <button type="button" class="nav-dropdown-toggle welcome-toggle" id="userWelcomeToggle" aria-expanded="false" aria-controls="userWelcomeMenu">
+                            歡迎 <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?>
+                            <span style="font-size:11px;opacity:.9;">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu user-dropdown-menu" id="userWelcomeMenu">
+                            <a href="./profile.php">個人資料</a>
+                            <a href="./coupons.php">我的優惠券</a>
+                            <?php if (($currentUser['role'] ?? '') !== 'admin'): ?>
+                                <a href="./orders.php">我的訂單</a>
+                            <?php endif; ?>
+                            <div class="coupon-dropdown-block">
+                                <div class="coupon-dropdown-title">我的優惠券</div>
+                                <div id="headerCouponList" class="coupon-dropdown-list">
+                                    <p class="coupon-dropdown-loading">載入中...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" id="logoutBtn" type="button">登出</button>
                 <?php else: ?>
                     <a class="btn" href="./login.php">登入</a>
                 <?php endif; ?>

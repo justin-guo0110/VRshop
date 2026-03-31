@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 if (!isset($_SESSION['user'])) {
-    header('Location: /project/views/login.php');
+    header('Location: ./login.php');
     exit;
 }
 ?>
@@ -12,6 +12,32 @@ if (!isset($_SESSION['user'])) {
 
 
 <div class="checkout-page">
+    <section class="card checkout-progress-card" aria-label="結帳流程進度">
+        <ol class="checkout-progress" role="list">
+            <li class="checkout-progress-step is-done">
+                <span class="step-dot">1</span>
+                <div class="step-text">
+                    <strong>選擇要購買的商品</strong>
+                    <small>已於購物車勾選商品與數量</small>
+                </div>
+            </li>
+            <li class="checkout-progress-step is-active">
+                <span class="step-dot">2</span>
+                <div class="step-text">
+                    <strong>填寫配送與付款</strong>
+                    <small>地址、配送、付款方式</small>
+                </div>
+            </li>
+            <li class="checkout-progress-step">
+                <span class="step-dot">3</span>
+                <div class="step-text">
+                    <strong>完成下單</strong>
+                    <small>送出訂單並查看結果</small>
+                </div>
+            </li>
+        </ol>
+    </section>
+
     <div class="checkout-layout">
         <div class="checkout-main">
             <section class="card checkout-section">
@@ -62,10 +88,9 @@ if (!isset($_SESSION['user'])) {
 
             <section class="card checkout-section">
                 <h3>🎟️ 優惠券</h3>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <input id="checkoutCouponCode" type="text" placeholder="輸入優惠券代碼" style="flex:1;min-width:180px;">
-                    <button id="applyCouponBtn" type="button" class="btn btn-secondary">套用優惠券</button>
-                </div>
+                <select id="checkoutCouponSelect" class="coupon-select">
+                    <option value="">載入中…</option>
+                </select>
                 <div class="message" id="checkoutCouponMessage"></div>
             </section>
 
@@ -89,6 +114,7 @@ if (!isset($_SESSION['user'])) {
                         <span>送貨費</span>
                         <strong id="checkoutShippingFee">$0</strong>
                     </div>
+                    <div id="freeShippingHint" class="free-shipping-hint" style="display:none;"></div>
                     <div class="total-row">
                         <span>支付手續費</span>
                         <strong id="checkoutPaymentFee">$0</strong>

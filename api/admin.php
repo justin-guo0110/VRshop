@@ -7,6 +7,12 @@ switch ($action) {
     case 'list_orders':
         list_orders();
         break;
+    case 'list_refund_requests':
+        list_refund_requests();
+        break;
+    case 'review_refund_request':
+        review_refund_request($user);
+        break;
     case 'update_order_status':
         update_order_status();
         break;
@@ -232,10 +238,120 @@ function list_orders(): void {
     respond_json(['orders' => array_values($orders)]);
 }
 
+function list_refund_requests(): void {
+    $db = get_db();
+    ensure_refund_requests_table($db);
+
+    $sql = 'SELECT rr.request_id, rr.order_id, rr.member_id, rr.reason, rr.note, rr.status, rr.review_note, rr.reviewed_by, rr.created_at, rr.reviewed_at,
+                   o.status AS order_status, o.total_amount,
+                   m.name AS member_name, m.email AS member_email,
+                   admin.name AS reviewer_name
+            FROM order_refund_requests rr
+            JOIN orders o ON o.order_id = rr.order_id
+            JOIN members m ON m.member_id = rr.member_id
+            LEFT JOIN members admin ON admin.member_id = rr.reviewed_by
+            ORDER BY rr.created_at DESC';
+
+    $res = $db->query($sql);
+    if (!$res) {
+        respond_json(['error' => 'Load refund requests failed'], 500);
+    }
+
+    $requests = $res->fetch_all(MYSQLI_ASSOC);
+    respond_json(['requests' => $requests]);
+}
+
+function review_refund_request(array $adminUser): void {
+    $db = get_db();
+    ensure_refund_requests_table($db);
+
+    $requestId = intval($_POST['request_id'] ?? 0);
+    $decision = trim((string)($_POST['decision'] ?? ''));
+    $reviewNote = trim((string)($_POST['review_note'] ?? ''));
+
+    if ($requestId <= 0 || !in_array($decision, ['approved', 'rejected'], true)) {
+        respond_json(['error' => 'Invalid data'], 422);
+    }
+
+    $db->begin_transaction();
+    try {
+        // Lock and fetch the refund request with its order_id
+        $lockStmt = $db->prepare('SELECT request_id, status, order_id FROM order_refund_requests WHERE request_id = ? FOR UPDATE');
+        $lockStmt->bind_param('i', $requestId);
+        $lockStmt->execute();
+        $request = $lockStmt->get_result()->fetch_assoc();
+        if (!$request) {
+            throw new Exception('Request not found');
+        }
+        if (($request['status'] ?? '') !== 'pending') {
+            throw new Exception('Request already reviewed');
+        }
+
+        $reviewedBy = intval($adminUser['member_id'] ?? 0);
+        
+        // Update the refund request status
+        $updateStmt = $db->prepare('UPDATE order_refund_requests SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = NOW() WHERE request_id = ?');
+        $updateStmt->bind_param('ssii', $decision, $reviewNote, $reviewedBy, $requestId);
+        if (!$updateStmt->execute()) {
+            throw new Exception('Review update failed');
+        }
+
+        // If decision is approved, cancel the order
+        if ($decision === 'approved') {
+            $orderId = intval($request['order_id']);
+            $cancelStatus = 'cancelled';
+            $updateOrderStmt = $db->prepare('UPDATE orders SET status = ? WHERE order_id = ?');
+            $updateOrderStmt->bind_param('si', $cancelStatus, $orderId);
+            if (!$updateOrderStmt->execute()) {
+                throw new Exception('Order cancellation failed');
+            }
+        }
+
+        $db->commit();
+        respond_json(['success' => true]);
+    } catch (Throwable $e) {
+        $db->rollback();
+        $msg = $e->getMessage();
+        if ($msg === 'Request not found') {
+            respond_json(['error' => '退單申請不存在'], 404);
+        }
+        if ($msg === 'Request already reviewed') {
+            respond_json(['error' => '此申請已審核'], 422);
+        }
+        respond_json(['error' => '審核失敗'], 500);
+    }
+}
+
 function table_exists(mysqli $db, string $table): bool {
     $tableEsc = $db->real_escape_string($table);
     $res = $db->query("SHOW TABLES LIKE '$tableEsc'");
     return $res && $res->num_rows > 0;
+}
+
+function ensure_refund_requests_table(mysqli $db): void {
+    if (table_exists($db, 'order_refund_requests')) {
+        return;
+    }
+
+    $db->query(
+        'CREATE TABLE IF NOT EXISTS order_refund_requests (
+            request_id INT NOT NULL AUTO_INCREMENT,
+            order_id INT NOT NULL,
+            member_id INT NOT NULL,
+            reason VARCHAR(255) NOT NULL,
+            note TEXT DEFAULT NULL,
+            status ENUM("pending", "approved", "rejected") NOT NULL DEFAULT "pending",
+            review_note TEXT DEFAULT NULL,
+            reviewed_by INT DEFAULT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (request_id),
+            KEY idx_refund_order_member (order_id, member_id),
+            KEY idx_refund_member (member_id),
+            CONSTRAINT fk_refund_order_admin FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
+            CONSTRAINT fk_refund_member_admin FOREIGN KEY (member_id) REFERENCES members(member_id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
 }
 
 function update_order_status(): void {
@@ -447,7 +563,7 @@ function dashboard_stats(): void {
         'total_revenue' => 0.0
     ];
 
-    $res1 = $db->query("SELECT COUNT(*) AS c FROM orders WHERE status IN ('pending','preparing')");
+    $res1 = $db->query("SELECT COUNT(*) AS c FROM orders WHERE status IN ('accepted','preparing')");
     $stats['pending_count'] = intval($res1->fetch_assoc()['c'] ?? 0);
 
     $res2 = $db->query("SELECT COUNT(*) AS c, COALESCE(SUM(total_amount),0) AS revenue FROM orders WHERE DATE(created_at) = CURDATE()");

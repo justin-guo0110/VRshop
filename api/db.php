@@ -6,7 +6,13 @@ if (session_status() === PHP_SESSION_NONE) {
 function get_db(): mysqli {
     static $conn = null;
     if ($conn === null) {
-        $conn = @new mysqli('localhost', 'root', '', 'vr_mall');
+        $dbHost = getenv('DB_HOST') ?: 'localhost';
+        $dbUser = getenv('DB_USER') ?: 'root';
+        $dbPass = getenv('DB_PASS') ?: '';
+        $dbName = getenv('DB_NAME') ?: 'vr_mall';
+        $dbPort = intval(getenv('DB_PORT') ?: '3306');
+
+        $conn = @new mysqli($dbHost, $dbUser, $dbPass, $dbName, $dbPort);
         if ($conn->connect_error) {
             respond_json(['error' => 'DB connection failed'], 500);
             exit;

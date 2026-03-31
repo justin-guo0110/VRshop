@@ -11,18 +11,18 @@ return [
     | - smtp:  使用 PHPMailer 透過 SMTP 寄送，需先在專案根目錄執行
     |          composer require phpmailer/phpmailer
     */
-    'transport' => 'smtp',
+    'transport' => getenv('MAIL_TRANSPORT') ?: 'smtp',
 
-    'from_email' => 'justinguo0110@gmail.com',
-    'from_name'  => 'VR Mall Support',
+    'from_email' => getenv('MAIL_FROM_EMAIL') ?: 'noreply@example.com',
+    'from_name'  => getenv('MAIL_FROM_NAME') ?: 'VR Mall Support',
 
     'smtp' => [
-        'host'       => 'smtp.gmail.com',
-        'port'       => 587,
-        'username'   => 'justinguo0110@gmail.com',
-        'password'   => 'lozxwwaflhyceiuy',
-        'encryption' => 'tls',
-        'timeout'    => 10,
+        'host'       => getenv('MAIL_HOST') ?: 'smtp.gmail.com',
+        'port'       => intval(getenv('MAIL_PORT') ?: '587'),
+        'username'   => getenv('MAIL_USERNAME') ?: '',
+        'password'   => getenv('MAIL_PASSWORD') ?: '',
+        'encryption' => getenv('MAIL_ENCRYPTION') ?: 'tls',
+        'timeout'    => intval(getenv('MAIL_TIMEOUT') ?: '10'),
     ],
 
     // 當 transport 設為 log 時，郵件會附加在此檔案

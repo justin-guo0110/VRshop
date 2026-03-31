@@ -1,0 +1,63 @@
+.order-success-page {
+    padding: 28px 24px 24px;
+    display: grid;
+    gap: 18px;
+}
+
+.order-success-hero {
+    text-align: center;
+    padding: 10px 0 4px;
+}
+
+.order-success-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    border: 1px solid #86efac;
+    color: #166534;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.order-success-hero h2 {
+    margin: 0 0 8px;
+    color: var(--secondary);
+    font-size: 1.8rem;
+}
+
+.order-success-hero p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.order-success-meta {
+    text-align: center;
+    color: var(--secondary);
+    font-size: 1.05rem;
+}
+
+.order-success-meta p {
+    margin: 0;
+}
+
+.order-success-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .order-success-page {
+        padding: 20px 16px;
+    }
+
+    .order-success-hero h2 {
+        font-size: 1.4rem;
+    }
+
+    .order-success-actions .btn {
+        width: 100%;
+    }
+}
