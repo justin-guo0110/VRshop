@@ -1,5 +1,20 @@
 (() => {
     const apiUrl = '../api/admin.php';
+    const apiClient = {
+        get: (url) => {
+            if (window.opsApi?.get) return window.opsApi.get(url);
+            return fetch(url, { credentials: 'include' }).then(r => r.json());
+        },
+        post: (url, data) => {
+            if (window.opsApi?.post) return window.opsApi.post(url, data);
+            return fetch(url, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(data)
+            }).then(r => r.json());
+        }
+    };
 
     const els = {
         statPending: document.getElementById('statPending'),
@@ -20,15 +35,16 @@
         movementFilterProduct: document.getElementById('movementFilterProduct'),
         movementFilterBtn: document.getElementById('movementFilterBtn'),
         movementClearBtn: document.getElementById('movementClearBtn'),
-        productsTable: document.getElementById('productsTable')
+        inventoryProductsTable: document.getElementById('inventoryProductsTable')
     };
 
     function init() {
-        if (!document.getElementById('inventoryTab') && !document.getElementById('dashboardTab')) return;
+        if (!els.receivingForm && !els.inventoryProductsTable) return;
         loadDashboard();
         loadReceivingProducts();
         loadReceivingList();
         loadMovements();
+        loadInventoryProducts();
         bindEvents();
     }
 
@@ -58,8 +74,8 @@
                 loadMovements();
             });
         }
-        if (els.productsTable) {
-            els.productsTable.addEventListener('click', (e) => {
+        if (els.inventoryProductsTable) {
+            els.inventoryProductsTable.addEventListener('click', (e) => {
                 const restockId = e.target.getAttribute('data-restock');
                 const adjustId = e.target.getAttribute('data-adjust');
                 if (restockId) {
@@ -74,7 +90,7 @@
 
     async function loadDashboard() {
         try {
-            const res = await api.get(`${apiUrl}?action=dashboard_stats`);
+            const res = await apiClient.get(`${apiUrl}?action=dashboard_stats`);
             const stats = res.stats || {};
             if (els.statPending) els.statPending.textContent = stats.pending_count ?? 0;
             if (els.statTodayOrders) els.statTodayOrders.textContent = stats.today_orders_count ?? 0;
@@ -88,9 +104,14 @@
     async function loadReceivingProducts(selectedId) {
         if (!els.receivingProduct) return;
         try {
-            const res = await api.get(`${apiUrl}?action=receiving_products`);
+            const res = await apiClient.get(`${apiUrl}?action=receiving_products`);
             const products = res.products || [];
-            els.receivingProduct.innerHTML = products.map(p => `<option value="${p.product_id}">${p.name} (Stock: ${p.stock})</option>`).join('');
+            els.receivingProduct.innerHTML = products.map(p => `<option value="${p.product_id}">${p.name} (${p.category || '未分類'}) - 現庫存 ${p.stock}</option>`).join('');
+            if (els.movementFilterProduct) {
+                const opts = ['<option value="">全部商品</option>']
+                    .concat(products.map(p => `<option value="${p.product_id}">${p.name}</option>`));
+                els.movementFilterProduct.innerHTML = opts.join('');
+            }
             if (selectedId) {
                 els.receivingProduct.value = selectedId;
             }
@@ -113,14 +134,17 @@
             formData.received_at = els.receivingAt.value.replace('T', ' ') + ':00';
         }
         try {
-            const res = await api.post(`${apiUrl}?action=receiving_create`, formData);
+            const res = await apiClient.post(`${apiUrl}?action=receiving_create`, formData);
             if (res.success) {
                 showMessage('進貨已儲存', true);
                 updateRowStock(formData.product_id, parseInt(formData.qty, 10));
                 loadReceivingList();
                 loadMovements();
+                loadInventoryProducts();
+                loadReceivingProducts(formData.product_id);
                 loadDashboard();
                 els.receivingForm.reset();
+                if (els.receivingQty) els.receivingQty.value = '1';
             } else {
                 showMessage(res.error || '進貨儲存失敗', false);
             }
@@ -139,7 +163,7 @@
     async function loadReceivingList() {
         if (!els.receivingTable) return;
         try {
-            const res = await api.get(`${apiUrl}?action=receiving_list`);
+            const res = await apiClient.get(`${apiUrl}?action=receiving_list`);
             const tbody = els.receivingTable.querySelector('tbody');
             tbody.innerHTML = '';
             (res.receivings || []).forEach(r => {
@@ -163,7 +187,7 @@
     async function loadReceivingDetail(id) {
         if (!els.receivingDetail) return;
         try {
-            const res = await api.get(`${apiUrl}?action=receiving_detail&receiving_id=${encodeURIComponent(id)}`);
+            const res = await apiClient.get(`${apiUrl}?action=receiving_detail&receiving_id=${encodeURIComponent(id)}`);
             if (!res.header) {
                 els.receivingDetail.textContent = res.error || '無法載入進貨明細';
                 return;
@@ -192,7 +216,7 @@
         if (!els.movementsTable) return;
         try {
             const qs = productId ? `&product_id=${encodeURIComponent(productId)}` : '';
-            const res = await api.get(`${apiUrl}?action=stock_movements_list${qs}`);
+            const res = await apiClient.get(`${apiUrl}?action=stock_movements_list${qs}`);
             const tbody = els.movementsTable.querySelector('tbody');
             tbody.innerHTML = '';
             (res.movements || []).forEach(m => {
@@ -214,9 +238,39 @@
         }
     }
 
+    async function loadInventoryProducts() {
+        if (!els.inventoryProductsTable) return;
+        try {
+            const res = await apiClient.get(`${apiUrl}?action=receiving_products`);
+            const products = res.products || [];
+            const tbody = els.inventoryProductsTable.querySelector('tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            products.forEach((p) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>#${p.product_id}</td>
+                    <td>${p.name || ''}</td>
+                    <td>${p.category || '未分類'}</td>
+                    <td>
+                        <span class="stock-value" data-id="${p.product_id}">${Number(p.stock || 0)}</span>
+                        <input type="hidden" data-field="stock" data-id="${p.product_id}" value="${Number(p.stock || 0)}">
+                    </td>
+                    <td>$${Number(p.price || 0).toFixed(2)}</td>
+                    <td style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-sm btn-secondary" data-restock="${p.product_id}">快速進貨</button>
+                        <button type="button" class="btn btn-sm btn-primary" data-adjust="${p.product_id}">手動調整</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (err) {
+            console.error('載入庫存商品失敗', err);
+        }
+    }
+
     function switchToInventory(productId) {
-        const tabBtn = document.querySelector('.tab-button[data-target=\"inventoryTab\"]');
-        if (tabBtn) tabBtn.click();
         if (els.receivingProduct) {
             if (!els.receivingProduct.options.length) {
                 loadReceivingProducts(productId);
@@ -225,6 +279,7 @@
             }
         }
         if (els.receivingQty) els.receivingQty.value = 1;
+        if (els.receivingSupplier) els.receivingSupplier.focus();
     }
 
     async function handleAdjust(productId) {
@@ -241,11 +296,13 @@
             return;
         }
         try {
-            const res = await api.post(`${apiUrl}?action=stock_adjust`, { product_id: productId, delta, reason: reason.trim() });
+            const res = await apiClient.post(`${apiUrl}?action=stock_adjust`, { product_id: productId, delta, reason: reason.trim() });
             if (res.success) {
                 updateRowStock(productId, delta);
                 loadMovements();
                 loadDashboard();
+                loadInventoryProducts();
+                loadReceivingProducts(productId);
                 alert('庫存已調整。');
             } else {
                 alert(res.error || '調整失敗');
@@ -271,4 +328,11 @@
     } else {
         init();
     }
+
+    window.adminInventoryRefresh = () => {
+        loadReceivingProducts();
+        loadReceivingList();
+        loadMovements();
+        loadInventoryProducts();
+    };
 })();

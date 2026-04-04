@@ -190,17 +190,26 @@
                             </div>
                             <div class="form-group">
                                 <label>數量</label>
-                                <input type="number" name="qty" min="1" value="1">
+                                <input type="number" id="receivingQty" name="qty" min="1" value="1">
                             </div>
                             <div class="form-group">
                                 <label>供應商</label>
-                                <input type="text" name="supplier_name">
+                                <input type="text" id="receivingSupplier" name="supplier_name" placeholder="例如：統一供應鏈">
                             </div>
                             <div class="form-group">
                                 <label>單價</label>
-                                <input type="number" step="0.01" min="0" name="unit_cost">
+                                <input type="number" id="receivingUnitCost" step="0.01" min="0" name="unit_cost" placeholder="例如：18.5">
+                            </div>
+                            <div class="form-group">
+                                <label>進貨時間（可選）</label>
+                                <input type="datetime-local" id="receivingAt" name="received_at">
+                            </div>
+                            <div class="form-group">
+                                <label>備註</label>
+                                <input type="text" id="receivingNote" name="note" placeholder="例如：首批補貨">
                             </div>
                             <button type="submit" class="btn btn-primary">儲存</button>
+                            <div id="receivingMessage" class="message" style="margin-top:10px;"></div>
                         </form>
                     </div>
 
@@ -209,7 +218,41 @@
                         <table class="admin-table" id="receivingTable">
                             <thead>
                                 <tr>
-                                    <th>ID</th><th>供應商</th><th>項目</th><th>日期</th><th>操作</th>
+                                    <th>ID</th><th>供應商</th><th>項目</th><th>總成本</th><th>日期</th><th>備註</th><th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                        <div id="receivingDetail" style="margin-top:14px;"></div>
+                    </div>
+                </div>
+
+                <div class="admin-grid" style="margin-top:16px;">
+                    <div class="admin-card">
+                        <h3>📦 庫存商品管理</h3>
+                        <table class="admin-table" id="inventoryProductsTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th><th>商品</th><th>分類</th><th>現有庫存</th><th>價格</th><th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div class="admin-card">
+                        <h3>🧾 庫存異動紀錄</h3>
+                        <div class="admin-toolbar" style="gap:10px;">
+                            <select id="movementFilterProduct" class="admin-input" style="max-width:320px;">
+                                <option value="">全部商品</option>
+                            </select>
+                            <button id="movementFilterBtn" class="btn btn-secondary" type="button">篩選</button>
+                            <button id="movementClearBtn" class="btn btn-secondary" type="button">清除</button>
+                        </div>
+                        <table class="admin-table" id="movementsTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th><th>商品</th><th>類型</th><th>增減</th><th>來源</th><th>備註</th><th>時間</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -250,11 +293,121 @@
             <!-- 促銷管理 -->
             <div id="promotionsPage" class="admin-page" style="display:none;">
                 <div class="admin-card">
-                    <div class="admin-toolbar"><h3>🎁 促銷活動</h3><button class="btn btn-primary">+ 新建促銷</button></div>
+                    <div class="admin-toolbar"><h3>🎁 促銷活動</h3><button class="btn btn-primary" id="newPromotionBtn">+ 新建促銷</button></div>
+                    <div id="promotionFormWrap" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px;">
+                        <input type="hidden" id="promoFormId" value="">
+                        <div class="admin-grid" style="grid-template-columns:1fr 1fr;gap:12px;">
+                            <div>
+                                <label style="font-weight:700;display:block;margin-bottom:6px;">活動標題</label>
+                                <input type="text" id="promoFormTitle" class="admin-input" placeholder="例如：春季全館折扣">
+                            </div>
+                            <div>
+                                <label style="font-weight:700;display:block;margin-bottom:6px;">促銷類型</label>
+                                <select id="promoFormType" class="admin-input">
+                                    <option value="global_discount">全館折扣</option>
+                                    <option value="threshold_discount">滿額折扣</option>
+                                    <option value="add_on_purchase">加價購</option>
+                                    <option value="bundle">組合優惠</option>
+                                    <option value="free_shipping">免運</option>
+                                    <option value="coupon">優惠碼</option>
+                                </select>
+                            </div>
+                            <div style="grid-column:1/-1;">
+                                <label style="font-weight:700;display:block;margin-bottom:6px;">活動描述</label>
+                                <textarea id="promoFormDesc" class="admin-input" rows="2" placeholder="活動說明"></textarea>
+                            </div>
+                            <div>
+                                <label style="font-weight:700;display:block;margin-bottom:6px;">折扣類型</label>
+                                <select id="promoFormDiscountType" class="admin-input">
+                                    <option value="percent">百分比</option>
+                                    <option value="fixed">固定金額</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight:700;display:block;margin-bottom:6px;">折扣值</label>
+                                <input type="number" id="promoFormDiscountValue" min="0" step="0.01" class="admin-input" placeholder="10">
+                            </div>
+                            <div>
+                                <label style="font-weight:700;display:block;margin-bottom:6px;">最低消費</label>
+                                <input type="number" id="promoFormMinAmount" min="0" step="0.01" class="admin-input" placeholder="0">
+                            </div>
+                            <div>
+                                <label style="font-weight:700;display:block;margin-bottom:6px;">最大折扣（可空）</label>
+                                <input type="number" id="promoFormMaxDiscount" min="0" step="0.01" class="admin-input" placeholder="例如：200">
+                            </div>
+                            <div>
+                                <label style="font-weight:700;display:block;margin-bottom:6px;">指定商品ID（可空）</label>
+                                <input type="number" id="promoFormProductId" min="1" step="1" class="admin-input" placeholder="例如：12">
+                            </div>
+                            <div>
+                                <label style="font-weight:700;display:block;margin-bottom:6px;">開始時間</label>
+                                <input type="datetime-local" id="promoFormStartDate" class="admin-input">
+                            </div>
+                            <div>
+                                <label style="font-weight:700;display:block;margin-bottom:6px;">結束時間</label>
+                                <input type="datetime-local" id="promoFormEndDate" class="admin-input">
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:10px;margin-top:12px;align-items:center;">
+                            <button type="button" class="btn btn-primary" id="savePromotionBtn">儲存促銷</button>
+                            <button type="button" class="btn btn-secondary" id="cancelPromotionBtn">取消</button>
+                            <span id="promotionFormMsg" style="font-size:13px;color:#64748b;"></span>
+                        </div>
+                    </div>
                     <table class="admin-table" id="promotionsTable">
                         <thead><tr><th>名稱</th><th>類型</th><th>折扣</th><th>開始日期</th><th>狀態</th><th>操作</th></tr></thead>
                         <tbody></tbody>
                     </table>
+                </div>
+
+                <div class="admin-card">
+                    <h3>⚡ 促銷規則設定</h3>
+                    <p style="margin-top:-8px;color:#64748b;">同頁調整免運門檻、運費與組合優惠，儲存後立即生效。</p>
+                    <div id="promotionRuleMsg" class="message" style="display:none;margin:8px 0 14px;"></div>
+
+                    <h4 style="margin:8px 0 10px;">運費設定</h4>
+                    <div class="admin-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                        <div>
+                            <label style="font-weight:700;display:block;margin-bottom:6px;">宅配運費</label>
+                            <input type="number" id="promoRuleHomeFee" min="0" step="1" class="admin-input" placeholder="100">
+                        </div>
+                        <div>
+                            <label style="font-weight:700;display:block;margin-bottom:6px;">宅配免運門檻</label>
+                            <input type="number" id="promoRuleHomeThreshold" min="0" step="1" class="admin-input" placeholder="499">
+                        </div>
+                        <div>
+                            <label style="font-weight:700;display:block;margin-bottom:6px;">超商運費</label>
+                            <input type="number" id="promoRuleConvenienceFee" min="0" step="1" class="admin-input" placeholder="60">
+                        </div>
+                        <div>
+                            <label style="font-weight:700;display:block;margin-bottom:6px;">超商免運門檻</label>
+                            <input type="number" id="promoRuleConvenienceThreshold" min="0" step="1" class="admin-input" placeholder="299">
+                        </div>
+                    </div>
+                    <div style="margin-bottom:18px;">
+                        <button type="button" class="btn btn-primary" id="promoRuleSaveShippingBtn">儲存運費設定</button>
+                    </div>
+
+                    <h4 style="margin:8px 0 10px;">組合優惠設定</h4>
+                    <div class="admin-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                        <div>
+                            <label style="font-weight:700;display:block;margin-bottom:6px;">飲料最少件數</label>
+                            <input type="number" id="promoRuleBeverageQty" min="1" step="1" class="admin-input" placeholder="2">
+                        </div>
+                        <div>
+                            <label style="font-weight:700;display:block;margin-bottom:6px;">飲料折扣百分比(%)</label>
+                            <input type="number" id="promoRuleBeveragePercent" min="0" max="100" step="0.5" class="admin-input" placeholder="12">
+                        </div>
+                        <div>
+                            <label style="font-weight:700;display:block;margin-bottom:6px;">零食最少件數</label>
+                            <input type="number" id="promoRuleSnackQty" min="1" step="1" class="admin-input" placeholder="3">
+                        </div>
+                        <div>
+                            <label style="font-weight:700;display:block;margin-bottom:6px;">零食每組折扣金額</label>
+                            <input type="number" id="promoRuleSnackFixed" min="0" step="1" class="admin-input" placeholder="20">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="promoRuleSaveBundleBtn">儲存組合優惠設定</button>
                 </div>
 
                 <div class="admin-card">
@@ -280,9 +433,6 @@
             </div>
         </section>
     </div>
-
-<script src="../public/js/admin_chat.js"></script>
-<script src="../public/js/admin_inventory.js"></script>
 
 <script>
 // API 調用工具
@@ -903,13 +1053,331 @@ async function loadCustomers() {
 // 加載促銷列表
 async function loadPromotions() {
     try {
-        const tableBody = document.querySelector('#promotionsTable tbody');
-        if (tableBody) {
-            tableBody.innerHTML = '<tr><td colspan="6" style="color:#64748b;">目前未串接促銷列表（可先使用下方轉盤設定）。</td></tr>';
-        }
+        bindPromotionFormActions();
+        const data = await opsApi.get('../api/admin.php?action=list_promotions');
+        const rows = data.promotions || [];
+        renderPromotionsTable(rows);
+        await loadPromotionRuleConfig();
         await loadWheelPrizes();
     } catch (error) {
         console.error('加載促銷:', error);
+        const tableBody = document.querySelector('#promotionsTable tbody');
+        if (tableBody) {
+            tableBody.innerHTML = '<tr><td colspan="6" style="color:#dc2626;">促銷載入失敗</td></tr>';
+        }
+    }
+}
+
+function formatPromoDate(value) {
+    if (!value) return '-';
+    const date = new Date(value.replace(' ', 'T'));
+    if (Number.isNaN(date.getTime())) return value;
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${d} ${hh}:${mm}`;
+}
+
+function toDatetimeLocal(value) {
+    if (!value) return '';
+    return value.replace(' ', 'T').slice(0, 16);
+}
+
+function promotionTypeLabel(type) {
+    const map = {
+        global_discount: '全館折扣',
+        threshold_discount: '滿額折扣',
+        add_on_purchase: '加價購',
+        bundle: '組合優惠',
+        free_shipping: '免運',
+        coupon: '優惠碼'
+    };
+    return map[type] || type;
+}
+
+function renderPromotionsTable(rows) {
+    const tbody = document.querySelector('#promotionsTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;">目前尚無促銷活動，可先新增一筆。</td></tr>';
+        return;
+    }
+
+    rows.forEach((row) => {
+        const tr = document.createElement('tr');
+        const discountText = row.discount_type === 'percent'
+            ? `${Number(row.discount_value || 0)}%`
+            : `$${Number(row.discount_value || 0).toFixed(0)}`;
+        const statusText = Number(row.is_active) === 1 ? '啟用中' : '已停用';
+        const statusColor = Number(row.is_active) === 1 ? '#0f766e' : '#9ca3af';
+
+        tr.innerHTML = `
+            <td>${escapeHtml(row.title || '-')}</td>
+            <td>${escapeHtml(promotionTypeLabel(row.promotion_type))}</td>
+            <td>${escapeHtml(discountText)}</td>
+            <td>${escapeHtml(formatPromoDate(row.start_date))}</td>
+            <td><span style="color:${statusColor};font-weight:700;">${statusText}</span></td>
+            <td style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary btn-sm" data-edit-promo="${row.promotion_id}">編輯</button>
+                <button type="button" class="btn btn-primary btn-sm" data-toggle-promo="${row.promotion_id}" data-next="${Number(row.is_active) === 1 ? 0 : 1}">${Number(row.is_active) === 1 ? '停用' : '啟用'}</button>
+            </td>
+        `;
+        tr.dataset.promotionJson = JSON.stringify(row);
+        tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('[data-edit-promo]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const tr = btn.closest('tr');
+            if (!tr?.dataset.promotionJson) return;
+            const row = JSON.parse(tr.dataset.promotionJson);
+            openPromotionForm(row);
+        });
+    });
+
+    tbody.querySelectorAll('[data-toggle-promo]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const promotionId = btn.getAttribute('data-toggle-promo');
+            const next = btn.getAttribute('data-next');
+            try {
+                const res = await opsApi.post('../api/admin.php?action=toggle_promotion_status', {
+                    promotion_id: promotionId,
+                    is_active: next
+                });
+                if (!res.success) {
+                    alert(res.error || '更新狀態失敗');
+                    return;
+                }
+                await loadPromotions();
+            } catch (error) {
+                alert('更新狀態失敗');
+            }
+        });
+    });
+}
+
+function setPromotionFormMessage(text, ok = false) {
+    const msg = document.getElementById('promotionFormMsg');
+    if (!msg) return;
+    msg.textContent = text;
+    msg.style.color = ok ? '#0f766e' : '#dc2626';
+}
+
+function resetPromotionForm() {
+    const set = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    };
+    set('promoFormId', '');
+    set('promoFormTitle', '');
+    set('promoFormDesc', '');
+    set('promoFormType', 'global_discount');
+    set('promoFormDiscountType', 'percent');
+    set('promoFormDiscountValue', '');
+    set('promoFormMinAmount', '0');
+    set('promoFormMaxDiscount', '');
+    set('promoFormProductId', '');
+    set('promoFormStartDate', '');
+    set('promoFormEndDate', '');
+    setPromotionFormMessage('');
+}
+
+function openPromotionForm(row = null) {
+    const wrap = document.getElementById('promotionFormWrap');
+    if (!wrap) return;
+    wrap.style.display = 'block';
+    if (!row) {
+        resetPromotionForm();
+        return;
+    }
+
+    const set = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    };
+    set('promoFormId', row.promotion_id || '');
+    set('promoFormTitle', row.title || '');
+    set('promoFormDesc', row.description || '');
+    set('promoFormType', row.promotion_type || 'global_discount');
+    set('promoFormDiscountType', row.discount_type || 'percent');
+    set('promoFormDiscountValue', row.discount_value ?? '');
+    set('promoFormMinAmount', row.min_amount ?? '0');
+    set('promoFormMaxDiscount', row.max_discount ?? '');
+    set('promoFormProductId', row.product_id ?? '');
+    set('promoFormStartDate', toDatetimeLocal(row.start_date || ''));
+    set('promoFormEndDate', toDatetimeLocal(row.end_date || ''));
+    setPromotionFormMessage('');
+}
+
+async function submitPromotionForm() {
+    const payload = {
+        promotion_id: document.getElementById('promoFormId')?.value || '',
+        title: document.getElementById('promoFormTitle')?.value?.trim() || '',
+        description: document.getElementById('promoFormDesc')?.value?.trim() || '',
+        promotion_type: document.getElementById('promoFormType')?.value || 'global_discount',
+        discount_type: document.getElementById('promoFormDiscountType')?.value || 'percent',
+        discount_value: document.getElementById('promoFormDiscountValue')?.value || '0',
+        min_amount: document.getElementById('promoFormMinAmount')?.value || '0',
+        max_discount: document.getElementById('promoFormMaxDiscount')?.value || '',
+        product_id: document.getElementById('promoFormProductId')?.value || '',
+        start_date: document.getElementById('promoFormStartDate')?.value || '',
+        end_date: document.getElementById('promoFormEndDate')?.value || ''
+    };
+
+    if (!payload.title || !payload.start_date || !payload.end_date) {
+        setPromotionFormMessage('請填寫標題、開始與結束時間');
+        return;
+    }
+
+    try {
+        const res = await opsApi.post('../api/admin.php?action=save_promotion', payload);
+        if (!res.success) {
+            setPromotionFormMessage(res.error || '儲存失敗');
+            return;
+        }
+        setPromotionFormMessage(res.message || '儲存成功', true);
+        await loadPromotions();
+        const wrap = document.getElementById('promotionFormWrap');
+        if (wrap) wrap.style.display = 'none';
+        resetPromotionForm();
+    } catch (error) {
+        setPromotionFormMessage('儲存失敗');
+    }
+}
+
+function bindPromotionFormActions() {
+    const newBtn = document.getElementById('newPromotionBtn');
+    const saveBtn = document.getElementById('savePromotionBtn');
+    const cancelBtn = document.getElementById('cancelPromotionBtn');
+
+    if (newBtn && !newBtn.dataset.bound) {
+        newBtn.dataset.bound = '1';
+        newBtn.addEventListener('click', () => openPromotionForm());
+    }
+    if (saveBtn && !saveBtn.dataset.bound) {
+        saveBtn.dataset.bound = '1';
+        saveBtn.addEventListener('click', submitPromotionForm);
+    }
+    if (cancelBtn && !cancelBtn.dataset.bound) {
+        cancelBtn.dataset.bound = '1';
+        cancelBtn.addEventListener('click', () => {
+            const wrap = document.getElementById('promotionFormWrap');
+            if (wrap) wrap.style.display = 'none';
+            resetPromotionForm();
+        });
+    }
+}
+
+function showPromotionRuleMessage(text, isSuccess) {
+    const el = document.getElementById('promotionRuleMsg');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'message ' + (isSuccess ? 'success' : 'error');
+    el.style.display = 'block';
+    if (isSuccess) {
+        setTimeout(() => {
+            el.style.display = 'none';
+        }, 2400);
+    }
+}
+
+async function loadPromotionRuleConfig() {
+    try {
+        const data = await opsApi.get('../api/promotion_admin.php?action=get_config');
+        if (!data.success) {
+            showPromotionRuleMessage(data.error || '促銷規則載入失敗', false);
+            return;
+        }
+
+        const shipping = data.shipping || {};
+        const bundle = data.bundle || {};
+
+        const setValue = (id, val, fallback) => {
+            const input = document.getElementById(id);
+            if (input) input.value = (val ?? fallback ?? '');
+        };
+
+        setValue('promoRuleHomeFee', shipping.home_fee?.value, '100');
+        setValue('promoRuleHomeThreshold', shipping.home_threshold?.value, '499');
+        setValue('promoRuleConvenienceFee', shipping.convenience_fee?.value, '60');
+        setValue('promoRuleConvenienceThreshold', shipping.convenience_threshold?.value, '299');
+
+        setValue('promoRuleBeverageQty', bundle.beverage_discount_qty?.value, '2');
+        setValue('promoRuleBeveragePercent', bundle.beverage_discount_percent?.value, '12');
+        setValue('promoRuleSnackQty', bundle.snack_discount_qty?.value, '3');
+        setValue('promoRuleSnackFixed', bundle.snack_discount_fixed?.value, '20');
+
+        bindPromotionRuleActions();
+    } catch (error) {
+        showPromotionRuleMessage('促銷規則載入失敗', false);
+    }
+}
+
+function bindPromotionRuleActions() {
+    const shippingBtn = document.getElementById('promoRuleSaveShippingBtn');
+    const bundleBtn = document.getElementById('promoRuleSaveBundleBtn');
+
+    if (shippingBtn && !shippingBtn.dataset.bound) {
+        shippingBtn.dataset.bound = '1';
+        shippingBtn.addEventListener('click', savePromotionShippingRules);
+    }
+    if (bundleBtn && !bundleBtn.dataset.bound) {
+        bundleBtn.dataset.bound = '1';
+        bundleBtn.addEventListener('click', savePromotionBundleRules);
+    }
+}
+
+async function savePromotionShippingRules() {
+    const payload = {
+        home_fee: document.getElementById('promoRuleHomeFee')?.value || '',
+        home_threshold: document.getElementById('promoRuleHomeThreshold')?.value || '',
+        convenience_fee: document.getElementById('promoRuleConvenienceFee')?.value || '',
+        convenience_threshold: document.getElementById('promoRuleConvenienceThreshold')?.value || ''
+    };
+
+    if (!payload.home_fee || !payload.home_threshold || !payload.convenience_fee || !payload.convenience_threshold) {
+        showPromotionRuleMessage('請完整填寫運費設定', false);
+        return;
+    }
+
+    try {
+        const res = await opsApi.post('../api/promotion_admin.php?action=update_shipping', payload);
+        if (res.success) {
+            showPromotionRuleMessage('運費設定已更新', true);
+        } else {
+            showPromotionRuleMessage(res.error || '運費設定更新失敗', false);
+        }
+    } catch (error) {
+        showPromotionRuleMessage('運費設定更新失敗', false);
+    }
+}
+
+async function savePromotionBundleRules() {
+    const payload = {
+        beverage_qty: document.getElementById('promoRuleBeverageQty')?.value || '',
+        beverage_percent: document.getElementById('promoRuleBeveragePercent')?.value || '',
+        snack_qty: document.getElementById('promoRuleSnackQty')?.value || '',
+        snack_fixed: document.getElementById('promoRuleSnackFixed')?.value || ''
+    };
+
+    if (!payload.beverage_qty || !payload.beverage_percent || !payload.snack_qty || !payload.snack_fixed) {
+        showPromotionRuleMessage('請完整填寫組合優惠設定', false);
+        return;
+    }
+
+    try {
+        const res = await opsApi.post('../api/promotion_admin.php?action=update_bundle', payload);
+        if (res.success) {
+            showPromotionRuleMessage('組合優惠設定已更新', true);
+        } else {
+            showPromotionRuleMessage(res.error || '組合優惠設定更新失敗', false);
+        }
+    } catch (error) {
+        showPromotionRuleMessage('組合優惠設定更新失敗', false);
     }
 }
 
@@ -1005,7 +1473,9 @@ async function saveWheelPrizes() {
 // 加載庫存列表
 async function loadInventory() {
     try {
-        // 臨時實現
+        if (typeof window.adminInventoryRefresh === 'function') {
+            window.adminInventoryRefresh();
+        }
     } catch (error) {
         console.error('加載庫存:', error);
     }

@@ -41,6 +41,8 @@ switch ($action) {
 
 
 function cart_get(): void {
+    $db = get_db();
+    $_SESSION['cart'] = hydrate_cart_snapshot($db, $_SESSION['cart'] ?? []);
     $cart = array_values($_SESSION['cart']);
     $total = 0;
     $count = 0;
@@ -64,7 +66,7 @@ function cart_add(): void {
         respond_json(['error' => 'Invalid data'], 422);
     }
     $db = get_db();
-    $stmt = $db->prepare('SELECT product_id, name, price, image_url FROM products WHERE product_id = ? AND is_active = 1');
+    $stmt = $db->prepare('SELECT product_id, name, price, image_url, category FROM products WHERE product_id = ? AND is_active = 1');
     $stmt->bind_param('i', $product_id);
     $stmt->execute();
     $product = $stmt->get_result()->fetch_assoc();
@@ -79,7 +81,8 @@ function cart_add(): void {
             'name' => $product['name'],
             'price' => $product['price'],
             'quantity' => $quantity,
-            'image_url' => $product['image_url']
+            'image_url' => $product['image_url'],
+            'category' => $product['category'] ?? ''
         ];
     }
 
@@ -168,7 +171,7 @@ function cart_restore_last_order(): void {
         $priceColumn = 'price';
     }
 
-    $sql = "SELECT oi.product_id, oi.quantity, oi.$priceColumn AS price, p.name, p.image_url
+    $sql = "SELECT oi.product_id, oi.quantity, oi.$priceColumn AS price, p.name, p.image_url, p.category
             FROM order_items oi
             JOIN products p ON p.product_id = oi.product_id
             WHERE oi.order_id = ? AND p.is_active = 1";
@@ -193,7 +196,8 @@ function cart_restore_last_order(): void {
             'name' => $item['name'],
             'price' => $item['price'],
             'quantity' => $qty,
-            'image_url' => $item['image_url']
+            'image_url' => $item['image_url'],
+            'category' => $item['category'] ?? ''
         ];
         save_member_cart_item($memberId, $pid, $qty);
     }

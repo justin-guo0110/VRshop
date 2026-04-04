@@ -23,7 +23,14 @@ const DEFAULT_PRODUCT_IMAGE = 'https://via.placeholder.com/300x200?text=No+Image
 // Keep the database image_url as-is; only fall back when it's empty.
 function fixImageUrl(imageUrl) {
     if (!imageUrl) return DEFAULT_PRODUCT_IMAGE;
-    return String(imageUrl).trim().replace(/\\/g, '/');
+    const normalized = String(imageUrl).trim().replace(/\\/g, '/');
+    // Route local image paths through a PHP proxy to handle Chinese filenames
+    // and spaces that Apache on Windows cannot serve directly via URL.
+    const match = normalized.match(/(?:\.\.\/)*image\/(.+)$/);
+    if (match) {
+        return '../api/image.php?path=' + encodeURIComponent(match[1]);
+    }
+    return normalized;
 }
 
 function getImageFallbackAttr() {
@@ -39,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
     bindUserWelcomeDropdown();
     bindProfile();
     bindAddresses();
-    setupFilterDropdown();
     bindSearch();
     loadProductDetail();
     bindAdmin();
@@ -201,7 +207,7 @@ function bindAuth() {
 function handleAuthResponse(res, messageEl) {
     if (!messageEl) return;
     if (res.success) {
-        messageEl.textContent = '登入成功，正在跳轉…';
+        messageEl.textContent = res.message || '登入成功，正在跳轉…';
         messageEl.className = 'message success';
         const role = res?.user?.role || '';
         if (role === 'admin') {
@@ -396,30 +402,6 @@ function bindAddresses() {
         }
     });
 }
-function setupFilterDropdown() {
-    const toggle = document.getElementById('filterToggle');
-    const dropdown = document.getElementById('filterDropdown');
-    if (!toggle || !dropdown) return;
-    
-    toggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        const isActive = dropdown.classList.toggle('active');
-        toggle.classList.toggle('active', isActive);
-    });
-    
-    // 點擊下拉選單外部時關閉
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.filter-dropdown-wrapper')) {
-            dropdown.classList.remove('active');
-            toggle.classList.remove('active');
-        }
-    });
-    
-    // 點擊下拉選單內的元素不要關閉
-    dropdown.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-}
 async function bindSearch() {
     const form = document.getElementById('searchForm');
     const grid = document.getElementById('productGrid');
@@ -525,6 +507,28 @@ async function bindSearch() {
         e.preventDefault();
         currentPage = 1;
         fetchProducts(Object.fromEntries(new FormData(form)));
+    });
+
+    // 分類按鈕快速篩選
+    const categoryBtns = document.querySelectorAll('.category-filter-btn');
+    categoryBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // 更新按鈕狀態
+            categoryBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // 更新表單分類值
+            const categoryField = form.querySelector('[name="category"]');
+            if (categoryField) {
+                categoryField.value = btn.dataset.category || '';
+            }
+            
+            // 重新搜尋
+            currentPage = 1;
+            fetchProducts(Object.fromEntries(new FormData(form)));
+        });
     });
 
     fetchProducts();
@@ -1293,8 +1297,12 @@ app.loadCheckoutCart = async function () {
     app.loadCheckoutCoupons();
 };
 
-app.FREE_SHIPPING = { '宅配': 500, '超商取貨': 300 };
+app.FREE_SHIPPING = { '宅配': 499, '超商取貨': 299 };
 app.BASE_SHIPPING_FEES = { '宅配': 100, '超商取貨': 60 };
+app.BUNDLE_PROMO_GROUPS = {
+    beverage: ['咖啡', '奶類', '巧克力', '果汁', '碳酸飲料', '茶類', '運動飲料'],
+    snack: ['糖果', '膨化零食', '餅乾']
+};
 
 app.getCheckoutFees = function (shippingMethod, paymentMethod, subtotal) {
     const paymentFees = { '信用卡': 0, '貨到付款': 30 };
@@ -1317,6 +1325,76 @@ app.getCheckoutSubtotal = function () {
         });
     }
     return subtotal;
+};
+
+app.getCheckoutBundlePromotions = function () {
+    const summary = {
+        discount: 0,
+        details: []
+    };
+    if (!window.checkoutCartItems) return summary;
+
+    let beverageQty = 0;
+    let beverageSubtotal = 0;
+    let snackQty = 0;
+    let snackSubtotal = 0;
+
+    Object.values(window.checkoutCartItems).forEach(item => {
+        if (!item.checked) return;
+        const category = String(item.category || '').trim();
+        const quantity = Number(item.quantity || 0);
+        const lineSubtotal = Number(item.price || 0) * quantity;
+
+        if (app.BUNDLE_PROMO_GROUPS.beverage.includes(category)) {
+            beverageQty += quantity;
+            beverageSubtotal += lineSubtotal;
+        }
+        if (app.BUNDLE_PROMO_GROUPS.snack.includes(category)) {
+            snackQty += quantity;
+            snackSubtotal += lineSubtotal;
+        }
+    });
+
+    if (beverageQty >= 2 && beverageSubtotal > 0) {
+        const discount = Number((beverageSubtotal * 0.12).toFixed(2));
+        summary.discount += discount;
+        summary.details.push({
+            code: 'beverage_2_88',
+            label: '飲料任選 2 件 88 折',
+            discount
+        });
+    }
+
+    if (snackQty >= 3 && snackSubtotal > 0) {
+        const discount = Math.min(Math.floor(snackQty / 3) * 20, snackSubtotal);
+        summary.discount += discount;
+        summary.details.push({
+            code: 'snack_3_minus_20',
+            label: '零食任選 3 件折 $20',
+            discount: Number(discount.toFixed(2))
+        });
+    }
+
+    summary.discount = Number(summary.discount.toFixed(2));
+    return summary;
+};
+
+app.renderCheckoutPromotionTips = function (promotionInfo) {
+    const list = document.getElementById('checkoutPromotionTips');
+    if (!list) return;
+
+    const activeDetails = promotionInfo?.details || [];
+    if (activeDetails.length) {
+        list.innerHTML = activeDetails.map(detail => `
+            <div class="checkout-promo-item active">已套用 ${app.escapeHtml(detail.label)}，現折 $${Number(detail.discount).toFixed(2)}</div>
+        `).join('');
+        return;
+    }
+
+    list.innerHTML = `
+        <div class="checkout-promo-item">活動中：飲料任選 2 件 88 折</div>
+        <div class="checkout-promo-item">活動中：零食任選 3 件折 $20</div>
+    `;
 };
 
 app.loadCheckoutCoupons = async function () {
@@ -1429,8 +1507,7 @@ app.updateCheckoutTotals = function () {
     const paymentRadio = document.querySelector('input[name="payment_method"]:checked');
     const shipping = shippingRadio ? shippingRadio.value : '';
     const payment = paymentRadio ? paymentRadio.value : '';
-    
-    // 只計算勾選的商品小計
+
     let subtotal = 0;
     if (window.checkoutCartItems) {
         Object.values(window.checkoutCartItems).forEach(item => {
@@ -1445,10 +1522,16 @@ app.updateCheckoutTotals = function () {
     const grandEl = document.getElementById('checkoutGrandTotal');
     const subtotalEl = document.getElementById('checkoutSubtotal');
     const etaEl = document.getElementById('checkoutEta');
+    const promoDiscountRow = document.getElementById('checkoutPromoDiscountRow');
+    const promoDiscountEl = document.getElementById('checkoutPromoDiscount');
+    const couponDiscountRow = document.getElementById('checkoutCouponDiscountRow');
+    const couponDiscountEl = document.getElementById('checkoutCouponDiscount');
     const discountRow = document.getElementById('checkoutDiscountRow');
     const discountEl = document.getElementById('checkoutDiscount');
 
     const { shipping_fee, payment_fee, freeShipping, threshold, baseFee } = app.getCheckoutFees(shipping, payment, subtotal);
+    const promotionInfo = app.getCheckoutBundlePromotions();
+    app.renderCheckoutPromotionTips(promotionInfo);
 
     if (!app._freeShippingToastState) {
         app._freeShippingToastState = {
@@ -1472,9 +1555,11 @@ app.updateCheckoutTotals = function () {
     }
 
     app.updateCouponSelectState(subtotal);
-    let discount = app.calculateCouponDiscount(subtotal);
+    let couponDiscount = app.calculateCouponDiscount(subtotal);
+    if (couponDiscount > subtotal) couponDiscount = subtotal;
+    let discount = promotionInfo.discount + couponDiscount;
     if (discount > subtotal) discount = subtotal;
-    const grand = subtotal + shipping_fee + payment_fee - discount;
+    const grand = Math.max(0, subtotal + shipping_fee + payment_fee - discount);
 
     if (subtotalEl) subtotalEl.textContent = '$' + Number(subtotal).toFixed(2);
     if (shippingFeeEl) {
@@ -1486,7 +1571,6 @@ app.updateCheckoutTotals = function () {
     }
     if (paymentFeeEl) paymentFeeEl.textContent = '$' + Number(payment_fee).toFixed(2);
 
-    // 免運提示
     const hintEl = document.getElementById('freeShippingHint');
     if (hintEl) {
         if (!shipping) {
@@ -1496,12 +1580,30 @@ app.updateCheckoutTotals = function () {
             hintEl.className = 'free-shipping-hint achieved';
             hintEl.style.display = '';
         } else if (threshold !== null) {
-            const needed = (threshold - subtotal).toFixed(0);
+            const needed = Math.max(0, threshold - subtotal).toFixed(0);
             hintEl.textContent = `🚚 再消費 $${needed} 即可享${shipping}免運（滿 $${threshold}）`;
             hintEl.className = 'free-shipping-hint';
             hintEl.style.display = '';
         } else {
             hintEl.style.display = 'none';
+        }
+    }
+    if (promoDiscountRow && promoDiscountEl) {
+        if (promotionInfo.discount > 0) {
+            promoDiscountRow.style.display = '';
+            promoDiscountEl.textContent = '-$' + Number(promotionInfo.discount).toFixed(2);
+        } else {
+            promoDiscountRow.style.display = 'none';
+            promoDiscountEl.textContent = '-$0.00';
+        }
+    }
+    if (couponDiscountRow && couponDiscountEl) {
+        if (couponDiscount > 0) {
+            couponDiscountRow.style.display = '';
+            couponDiscountEl.textContent = '-$' + Number(couponDiscount).toFixed(2);
+        } else {
+            couponDiscountRow.style.display = 'none';
+            couponDiscountEl.textContent = '-$0.00';
         }
     }
     if (discountRow && discountEl) {
@@ -1576,24 +1678,127 @@ app.initCheckoutPage = function () {
     app.loadCheckoutAddresses();
     app.checkoutCoupon = null;
     const msg = document.getElementById('checkoutMessage');
+    const pickupStoreSection = document.getElementById('pickupStoreSection');
+    const pickupStoreBrand = document.getElementById('pickupStoreBrand');
+    const pickupStoreId = document.getElementById('pickupStoreId');
+    const pickupStoreName = document.getElementById('pickupStoreName');
+    const pickupStoreAddress = document.getElementById('pickupStoreAddress');
+    const creditCardSection = document.getElementById('creditCardSection');
+    const cardHolderName = document.getElementById('cardHolderName');
+    const cardNumber = document.getElementById('cardNumber');
+    const cardExpiry = document.getElementById('cardExpiry');
+    const cardCvv = document.getElementById('cardCvv');
+    const saveCardInfo = document.getElementById('saveCardInfo');
+    const clearSavedCardBtn = document.getElementById('clearSavedCardBtn');
+    const clearPickupStoreBtn = document.getElementById('clearPickupStoreBtn');
     let placing = false;
 
-    const enforcePaymentRules = () => {
-        const shipping = document.querySelector('input[name="shipping_method"]:checked')?.value;
-        const cod = document.querySelector('input[name="payment_method"][value="貨到付款"]');
-        if (cod) {
-            // 常見限制：超商取貨不支援貨到付款（可依需求調整）
-            const shouldDisable = shipping === '超商取貨';
-            cod.disabled = shouldDisable;
-            if (shouldDisable && cod.checked) {
-                const cc = document.querySelector('input[name="payment_method"][value="信用卡"]');
-                if (cc) cc.checked = true;
-                if (msg) {
-                    msg.textContent = '超商取貨目前不支援貨到付款，已自動改為信用卡。';
-                    msg.className = 'message error';
-                }
-            }
+    const userKey = 'guest';
+    const cardStorageKey = `vrshop_saved_card_${userKey}`;
+    const pickupStorageKey = `vrshop_saved_pickup_${userKey}`;
+
+    const togglePickupStoreSection = () => {
+        const shipping = document.querySelector('input[name="shipping_method"]:checked')?.value || '';
+        if (!pickupStoreSection) return;
+        pickupStoreSection.style.display = shipping === '超商取貨' ? '' : 'none';
+    };
+
+    const toggleCreditCardSection = () => {
+        const payment = document.querySelector('input[name="payment_method"]:checked')?.value || '';
+        if (!creditCardSection) return;
+        creditCardSection.style.display = payment === '信用卡' ? '' : 'none';
+    };
+
+    const applySavedCard = () => {
+        try {
+            const raw = localStorage.getItem(cardStorageKey);
+            if (!raw) return;
+            const saved = JSON.parse(raw);
+            if (cardHolderName) cardHolderName.value = saved.holder || '';
+            if (cardNumber) cardNumber.value = saved.number || '';
+            if (cardExpiry) cardExpiry.value = saved.expiry || '';
+            if (saveCardInfo) saveCardInfo.checked = true;
+        } catch (err) {
+            // Ignore parse errors and continue checkout.
         }
+    };
+
+    const applySavedPickupStore = () => {
+        try {
+            const raw = localStorage.getItem(pickupStorageKey);
+            if (!raw) return;
+            const saved = JSON.parse(raw);
+            if (pickupStoreBrand && saved.brand) pickupStoreBrand.value = saved.brand;
+            if (pickupStoreId && saved.store_id) pickupStoreId.value = saved.store_id;
+            if (pickupStoreName && saved.store_name) pickupStoreName.value = saved.store_name;
+            if (pickupStoreAddress && saved.store_address) pickupStoreAddress.value = saved.store_address;
+        } catch (err) {
+            // Ignore parse errors and continue checkout.
+        }
+    };
+
+    const clearCardFields = () => {
+        if (cardHolderName) cardHolderName.value = '';
+        if (cardNumber) cardNumber.value = '';
+        if (cardExpiry) cardExpiry.value = '';
+        if (cardCvv) cardCvv.value = '';
+        if (saveCardInfo) saveCardInfo.checked = false;
+    };
+
+    const clearPickupFields = () => {
+        if (pickupStoreBrand) pickupStoreBrand.value = '';
+        if (pickupStoreId) pickupStoreId.value = '';
+        if (pickupStoreName) pickupStoreName.value = '';
+        if (pickupStoreAddress) pickupStoreAddress.value = '';
+    };
+
+    if (cardNumber) {
+        cardNumber.addEventListener('input', () => {
+            const digits = cardNumber.value.replace(/\D/g, '').slice(0, 16);
+            cardNumber.value = digits.replace(/(.{4})/g, '$1 ').trim();
+        });
+    }
+    if (cardExpiry) {
+        cardExpiry.addEventListener('input', () => {
+            const digits = cardExpiry.value.replace(/\D/g, '').slice(0, 4);
+            if (digits.length >= 3) {
+                cardExpiry.value = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+            } else {
+                cardExpiry.value = digits;
+            }
+        });
+    }
+    if (cardCvv) {
+        cardCvv.addEventListener('input', () => {
+            cardCvv.value = cardCvv.value.replace(/\D/g, '').slice(0, 4);
+        });
+    }
+
+    if (clearSavedCardBtn) {
+        clearSavedCardBtn.addEventListener('click', () => {
+            localStorage.removeItem(cardStorageKey);
+            clearCardFields();
+            if (msg) {
+                msg.textContent = '已清除記住的信用卡資訊';
+                msg.className = 'message success';
+            }
+        });
+    }
+
+    if (clearPickupStoreBtn) {
+        clearPickupStoreBtn.addEventListener('click', () => {
+            localStorage.removeItem(pickupStorageKey);
+            clearPickupFields();
+            if (msg) {
+                msg.textContent = '已清除常用超商門市';
+                msg.className = 'message success';
+            }
+        });
+    }
+
+    const enforcePaymentRules = () => {
+        // 超商取貨可使用貨到付款，此處僅保留介面同步。
+        toggleCreditCardSection();
     };
 
     // 為所有廣播按鈕添加事件監聽
@@ -1612,6 +1817,7 @@ app.initCheckoutPage = function () {
                 });
             }
             enforcePaymentRules();
+            togglePickupStoreSection();
             app.updateCheckoutTotals();
         });
     });
@@ -1630,6 +1836,10 @@ app.initCheckoutPage = function () {
     });
 
     enforcePaymentRules();
+    togglePickupStoreSection();
+    toggleCreditCardSection();
+    applySavedCard();
+    applySavedPickupStore();
 
     placeBtn.addEventListener('click', async () => {
         if (placing) return;
@@ -1643,6 +1853,66 @@ app.initCheckoutPage = function () {
                 msg.className = 'message error';
             }
             return;
+        }
+
+        if (shippingRadio.value === '超商取貨') {
+            const brand = (pickupStoreBrand?.value || '').trim();
+            const storeId = (pickupStoreId?.value || '').trim();
+            const storeName = (pickupStoreName?.value || '').trim();
+            if (!brand || !storeId || !storeName) {
+                if (msg) {
+                    msg.textContent = '超商取貨請填寫超商品牌、門市代碼與門市名稱';
+                    msg.className = 'message error';
+                }
+                return;
+            }
+        }
+
+        if (paymentRadio.value === '信用卡') {
+            const holder = (cardHolderName?.value || '').trim();
+            const numberDigits = (cardNumber?.value || '').replace(/\D/g, '');
+            const expiryRaw = (cardExpiry?.value || '').trim();
+            const cvv = (cardCvv?.value || '').trim();
+            const expiryMatch = expiryRaw.match(/^(\d{2})\/(\d{2})$/);
+
+            if (!holder || numberDigits.length !== 16 || !expiryMatch || cvv.length < 3) {
+                if (msg) {
+                    msg.textContent = '請完整填寫信用卡資訊（姓名、16 碼卡號、到期日、安全碼）';
+                    msg.className = 'message error';
+                }
+                return;
+            }
+
+            const month = Number(expiryMatch[1]);
+            const year = 2000 + Number(expiryMatch[2]);
+            const now = new Date();
+            const expDate = new Date(year, month, 0, 23, 59, 59);
+            if (month < 1 || month > 12 || expDate < now) {
+                if (msg) {
+                    msg.textContent = '信用卡到期日無效或已過期';
+                    msg.className = 'message error';
+                }
+                return;
+            }
+
+            if (saveCardInfo?.checked) {
+                localStorage.setItem(cardStorageKey, JSON.stringify({
+                    holder,
+                    number: numberDigits.replace(/(.{4})/g, '$1 ').trim(),
+                    expiry: expiryRaw
+                }));
+            } else {
+                localStorage.removeItem(cardStorageKey);
+            }
+        }
+
+        if (shippingRadio.value === '超商取貨') {
+            localStorage.setItem(pickupStorageKey, JSON.stringify({
+                brand: (pickupStoreBrand?.value || '').trim(),
+                store_id: (pickupStoreId?.value || '').trim(),
+                store_name: (pickupStoreName?.value || '').trim(),
+                store_address: (pickupStoreAddress?.value || '').trim()
+            }));
         }
 
         // 檢查是否至少選擇了一個商品
@@ -1672,6 +1942,12 @@ app.initCheckoutPage = function () {
                 payment_method: paymentRadio.value,
                 selected_product_ids: checkedItems.map(item => item.product_id).join(',')
             };
+            if (shippingRadio.value === '超商取貨') {
+                payload.pickup_store_brand = (pickupStoreBrand?.value || '').trim();
+                payload.pickup_store_id = (pickupStoreId?.value || '').trim();
+                payload.pickup_store_name = (pickupStoreName?.value || '').trim();
+                payload.pickup_store_address = (pickupStoreAddress?.value || '').trim();
+            }
             if (app.checkoutCoupon && app.checkoutCoupon.coupon_code) {
                 payload.coupon_code = app.checkoutCoupon.coupon_code;
             }
@@ -1681,6 +1957,17 @@ app.initCheckoutPage = function () {
                     msg.textContent = '下單成功！訂單編號：' + res.order_id;
                     msg.className = 'message success';
                 }
+                // 儲存優惠詳情到 sessionStorage
+                sessionStorage.setItem('lastOrderPromotion', JSON.stringify({
+                    order_id: res.order_id,
+                    promotion_discount: res.promotion_discount || 0,
+                    coupon_discount: res.coupon_discount || 0,
+                    promotion_details: res.promotion_details || [],
+                    shipping_fee: res.shipping_fee || 0,
+                    payment_fee: res.payment_fee || 0,
+                    subtotal: res.subtotal || 0,
+                    total: res.total || 0
+                }));
                 app.loadCartCount();
                 setTimeout(() => location.href = `order_success.php?order_id=${encodeURIComponent(res.order_id)}`, 800);
             } else if (msg) {
@@ -1892,6 +2179,7 @@ app.initOrdersPage = function () {
                 list += `<div><span>金額</span><strong>$${Number(res.order.total_price).toFixed(2)}</strong></div>`;
                 list += `<div><span>支付方式</span><strong>${app.escapeHtml(res.order.payment_method || '未提供')}</strong></div>`;
                 list += `<div><span>送貨方式</span><strong>${app.escapeHtml(res.order.shipping_method || '未提供')}</strong></div>`;
+                list += `<div><span>收件資訊</span><strong>${app.escapeHtml(res.order.ship_address_line || '未提供')}</strong></div>`;
                 list += '</div>';
                 if (res.order.refund_status && res.order.refund_status !== 'approved') {
                     list += `<p class="orders-refund-reason">原因：${app.escapeHtml(res.order.refund_reason || '未提供')}</p>`;
@@ -1989,6 +2277,7 @@ app.initOrderSuccessPage = async function () {
         html += `<div><span>金額</span><strong>$${Number(res.order.total_price).toFixed(2)}</strong></div>`;
         html += `<div><span>支付方式</span><strong>${app.escapeHtml(res.order.payment_method || '未提供')}</strong></div>`;
         html += `<div><span>送貨方式</span><strong>${app.escapeHtml(res.order.shipping_method || '未提供')}</strong></div>`;
+        html += `<div><span>收件資訊</span><strong>${app.escapeHtml(res.order.ship_address_line || '未提供')}</strong></div>`;
         html += '</div>';
         html += '<p class="order-items-title">商品明細</p>';
         html += '<ul class="order-items-list">';

@@ -28,54 +28,19 @@ if ($result && $result->num_rows > 0) {
 
     <form id="searchForm" class="search-bar">
         <input type="text" name="keyword" placeholder="搜尋商品...">
+        <input type="hidden" name="category" value="">
         <button type="submit" class="btn">搜尋</button>
-        
-        <div class="filter-dropdown-wrapper">
-            <button type="button" class="filter-toggle-btn btn" id="filterToggle">
-                <span>⚙️ 篩選</span>
-                <span class="dropdown-arrow">▼</span>
-            </button>
-            <div id="filterDropdown" class="filter-dropdown-menu">
-                <div class="filter-section">
-                    <label>商品分類</label>
-                    <select name="category">
-                        <option value="">全部分類</option>
-                        <?php foreach ($categories as $category): ?>
-                            <option value="<?php echo htmlspecialchars($category); ?>">
-                                <?php echo htmlspecialchars($category); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                
-                <div class="filter-section">
-                    <label>排序方式</label>
-                    <select name="sort">
-                        <option value="newest">最新上架</option>
-                        <option value="price_asc">價格：低到高</option>
-                        <option value="price_desc">價格：高到低</option>
-                        <option value="name_asc">名稱：A → Z</option>
-                    </select>
-                </div>
-                
-                <div class="filter-section">
-                    <label>價格範圍</label>
-                    <div style="display:flex;gap:8px;">
-                        <input type="number" name="min_price" min="0" step="1" placeholder="最低">
-                        <span style="align-self:center;">-</span>
-                        <input type="number" name="max_price" min="0" step="1" placeholder="最高">
-                    </div>
-                </div>
-                
-                <div class="filter-section">
-                    <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;">
-                        <input type="checkbox" name="in_stock" value="1" style="width:auto;">
-                        <span>只看有庫存</span>
-                    </label>
-                </div>
-            </div>
-        </div>
     </form>
+
+    <!-- 分類篩選按鈕 -->
+    <div class="category-filter-bar">
+        <button class="category-filter-btn active" data-category="">全部類別</button>
+        <?php foreach ($categories as $category): ?>
+            <button class="category-filter-btn" data-category="<?php echo htmlspecialchars($category); ?>">
+                <?php echo htmlspecialchars($category); ?>
+            </button>
+        <?php endforeach; ?>
+    </div>
 
     <div id="productMeta" class="product-meta" style="margin-top:10px;color:#555;font-weight:600;"></div>
     <div id="productGrid" class="product-grid"></div>

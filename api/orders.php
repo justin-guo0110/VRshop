@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/cart_helpers.php';
+require_once __DIR__ . '/promotion_helpers.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -160,11 +161,23 @@ function place_order(): void {
     $payment_method = trim($_POST['payment_method'] ?? '');
     $shipping_method = trim($_POST['shipping_method'] ?? '');
     $address_id = intval($_POST['address_id'] ?? 0);
+    $pickup_store_brand = trim((string)($_POST['pickup_store_brand'] ?? ''));
+    $pickup_store_id = trim((string)($_POST['pickup_store_id'] ?? ''));
+    $pickup_store_name = trim((string)($_POST['pickup_store_name'] ?? ''));
+    $pickup_store_address = trim((string)($_POST['pickup_store_address'] ?? ''));
     if ($payment_method === '' || $shipping_method === '') {
         respond_json(['error' => 'Payment and shipping methods are required'], 422);
     }
     if ($address_id <= 0) {
         respond_json(['error' => 'Address required'], 422);
+    }
+    if ($shipping_method === '超商取貨') {
+        if ($pickup_store_brand === '' || $pickup_store_id === '' || $pickup_store_name === '') {
+            respond_json(['error' => '超商取貨請填寫超商品牌、門市代碼與門市名稱'], 422);
+        }
+        if (strlen($pickup_store_brand) > 30 || strlen($pickup_store_id) > 30 || strlen($pickup_store_name) > 100 || strlen($pickup_store_address) > 255) {
+            respond_json(['error' => '門市資訊格式不正確'], 422);
+        }
     }
 
     $db = get_db();
@@ -181,7 +194,7 @@ function place_order(): void {
         respond_json(['error' => 'Cart is empty'], 422);
     }
     $placeholders = implode(',', array_fill(0, count($productIds), '?'));
-    $stmt = $db->prepare("SELECT product_id, price, name FROM products WHERE product_id IN ($placeholders) AND is_active = 1");
+    $stmt = $db->prepare("SELECT product_id, price, name, category FROM products WHERE product_id IN ($placeholders) AND is_active = 1");
     $types = str_repeat('i', count($productIds));
     $stmt->bind_param($types, ...$productIds);
     $stmt->execute();
@@ -204,22 +217,27 @@ function place_order(): void {
         $orderItems[] = [
             'product_id' => $pid,
             'quantity' => $qty,
-            'price' => $price
+            'price' => $price,
+            'category' => $products[$pid]['category'] ?? '',
+            'name' => $products[$pid]['name'] ?? ''
         ];
         $subtotal += $price * $qty;
     }
 
-    $shippingFees = ['宅配' => 100, '超商取貨' => 60];
     $paymentFees = ['信用卡' => 0, '貨到付款' => 30];
-    $shippingFee = $shippingFees[$shipping_method] ?? 0;
+    $shippingQuote = promo_get_shipping_quote($shipping_method, $subtotal);
+    $shippingFee = floatval($shippingQuote['shipping_fee']);
     $paymentFee = $paymentFees[$payment_method] ?? 0;
 
+    $promotionResult = promo_calculate_bundle_discount($orderItems);
+    $promotionDiscount = floatval($promotionResult['discount'] ?? 0);
+
     $couponCode = trim((string)($_POST['coupon_code'] ?? ''));
-    $discount = 0.0;
+    $couponDiscount = 0.0;
     $couponRow = null;
 
     if ($couponCode !== '' && table_exists($db, 'coupons')) {
-        $couponStmt = $db->prepare('SELECT coupon_id, discount_type, discount_value, min_purchase, used_count, max_usage, expiry_date, is_active FROM coupons WHERE coupon_code = ? AND member_id = ? LIMIT 1');
+        $couponStmt = $db->prepare('SELECT coupon_id, coupon_code, description, discount_type, discount_value, min_purchase, used_count, max_usage, expiry_date, is_active FROM coupons WHERE coupon_code = ? AND member_id = ? LIMIT 1');
         $couponStmt->bind_param('si', $couponCode, $user['member_id']);
         $couponStmt->execute();
         $couponRow = $couponStmt->get_result()->fetch_assoc();
@@ -240,22 +258,39 @@ function place_order(): void {
             respond_json(['error' => '未達優惠券最低消費門檻'], 422);
         }
 
-        if ($couponRow['discount_type'] === 'percent') {
-            $discount = $subtotal * (floatval($couponRow['discount_value']) / 100);
-        } else {
-            $discount = floatval($couponRow['discount_value']);
+        if (promo_is_welcome_coupon($couponRow)) {
+            $orderCountStmt = $db->prepare('SELECT COUNT(*) AS order_count FROM orders WHERE member_id = ?');
+            $orderCountStmt->bind_param('i', $user['member_id']);
+            $orderCountStmt->execute();
+            $orderCount = intval($orderCountStmt->get_result()->fetch_assoc()['order_count'] ?? 0);
+            if ($orderCount > 0) {
+                respond_json(['error' => '首購券僅限第一筆訂單使用'], 422);
+            }
         }
-        if ($discount > $subtotal) {
-            $discount = $subtotal;
+
+        if ($couponRow['discount_type'] === 'percent') {
+            $couponDiscount = $subtotal * (floatval($couponRow['discount_value']) / 100);
+        } else {
+            $couponDiscount = floatval($couponRow['discount_value']);
+        }
+        if ($couponDiscount > $subtotal) {
+            $couponDiscount = $subtotal;
         }
     }
 
+    $discount = min($subtotal, $promotionDiscount + $couponDiscount);
+
     $total = $subtotal + $shippingFee + $paymentFee - $discount;
+    if ($total < 0) {
+        $total = 0;
+    }
 
     $hasPayment = column_exists($db, 'orders', 'payment_method');
     $hasShipping = column_exists($db, 'orders', 'shipping_method');
     $hasTotalPrice = column_exists($db, 'orders', 'total_price');
     $hasTotalAmount = column_exists($db, 'orders', 'total_amount');
+    $hasDiscountAmount = column_exists($db, 'orders', 'discount_amount');
+    $hasShippingFeeColumn = column_exists($db, 'orders', 'shipping_fee');
     $hasAddress = column_exists($db, 'orders', 'address_id');
     $hasShipName = column_exists($db, 'orders', 'ship_name');
     $hasShipPhone = column_exists($db, 'orders', 'ship_phone');
@@ -265,6 +300,15 @@ function place_order(): void {
     $columns = ['member_id'];
     $types = 'i';
     $values = [$user['member_id']];
+
+    $shipAddressLine = (string)$addressRow['address_line'];
+    if ($shipping_method === '超商取貨') {
+        $storeText = '[超商門市] ' . $pickup_store_brand . ' ' . $pickup_store_name . ' (' . $pickup_store_id . ')';
+        if ($pickup_store_address !== '') {
+            $storeText .= ' ' . $pickup_store_address;
+        }
+        $shipAddressLine = $storeText;
+    }
 
     if ($hasAddress) {
         $columns[] = 'address_id';
@@ -284,7 +328,7 @@ function place_order(): void {
     if ($hasShipAddressLine) {
         $columns[] = 'ship_address_line';
         $types .= 's';
-        $values[] = (string)$addressRow['address_line'];
+        $values[] = $shipAddressLine;
     }
     if ($hasPayment) {
         $columns[] = 'payment_method';
@@ -300,6 +344,17 @@ function place_order(): void {
     $columns[] = $totalField;
     $types .= 'd';
     $values[] = $total;
+
+    if ($hasDiscountAmount) {
+        $columns[] = 'discount_amount';
+        $types .= 'd';
+        $values[] = $discount;
+    }
+    if ($hasShippingFeeColumn) {
+        $columns[] = 'shipping_fee';
+        $types .= 'd';
+        $values[] = $shippingFee;
+    }
 
     $columns[] = 'status';
     $types .= 's';
@@ -352,6 +407,9 @@ function place_order(): void {
         'shipping_fee' => $shippingFee,
         'payment_fee' => $paymentFee,
         'subtotal' => $subtotal,
+        'promotion_discount' => $promotionDiscount,
+        'coupon_discount' => $couponDiscount,
+        'promotion_details' => $promotionResult['details'] ?? [],
         'discount' => $discount,
         'total' => $total
     ]);
@@ -429,6 +487,9 @@ function get_order_detail(): void {
     if ($hasPayment) $fields[] = 'payment_method';
     if ($hasShipping) $fields[] = 'shipping_method';
     if (column_exists($db, 'orders', 'address_id')) $fields[] = 'address_id';
+    if (column_exists($db, 'orders', 'ship_name')) $fields[] = 'ship_name';
+    if (column_exists($db, 'orders', 'ship_phone')) $fields[] = 'ship_phone';
+    if (column_exists($db, 'orders', 'ship_address_line')) $fields[] = 'ship_address_line';
 
     $sql = 'SELECT ' . implode(',', $fields) . ' FROM orders WHERE order_id = ? AND member_id = ?';
     $stmt = $db->prepare($sql);

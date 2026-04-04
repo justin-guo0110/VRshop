@@ -68,7 +68,7 @@ function merge_session_cart_to_member(mysqli $db, int $memberId, array $sessionC
 }
 
 function fetch_member_cart_items(mysqli $db, int $memberId): array {
-    $sql = 'SELECT mci.product_id, mci.quantity, p.name, p.price, p.image_url
+    $sql = 'SELECT mci.product_id, mci.quantity, p.name, p.price, p.image_url, p.category
             FROM member_cart_items mci
             JOIN products p ON p.product_id = mci.product_id
             WHERE mci.member_id = ? AND p.is_active = 1';
@@ -92,11 +92,62 @@ function fetch_member_cart_items(mysqli $db, int $memberId): array {
             'name' => $row['name'],
             'price' => $row['price'],
             'quantity' => $qty,
-            'image_url' => $row['image_url']
+            'image_url' => $row['image_url'],
+            'category' => $row['category'] ?? ''
         ];
     }
 
     return $cart;
+}
+
+function hydrate_cart_snapshot(mysqli $db, array $cart): array {
+    if (empty($cart)) {
+        return [];
+    }
+
+    $productIds = [];
+    foreach ($cart as $item) {
+        $pid = intval($item['product_id'] ?? 0);
+        if ($pid > 0) {
+            $productIds[] = $pid;
+        }
+    }
+    $productIds = array_values(array_unique($productIds));
+    if (empty($productIds)) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+    $types = str_repeat('i', count($productIds));
+    $stmt = $db->prepare("SELECT product_id, name, price, image_url, category, is_active FROM products WHERE product_id IN ($placeholders)");
+    $stmt->bind_param($types, ...$productIds);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    $products = [];
+    foreach ($rows as $row) {
+        $products[intval($row['product_id'])] = $row;
+    }
+
+    $hydrated = [];
+    foreach ($cart as $item) {
+        $pid = intval($item['product_id'] ?? 0);
+        $qty = max(0, intval($item['quantity'] ?? 0));
+        if ($pid <= 0 || $qty <= 0 || !isset($products[$pid]) || intval($products[$pid]['is_active'] ?? 0) !== 1) {
+            continue;
+        }
+        $product = $products[$pid];
+        $hydrated[$pid] = [
+            'product_id' => $pid,
+            'name' => $product['name'],
+            'price' => $product['price'],
+            'quantity' => $qty,
+            'image_url' => $product['image_url'],
+            'category' => $product['category'] ?? ''
+        ];
+    }
+
+    return $hydrated;
 }
 
 function save_member_cart_item(int $memberId, int $productId, int $quantity): void {

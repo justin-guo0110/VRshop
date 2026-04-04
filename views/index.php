@@ -84,21 +84,23 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
     <main class="container" style="padding-top: 0; display: grid; grid-template-columns: 180px 1fr; gap: 12px;">
         <!-- 左側廣告框架 -->
         <aside class="sidebar-ads-box">
-            <a href="./products.php" class="sidebar-ad">
-                <strong>限時優惠</strong>
-                <span>VR 頭盔滿 NT$10,000 折 NT$1,000</span>
+            <a href="./products.php" class="sidebar-ad sidebar-ad-featured">
+                <div class="ad-chip">限時 48H</div>
+                <strong>春季補給站</strong>
+                <span>能量飲任選第 2 件 5 折，今晚 23:59 截止</span>
+                <em>立即搶購</em>
             </a>
             <a href="./products.php" class="sidebar-ad">
-                <strong>週末加碼</strong>
-                <span>指定周邊 2 件 9 折</span>
+                <strong>滿額免運</strong>
+                <span>宅配滿 NT$499、超商滿 NT$299 自動免運</span>
             </a>
             <a href="./products.php" class="sidebar-ad">
-                <strong>新品上市</strong>
-                <span>最新 VR 遊戲內容上線</span>
+                <strong>飲料組合</strong>
+                <span>任選 2 件 88 折，結帳直接帶入</span>
             </a>
             <a href="./products.php" class="sidebar-ad">
-                <strong>會員優惠</strong>
-                <span>累計購物點數可折抵</span>
+                <strong>零食優惠</strong>
+                <span>任選 3 件折 NT$20，越湊越划算</span>
             </a>
         </aside>
 
@@ -108,29 +110,29 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
             <div class="promo-slider-inner" id="promoSliderInner">
                 <div class="promo-slide">
                     <div class="promo-slide-text">
-                        <h3>開站慶｜全館滿額折扣</h3>
-                        <p>單筆滿 NT$5,000 折 NT$300，滿 NT$10,000 折 NT$1,000。</p>
+                        <h3>新會員首購 9 折券</h3>
+                        <p>現在註冊立即送首購券，滿 NT$199 即可折抵，首單最容易轉單。</p>
                     </div>
                     <div class="promo-slide-cta">
-                        <a href="./products.php" class="btn btn-secondary">馬上逛逛</a>
+                        <a href="./login.php" class="btn btn-secondary">立即註冊</a>
                     </div>
                 </div>
                 <div class="promo-slide">
                     <div class="promo-slide-text">
-                        <h3>VR 套裝組合優惠</h3>
-                        <p>主機 + 控制器 + 周邊一次帶走，組合價更划算。</p>
+                        <h3>滿額免運自動套用</h3>
+                        <p>宅配滿 NT$499、超商取貨滿 NT$299，不用輸入券，結帳自動免運。</p>
                     </div>
                     <div class="promo-slide-cta">
-                        <a href="./products.php" class="btn btn-secondary">查看套裝</a>
+                        <a href="./checkout.php" class="btn btn-secondary">前往結帳</a>
                     </div>
                 </div>
                 <div class="promo-slide">
                     <div class="promo-slide-text">
-                        <h3>會員專屬體驗活動</h3>
-                        <p>登入會員即可報名線下 VR 體驗會，名額有限。</p>
+                        <h3>組合優惠同步開跑</h3>
+                        <p>飲料任選 2 件 88 折，零食任選 3 件折 NT$20，結帳會自動計算。</p>
                     </div>
                     <div class="promo-slide-cta">
-                        <a href="./profile.php" class="btn btn-secondary">前往會員中心</a>
+                        <a href="./products.php" class="btn btn-secondary">查看活動商品</a>
                     </div>
                 </div>
             </div>

@@ -73,6 +73,15 @@ switch ($action) {
     case 'list_customers':
         list_customers();
         break;
+    case 'list_promotions':
+        list_promotions();
+        break;
+    case 'save_promotion':
+        save_promotion($user);
+        break;
+    case 'toggle_promotion_status':
+        toggle_promotion_status();
+        break;
     default:
         respond_json(['error' => 'Unknown action'], 400);
 }
@@ -118,6 +127,156 @@ function list_customers(): void {
     }
 
     respond_json(['customers' => $customers]);
+}
+
+function list_promotions(): void {
+    $db = get_db();
+    if (!table_exists($db, 'promotions')) {
+        respond_json(['success' => true, 'promotions' => [], 'message' => 'promotions table not found']);
+    }
+
+    $sql = 'SELECT promotion_id, title, description, promotion_type, discount_type, discount_value, min_amount, max_discount,
+                   product_id, start_date, end_date, is_active, created_by, created_at
+            FROM promotions
+            ORDER BY created_at DESC, promotion_id DESC';
+    $res = $db->query($sql);
+    if (!$res) {
+        respond_json(['error' => 'Load promotions failed'], 500);
+    }
+    $promotions = $res->fetch_all(MYSQLI_ASSOC);
+    respond_json(['success' => true, 'promotions' => $promotions]);
+}
+
+function normalize_datetime_input(string $value): ?string {
+    $value = trim($value);
+    if ($value === '') return null;
+    // Convert datetime-local format to MySQL datetime.
+    $value = str_replace('T', ' ', $value);
+    if (strlen($value) === 16) {
+        $value .= ':00';
+    }
+    $ts = strtotime($value);
+    if ($ts === false) return null;
+    return date('Y-m-d H:i:s', $ts);
+}
+
+function save_promotion(array $adminUser): void {
+    $db = get_db();
+    if (!table_exists($db, 'promotions')) {
+        respond_json(['error' => 'promotions table not found'], 500);
+    }
+
+    $promotionId = intval($_POST['promotion_id'] ?? 0);
+    $title = trim((string)($_POST['title'] ?? ''));
+    $description = trim((string)($_POST['description'] ?? ''));
+    $promotionType = trim((string)($_POST['promotion_type'] ?? 'global_discount'));
+    $discountType = trim((string)($_POST['discount_type'] ?? 'percent'));
+    $discountValue = floatval($_POST['discount_value'] ?? 0);
+    $minAmount = floatval($_POST['min_amount'] ?? 0);
+    $maxDiscountRaw = trim((string)($_POST['max_discount'] ?? ''));
+    $productIdRaw = trim((string)($_POST['product_id'] ?? ''));
+    $startDate = normalize_datetime_input((string)($_POST['start_date'] ?? ''));
+    $endDate = normalize_datetime_input((string)($_POST['end_date'] ?? ''));
+
+    $allowedPromotionTypes = ['global_discount', 'threshold_discount', 'add_on_purchase', 'bundle', 'free_shipping', 'coupon'];
+    $allowedDiscountTypes = ['percent', 'fixed'];
+
+    if ($title === '' || !$startDate || !$endDate) {
+        respond_json(['error' => '請填寫標題、開始與結束時間'], 422);
+    }
+    if (!in_array($promotionType, $allowedPromotionTypes, true)) {
+        respond_json(['error' => '無效的促銷類型'], 422);
+    }
+    if (!in_array($discountType, $allowedDiscountTypes, true)) {
+        respond_json(['error' => '無效的折扣類型'], 422);
+    }
+    if ($discountValue < 0) {
+        respond_json(['error' => '折扣值不可小於 0'], 422);
+    }
+    if ($discountType === 'percent' && $discountValue > 100) {
+        respond_json(['error' => '百分比折扣不可大於 100'], 422);
+    }
+    if (strtotime($endDate) < strtotime($startDate)) {
+        respond_json(['error' => '結束時間不可早於開始時間'], 422);
+    }
+
+    $maxDiscount = $maxDiscountRaw === '' ? null : floatval($maxDiscountRaw);
+    if ($maxDiscount !== null && $maxDiscount < 0) {
+        respond_json(['error' => '最大折扣不可小於 0'], 422);
+    }
+    $productId = $productIdRaw === '' ? null : intval($productIdRaw);
+    if ($productId !== null && $productId <= 0) {
+        respond_json(['error' => '指定商品 ID 無效'], 422);
+    }
+
+    if ($promotionId > 0) {
+        $sql = 'UPDATE promotions
+                SET title = ?, description = ?, promotion_type = ?, discount_type = ?, discount_value = ?, min_amount = ?,
+                    max_discount = ?, product_id = ?, start_date = ?, end_date = ?
+                WHERE promotion_id = ?';
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param(
+            'ssssdddissi',
+            $title,
+            $description,
+            $promotionType,
+            $discountType,
+            $discountValue,
+            $minAmount,
+            $maxDiscount,
+            $productId,
+            $startDate,
+            $endDate,
+            $promotionId
+        );
+        if (!$stmt->execute()) {
+            respond_json(['error' => '更新促銷失敗'], 500);
+        }
+        respond_json(['success' => true, 'message' => '促銷已更新']);
+    }
+
+    $createdBy = intval($adminUser['member_id'] ?? 0) ?: null;
+    $sql = 'INSERT INTO promotions (title, description, promotion_type, discount_type, discount_value, min_amount, max_discount, product_id, start_date, end_date, is_active, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)';
+    $stmt = $db->prepare($sql);
+    $stmt->bind_param(
+        'ssssdddissi',
+        $title,
+        $description,
+        $promotionType,
+        $discountType,
+        $discountValue,
+        $minAmount,
+        $maxDiscount,
+        $productId,
+        $startDate,
+        $endDate,
+        $createdBy
+    );
+    if (!$stmt->execute()) {
+        respond_json(['error' => '新增促銷失敗'], 500);
+    }
+    respond_json(['success' => true, 'message' => '促銷已建立', 'promotion_id' => $stmt->insert_id]);
+}
+
+function toggle_promotion_status(): void {
+    $db = get_db();
+    if (!table_exists($db, 'promotions')) {
+        respond_json(['error' => 'promotions table not found'], 500);
+    }
+
+    $promotionId = intval($_POST['promotion_id'] ?? 0);
+    $isActive = intval($_POST['is_active'] ?? -1);
+    if ($promotionId <= 0 || !in_array($isActive, [0, 1], true)) {
+        respond_json(['error' => 'Invalid data'], 422);
+    }
+
+    $stmt = $db->prepare('UPDATE promotions SET is_active = ? WHERE promotion_id = ?');
+    $stmt->bind_param('ii', $isActive, $promotionId);
+    if (!$stmt->execute()) {
+        respond_json(['error' => '更新狀態失敗'], 500);
+    }
+    respond_json(['success' => true]);
 }
 
 function wheel_prizes_file_path(): string {

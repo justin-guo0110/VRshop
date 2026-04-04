@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/../lib/mailer.php';
+require_once __DIR__ . '/promotion_helpers.php';
 
 $action = $_GET['action'] ?? '';
 switch ($action) {
@@ -58,14 +59,33 @@ function register(): void {
     $stmt = $db->prepare('INSERT INTO members (email, password_hash, name, phone, role) VALUES (?, ?, ?, ?, "member")');
     $stmt->bind_param('ssss', $email, $hash, $name, $phone);
     if ($stmt->execute()) {
+        $memberId = $stmt->insert_id;
         $_SESSION['user'] = [
-            'member_id' => $stmt->insert_id,
+            'member_id' => $memberId,
             'email' => $email,
             'name' => $name,
             'phone' => $phone,
             'role' => 'member'
         ];
-        respond_json(['success' => true, 'user' => $_SESSION['user']]);
+
+        $welcomeCoupon = null;
+        try {
+            $welcomeCoupon = promo_issue_welcome_coupon($db, $memberId);
+        } catch (Throwable $e) {
+            error_log('Welcome coupon issue failed: ' . $e->getMessage());
+        }
+
+        $message = '註冊成功';
+        if ($welcomeCoupon) {
+            $message .= '，已送出新會員首購 9 折券';
+        }
+
+        respond_json([
+            'success' => true,
+            'user' => $_SESSION['user'],
+            'message' => $message,
+            'welcome_coupon' => $welcomeCoupon
+        ]);
     }
     respond_json(['error' => 'Registration failed'], 500);
 }

@@ -70,6 +70,38 @@ if (!isset($_SESSION['user'])) {
                 <p class="checkout-tip">部分商品可能不支援超商取貨。</p>
             </section>
 
+            <section class="card checkout-section" id="pickupStoreSection" style="display:none;">
+                <h3>選擇超商門市</h3>
+                <p class="checkout-note" style="margin-bottom:12px;">可先到官方地圖查門市，再填入門市資訊。</p>
+                <div class="pickup-store-links">
+                    <a class="btn btn-secondary btn-sm" href="https://emap.pcsc.com.tw/" target="_blank" rel="noopener noreferrer">7-ELEVEN 地圖(手動)</a>
+                    <a class="btn btn-secondary btn-sm" href="https://www.family.com.tw/Marketing/Map/" target="_blank" rel="noopener noreferrer">全家地圖(手動)</a>
+                    <button type="button" class="btn btn-secondary btn-sm" id="clearPickupStoreBtn">清除常用門市</button>
+                </div>
+                <div class="pickup-store-form">
+                    <label>
+                        <span>超商品牌</span>
+                        <select id="pickupStoreBrand">
+                            <option value="">請選擇</option>
+                            <option value="7-ELEVEN">7-ELEVEN</option>
+                            <option value="全家">全家</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>門市代碼</span>
+                        <input type="text" id="pickupStoreId" placeholder="例如：153482" maxlength="20">
+                    </label>
+                    <label>
+                        <span>門市名稱</span>
+                        <input type="text" id="pickupStoreName" placeholder="例如：復興店" maxlength="80">
+                    </label>
+                    <label>
+                        <span>門市地址（選填）</span>
+                        <input type="text" id="pickupStoreAddress" placeholder="例如：台北市大安區復興南路一段100號" maxlength="180">
+                    </label>
+                </div>
+            </section>
+
             <section class="card checkout-section">
                 <h3>選擇支付方式</h3>
                 <div class="options-group">
@@ -84,6 +116,35 @@ if (!isset($_SESSION['user'])) {
                     </label>
                 </div>
                 <p class="checkout-tip">貨到付款可能會有額外手續費。</p>
+            </section>
+
+            <section class="card checkout-section" id="creditCardSection">
+                <h3>信用卡資訊</h3>
+                <div class="pickup-store-form">
+                    <label>
+                        <span>持卡人姓名</span>
+                        <input type="text" id="cardHolderName" placeholder="例如：CHEN DA MING" maxlength="50" autocomplete="cc-name">
+                    </label>
+                    <label>
+                        <span>卡號</span>
+                        <input type="text" id="cardNumber" placeholder="0000 0000 0000 0000" maxlength="23" autocomplete="cc-number" inputmode="numeric">
+                    </label>
+                    <div class="card-inline-fields">
+                        <label>
+                            <span>到期日</span>
+                            <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5" autocomplete="cc-exp" inputmode="numeric">
+                        </label>
+                        <label>
+                            <span>安全碼</span>
+                            <input type="password" id="cardCvv" placeholder="CVV" maxlength="4" autocomplete="cc-csc" inputmode="numeric">
+                        </label>
+                    </div>
+                    <label class="card-save-option">
+                        <input type="checkbox" id="saveCardInfo" value="1">
+                        <span>記住卡片資訊（不保存安全碼）</span>
+                    </label>
+                    <button type="button" class="btn btn-secondary btn-sm checkout-inline-action" id="clearSavedCardBtn">清除已記住卡片</button>
+                </div>
             </section>
 
             <section class="card checkout-section">
@@ -119,8 +180,16 @@ if (!isset($_SESSION['user'])) {
                         <span>支付手續費</span>
                         <strong id="checkoutPaymentFee">$0</strong>
                     </div>
+                    <div class="total-row" id="checkoutPromoDiscountRow" style="display:none;">
+                        <span>活動優惠</span>
+                        <strong id="checkoutPromoDiscount">-$0</strong>
+                    </div>
+                    <div class="total-row" id="checkoutCouponDiscountRow" style="display:none;">
+                        <span>優惠券折抵</span>
+                        <strong id="checkoutCouponDiscount">-$0</strong>
+                    </div>
                     <div class="total-row" id="checkoutDiscountRow" style="display:none;">
-                        <span>優惠折扣</span>
+                        <span>總折扣</span>
                         <strong id="checkoutDiscount">-$0</strong>
                     </div>
                     <div class="total-row grand-total">
@@ -128,6 +197,7 @@ if (!isset($_SESSION['user'])) {
                         <strong id="checkoutGrandTotal">$0</strong>
                     </div>
                 </div>
+                <div id="checkoutPromotionTips" class="checkout-promo-list"></div>
                 <p id="checkoutEta" class="checkout-eta"></p>
             </section>
         </aside>
