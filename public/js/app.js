@@ -443,8 +443,19 @@ async function bindSearch() {
             card.className = 'product-card';
             const inStock = Number(p.stock) > 0;
             const imageUrl = fixImageUrl(p.image_url);
+            const soldCount = Number(p.sold_count || 0);
+            const isNew = Number(p.is_new || 0) === 1;
+            const isLimitedOffer = Number(p.is_limited_offer || 0) === 1;
+            const isHot = soldCount >= 3;
+            const isLowStock = inStock && Number(p.stock) <= 5;
+            const tags = [];
+            if (isNew) tags.push('<span class="product-tag tag-new">新品</span>');
+            if (isHot) tags.push('<span class="product-tag tag-hot">熱銷</span>');
+            if (isLimitedOffer) tags.push('<span class="product-tag tag-sale">限時折扣</span>');
+            if (isLowStock) tags.push('<span class="product-tag tag-low-stock">剩餘數量少</span>');
             card.innerHTML = `
                 <div class="media"><img src="${imageUrl}" alt="${p.name}" onerror="${getImageFallbackAttr()}"></div>
+                ${tags.length ? `<div class="product-tags">${tags.join('')}</div>` : ''}
                 <h3>${p.name}</h3>
                 <p class="meta">${p.category || '未分類'}</p>
                 <p class="price">$${Number(p.price).toFixed(2)}</p>

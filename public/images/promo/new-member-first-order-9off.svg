@@ -1,0 +1,67 @@
+<svg width="1200" height="680" viewBox="0 0 1200 680" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="新會員首購9折券促銷圖">
+  <defs>
+    <linearGradient id="bg" x1="52" y1="40" x2="1148" y2="650" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A2842"/>
+      <stop offset="0.5" stop-color="#115472"/>
+      <stop offset="1" stop-color="#0E7B70"/>
+    </linearGradient>
+    <radialGradient id="haloA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1038 112) rotate(130) scale(460 360)">
+      <stop stop-color="#FDE68A" stop-opacity="0.86"/>
+      <stop offset="1" stop-color="#FDE68A" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="haloB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(180 620) rotate(-8) scale(620 250)">
+      <stop stop-color="#67E8F9" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#67E8F9" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="120" y1="120" x2="660" y2="540" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#0F766E"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+    <linearGradient id="coupon" x1="802" y1="168" x2="1110" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FEE8A2"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1200" height="680" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="22" flood-color="#042539" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+
+  <rect x="20" y="20" width="1160" height="640" rx="36" fill="url(#bg)"/>
+  <rect x="20" y="20" width="1160" height="640" rx="36" fill="url(#haloA)"/>
+  <rect x="20" y="20" width="1160" height="640" rx="36" fill="url(#haloB)"/>
+
+  <circle cx="130" cy="112" r="6" fill="#FDE68A" fill-opacity="0.8"/>
+  <circle cx="156" cy="112" r="6" fill="#FDE68A" fill-opacity="0.6"/>
+  <circle cx="182" cy="112" r="6" fill="#FDE68A" fill-opacity="0.4"/>
+
+  <g filter="url(#shadow)">
+    <rect x="86" y="114" width="626" height="448" rx="34" fill="url(#glass)" stroke="rgba(255,255,255,0.24)"/>
+  </g>
+
+  <rect x="122" y="152" width="210" height="52" rx="26" fill="url(#badge)"/>
+  <text x="227" y="186" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="22" font-weight="700" fill="#ECFEFF">NEW MEMBER</text>
+
+  <text x="122" y="270" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="58" font-weight="900" fill="#F8FAFC">新會員首購</text>
+  <text x="122" y="386" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="140" font-weight="900" fill="#FDE68A">9 折</text>
+
+  <rect x="430" y="312" width="214" height="62" rx="16" fill="#DBEAFE" fill-opacity="0.96"/>
+  <text x="537" y="352" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="34" font-weight="800" fill="#1D4ED8">滿 NT$199</text>
+
+  <rect x="122" y="438" width="452" height="54" rx="27" fill="#FFFFFF" fill-opacity="0.92"/>
+  <text x="348" y="473" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="28" font-weight="800" fill="#0F5B68">現在註冊立即送，首單最容易轉單</text>
+
+  <g filter="url(#shadow)">
+    <rect x="804" y="154" width="320" height="360" rx="40" fill="url(#coupon)"/>
+    <rect x="804" y="154" width="320" height="360" rx="40" stroke="#FEF3C7" stroke-width="2"/>
+    <circle cx="804" cy="334" r="20" fill="#0F766E" fill-opacity="0.24"/>
+    <circle cx="1124" cy="334" r="20" fill="#0F766E" fill-opacity="0.24"/>
+    <text x="964" y="238" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="30" font-weight="900" fill="#7C2D12">FIRST BUY</text>
+    <text x="964" y="360" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="124" font-weight="900" fill="#9A3412">-10%</text>
+    <rect x="868" y="404" width="192" height="46" rx="23" fill="#FFF7ED" fill-opacity="0.92"/>
+    <text x="964" y="435" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="24" font-weight="900" fill="#7C2D12">WELCOME COUPON</text>
+  </g>
+</svg>

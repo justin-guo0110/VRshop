@@ -70,6 +70,21 @@ switch ($action) {
     case 'save_wheel_prizes':
         save_wheel_prizes_config();
         break;
+    case 'get_featured_products':
+        get_featured_products_config();
+        break;
+    case 'save_featured_products':
+        save_featured_products_config();
+        break;
+    case 'get_sidebar_ads':
+        get_sidebar_ads_config();
+        break;
+    case 'save_sidebar_ads':
+        save_sidebar_ads_config();
+        break;
+    case 'upload_sidebar_ad_image':
+        upload_sidebar_ad_image();
+        break;
     case 'list_customers':
         list_customers();
         break;
@@ -373,6 +388,517 @@ function save_wheel_prizes_config(): void {
     }
 
     respond_json(['success' => true, 'prizes' => $normalized]);
+}
+
+function featured_products_file_path(): string {
+    return __DIR__ . '/../storage/featured_products.json';
+}
+
+function featured_products_config_type(): string {
+    return 'featured_products';
+}
+
+function featured_products_config_key(): string {
+    return 'homepage';
+}
+
+function ensure_promotion_config_table(mysqli $db): bool {
+    if (table_exists($db, 'promotion_config')) {
+        return true;
+    }
+
+    $sql = 'CREATE TABLE IF NOT EXISTS promotion_config (
+                config_id INT NOT NULL AUTO_INCREMENT,
+                config_type VARCHAR(50) NOT NULL,
+                config_key VARCHAR(100) NOT NULL,
+                config_value LONGTEXT NOT NULL,
+                description VARCHAR(255) DEFAULT NULL,
+                is_active TINYINT(1) DEFAULT 1,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (config_id),
+                UNIQUE KEY uk_config_type_key (config_type, config_key),
+                KEY idx_config_active (is_active)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+
+    return (bool)$db->query($sql);
+}
+
+function default_featured_products_config(): array {
+    return [
+        ['product_id' => 0, 'badge' => '最多人購買'],
+        ['product_id' => 0, 'badge' => '店長推薦'],
+        ['product_id' => 0, 'badge' => '回購人氣王'],
+        ['product_id' => 0, 'badge' => '今日熱銷'],
+        ['product_id' => 0, 'badge' => '高評價商品'],
+        ['product_id' => 0, 'badge' => '限量精選'],
+    ];
+}
+
+function normalize_featured_products_config(array $raw): array {
+    $normalized = [];
+    foreach ($raw as $index => $row) {
+        if (!is_array($row)) continue;
+        $productId = intval($row['product_id'] ?? 0);
+        $badge = trim((string)($row['badge'] ?? ''));
+        if ($badge === '') {
+            $badge = default_featured_products_config()[$index]['badge'] ?? '精選推薦';
+        }
+        $normalized[] = [
+            'product_id' => max(0, $productId),
+            'badge' => substr($badge, 0, 24),
+        ];
+    }
+
+    while (count($normalized) < 6) {
+        $default = default_featured_products_config()[count($normalized)] ?? ['product_id' => 0, 'badge' => '精選推薦'];
+        $normalized[] = $default;
+    }
+
+    if (count($normalized) > 6) {
+        $normalized = array_slice($normalized, 0, 6);
+    }
+
+    return array_values($normalized);
+}
+
+function load_featured_products_config_from_db(mysqli $db): ?array {
+    if (!table_exists($db, 'promotion_config')) {
+        return null;
+    }
+
+    $type = featured_products_config_type();
+    $key = featured_products_config_key();
+
+    $stmt = $db->prepare('SELECT config_value FROM promotion_config WHERE config_type = ? AND config_key = ? AND is_active = 1 LIMIT 1');
+    if (!$stmt) {
+        return null;
+    }
+    $stmt->bind_param('ss', $type, $key);
+    if (!$stmt->execute()) {
+        return null;
+    }
+    $res = $stmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    if (!$row) {
+        return null;
+    }
+
+    $decoded = json_decode((string)($row['config_value'] ?? ''), true);
+    if (!is_array($decoded)) {
+        return null;
+    }
+
+    return normalize_featured_products_config($decoded);
+}
+
+function save_featured_products_config_to_db(mysqli $db, array $normalized): bool {
+    if (!ensure_promotion_config_table($db)) {
+        return false;
+    }
+
+    $payload = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    if ($payload === false) {
+        return false;
+    }
+
+    $type = featured_products_config_type();
+    $key = featured_products_config_key();
+    $description = '首頁熱門商品設定';
+    $isActive = 1;
+
+    // Keep SQL compatible with older schemas that may not have updated_by.
+    $sql = 'INSERT INTO promotion_config (config_type, config_key, config_value, description, is_active)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                config_value = VALUES(config_value),
+                description = VALUES(description),
+                is_active = VALUES(is_active),
+                updated_at = NOW()';
+
+    $stmt = $db->prepare($sql);
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param('ssssi', $type, $key, $payload, $description, $isActive);
+    return $stmt->execute();
+}
+
+function save_featured_products_config_to_file(array $normalized): bool {
+    $payload = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    if ($payload === false) {
+        return false;
+    }
+
+    $path = featured_products_file_path();
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+
+    return @file_put_contents($path, $payload, LOCK_EX) !== false;
+}
+
+function load_featured_products_config_array(): array {
+    $db = get_db();
+    $fromDb = load_featured_products_config_from_db($db);
+    if (is_array($fromDb)) {
+        return $fromDb;
+    }
+
+    $path = featured_products_file_path();
+    if (!is_file($path)) {
+        return default_featured_products_config();
+    }
+    $content = @file_get_contents($path);
+    if ($content === false || trim($content) === '') {
+        return default_featured_products_config();
+    }
+
+    $decoded = json_decode($content, true);
+    if (!is_array($decoded)) {
+        return default_featured_products_config();
+    }
+
+    return normalize_featured_products_config($decoded);
+}
+
+function get_featured_products_config(): void {
+    $config = load_featured_products_config_array();
+    $db = get_db();
+    $res = $db->query('SELECT product_id, name, category, price, is_active FROM products ORDER BY name ASC');
+    $products = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    respond_json(['success' => true, 'featured_products' => $config, 'products' => $products]);
+}
+
+function save_featured_products_config(): void {
+    $rawJson = $_POST['featured_json'] ?? '';
+    if (!is_string($rawJson) || trim($rawJson) === '') {
+        respond_json(['error' => 'Missing featured_json'], 422);
+    }
+
+    $decoded = json_decode($rawJson, true);
+    if (!is_array($decoded)) {
+        respond_json(['error' => 'Invalid featured_json'], 422);
+    }
+
+    $normalized = normalize_featured_products_config($decoded);
+    $db = get_db();
+    $savedToDb = save_featured_products_config_to_db($db, $normalized);
+    $savedToFile = save_featured_products_config_to_file($normalized);
+
+    if (!$savedToDb && !$savedToFile) {
+        $path = featured_products_file_path();
+        $dir = dirname($path);
+        $fileReason = is_dir($dir) ? 'storage not writable by web server' : 'storage directory missing';
+        $dbReason = table_exists($db, 'promotion_config') ? 'db write failed' : 'promotion_config unavailable';
+        respond_json([
+            'error' => 'Write featured products config failed (DB/file unavailable)',
+            'details' => [
+                'db' => $dbReason,
+                'file' => $fileReason,
+                'path' => $path,
+            ],
+        ], 500);
+    }
+
+    respond_json([
+        'success' => true,
+        'featured_products' => $normalized,
+        'saved_to_db' => $savedToDb,
+        'saved_to_file' => $savedToFile,
+    ]);
+}
+
+function sidebar_ads_file_path(): string {
+    return __DIR__ . '/../storage/sidebar_ads.json';
+}
+
+function default_sidebar_ads_config(): array {
+    return [
+        [
+            'image_url' => '',
+            'link_url' => './products.php',
+            'alt' => '側邊廣告 1',
+        ],
+        [
+            'image_url' => '',
+            'link_url' => './products.php',
+            'alt' => '側邊廣告 2',
+        ],
+        [
+            'image_url' => '',
+            'link_url' => './products.php',
+            'alt' => '側邊廣告 3',
+        ],
+        [
+            'image_url' => '',
+            'link_url' => './products.php',
+            'alt' => '側邊廣告 4',
+        ],
+    ];
+}
+
+function normalize_sidebar_ads_config(array $raw): array {
+    $normalized = [];
+    foreach ($raw as $index => $row) {
+        if (!is_array($row)) continue;
+        $imageUrl = trim((string)($row['image_url'] ?? ''));
+        $linkUrl = trim((string)($row['link_url'] ?? ''));
+        $alt = trim((string)($row['alt'] ?? ''));
+
+        if ($imageUrl === '') {
+            $imageUrl = default_sidebar_ads_config()[$index]['image_url'] ?? '';
+        }
+        if ($linkUrl === '') {
+            $linkUrl = './products.php';
+        }
+        if ($alt === '') {
+            $alt = '側邊廣告 ' . ($index + 1);
+        }
+
+        $normalized[] = [
+            'image_url' => substr($imageUrl, 0, 500),
+            'link_url' => substr($linkUrl, 0, 500),
+            'alt' => substr($alt, 0, 120),
+        ];
+    }
+
+    while (count($normalized) < 4) {
+        $normalized[] = default_sidebar_ads_config()[count($normalized)] ?? [
+            'image_url' => '',
+            'link_url' => './products.php',
+            'alt' => '側邊廣告',
+        ];
+    }
+
+    if (count($normalized) > 4) {
+        $normalized = array_slice($normalized, 0, 4);
+    }
+
+    return array_values($normalized);
+}
+
+function load_sidebar_ads_config_from_db(mysqli $db): ?array {
+    if (!table_exists($db, 'promotion_config')) {
+        return null;
+    }
+
+    $type = 'sidebar_ads';
+    $key = 'homepage';
+    $stmt = $db->prepare('SELECT config_value FROM promotion_config WHERE config_type = ? AND config_key = ? AND is_active = 1 LIMIT 1');
+    if (!$stmt) {
+        return null;
+    }
+    $stmt->bind_param('ss', $type, $key);
+    if (!$stmt->execute()) {
+        return null;
+    }
+
+    $res = $stmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    if (!$row) {
+        return null;
+    }
+
+    $decoded = json_decode((string)($row['config_value'] ?? ''), true);
+    if (!is_array($decoded)) {
+        return null;
+    }
+
+    return normalize_sidebar_ads_config($decoded);
+}
+
+function save_sidebar_ads_config_to_db(mysqli $db, array $normalized): bool {
+    if (!ensure_promotion_config_table($db)) {
+        return false;
+    }
+
+    $payload = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    if ($payload === false) {
+        return false;
+    }
+
+    $type = 'sidebar_ads';
+    $key = 'homepage';
+    $description = '首頁側邊廣告圖片設定';
+    $isActive = 1;
+    $sql = 'INSERT INTO promotion_config (config_type, config_key, config_value, description, is_active)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                config_value = VALUES(config_value),
+                description = VALUES(description),
+                is_active = VALUES(is_active),
+                updated_at = NOW()';
+    $stmt = $db->prepare($sql);
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param('ssssi', $type, $key, $payload, $description, $isActive);
+    return $stmt->execute();
+}
+
+function save_sidebar_ads_config_to_file(array $normalized): bool {
+    $payload = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    if ($payload === false) {
+        return false;
+    }
+
+    $path = sidebar_ads_file_path();
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+
+    return @file_put_contents($path, $payload, LOCK_EX) !== false;
+}
+
+function load_sidebar_ads_config_array(): array {
+    $db = get_db();
+    $fromDb = load_sidebar_ads_config_from_db($db);
+    if (is_array($fromDb)) {
+        return $fromDb;
+    }
+
+    $path = sidebar_ads_file_path();
+    if (!is_file($path)) {
+        return default_sidebar_ads_config();
+    }
+
+    $content = @file_get_contents($path);
+    if ($content === false || trim($content) === '') {
+        return default_sidebar_ads_config();
+    }
+
+    $decoded = json_decode($content, true);
+    if (!is_array($decoded)) {
+        return default_sidebar_ads_config();
+    }
+
+    return normalize_sidebar_ads_config($decoded);
+}
+
+function get_sidebar_ads_config(): void {
+    respond_json(['success' => true, 'sidebar_ads' => load_sidebar_ads_config_array()]);
+}
+
+function save_sidebar_ads_config(): void {
+    $rawJson = $_POST['sidebar_json'] ?? '';
+    if (!is_string($rawJson) || trim($rawJson) === '') {
+        respond_json(['error' => 'Missing sidebar_json'], 422);
+    }
+
+    $decoded = json_decode($rawJson, true);
+    if (!is_array($decoded)) {
+        respond_json(['error' => 'Invalid sidebar_json'], 422);
+    }
+
+    $normalized = normalize_sidebar_ads_config($decoded);
+    $db = get_db();
+    $savedToDb = save_sidebar_ads_config_to_db($db, $normalized);
+    $savedToFile = save_sidebar_ads_config_to_file($normalized);
+
+    if (!$savedToDb && !$savedToFile) {
+        respond_json([
+            'error' => 'Write sidebar ads config failed (DB/file unavailable)',
+        ], 500);
+    }
+
+    respond_json([
+        'success' => true,
+        'sidebar_ads' => $normalized,
+        'saved_to_db' => $savedToDb,
+        'saved_to_file' => $savedToFile,
+    ]);
+}
+
+function upload_sidebar_ad_image(): void {
+    if (!isset($_FILES['ad_image'])) {
+        respond_json(['error' => 'Missing ad_image file'], 422);
+    }
+
+    $file = $_FILES['ad_image'];
+    if (!is_array($file) || intval($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        respond_json(['error' => 'Upload failed'], 422);
+    }
+
+    $tmpPath = (string)($file['tmp_name'] ?? '');
+    if ($tmpPath === '' || !is_file($tmpPath)) {
+        respond_json(['error' => 'Invalid upload temp file'], 422);
+    }
+
+    $maxBytes = 5 * 1024 * 1024;
+    if (intval($file['size'] ?? 0) > $maxBytes) {
+        respond_json(['error' => 'Image too large (max 5MB)'], 422);
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = $finfo ? (string)finfo_file($finfo, $tmpPath) : '';
+    if ($finfo) {
+        finfo_close($finfo);
+    }
+
+    $allowed = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+    ];
+    if (!isset($allowed[$mime])) {
+        respond_json(['error' => 'Unsupported image type'], 422);
+    }
+
+    $ext = $allowed[$mime];
+
+    $targets = [
+        [
+            'dir' => __DIR__ . '/../public/uploads/sidebar_ads',
+            'url_prefix' => '../public/uploads/sidebar_ads/'
+        ],
+        [
+            'dir' => __DIR__ . '/../storage/sidebar_ads',
+            'url_prefix' => '../storage/sidebar_ads/'
+        ],
+    ];
+
+    $targetInfo = null;
+    $reasons = [];
+    foreach ($targets as $candidate) {
+        $dir = (string)$candidate['dir'];
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        if (!is_dir($dir)) {
+            $reasons[] = $dir . ' not exists';
+            continue;
+        }
+        if (!is_writable($dir)) {
+            $reasons[] = $dir . ' not writable';
+            continue;
+        }
+        $targetInfo = $candidate;
+        break;
+    }
+
+    if (!$targetInfo) {
+        respond_json([
+            'error' => 'Create upload directory failed',
+            'details' => $reasons,
+        ], 500);
+    }
+
+    $filename = 'ad_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    $dir = (string)$targetInfo['dir'];
+    $target = $dir . '/' . $filename;
+    if (!@move_uploaded_file($tmpPath, $target)) {
+        respond_json(['error' => 'Save uploaded file failed'], 500);
+    }
+    @chmod($target, 0666);
+
+    $imageUrl = (string)$targetInfo['url_prefix'] . $filename;
+    respond_json([
+        'success' => true,
+        'image_url' => $imageUrl,
+    ]);
 }
 
 function list_orders(): void {

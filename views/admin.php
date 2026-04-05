@@ -290,6 +290,55 @@
                 </div>
             </div>
 
+            <!-- 熱門商品管理 -->
+            <div id="featured_productsPage" class="admin-page" style="display:none;">
+                <div class="admin-card">
+                    <h3>⭐ 熱門商品管理</h3>
+                    <p style="margin-top:-8px;color:#64748b;">設定首頁熱門商品卡片的商品與標籤，最多 6 筆，儲存後前台立即生效。</p>
+
+                    <table class="admin-table" id="featuredProductsAdminTable">
+                        <thead>
+                            <tr>
+                                <th style="width:84px;">排序</th>
+                                <th>商品</th>
+                                <th style="width:260px;">推薦標籤</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                    <div style="display:flex;gap:10px;align-items:center;margin-top:12px;">
+                        <button type="button" class="btn btn-primary" id="saveFeaturedProductsBtn">儲存熱門商品</button>
+                        <span id="featuredProductsMsg" style="font-size:13px;color:#64748b;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 側邊廣告管理 -->
+            <div id="sidebar_adsPage" class="admin-page" style="display:none;">
+                <div class="admin-card">
+                    <h3>🖼️ 側邊廣告管理</h3>
+                    <p style="margin-top:-8px;color:#64748b;">首頁左側廣告僅顯示圖片，直接上傳素材即可投放。未上傳時前台顯示「歡迎諮詢投廣」。</p>
+
+                    <table class="admin-table" id="sidebarAdsAdminTable">
+                        <thead>
+                            <tr>
+                                <th style="width:70px;">版位</th>
+                                <th style="width:190px;">預覽</th>
+                                <th>狀態</th>
+                                <th style="width:220px;">上傳素材</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                    <div style="display:flex;gap:10px;align-items:center;margin-top:12px;">
+                        <button type="button" class="btn btn-secondary" id="saveSidebarAdsBtn">手動儲存（可選）</button>
+                        <span id="sidebarAdsMsg" style="font-size:13px;color:#64748b;"></span>
+                    </div>
+                </div>
+            </div>
+
             <!-- 促銷管理 -->
             <div id="promotionsPage" class="admin-page" style="display:none;">
                 <div class="admin-card">
@@ -462,6 +511,7 @@ let currentOrderStatus = 'all';
 let currentOrderKeyword = '';
 let currentRefundStatus = 'pending';
 let currentRefundKeyword = '';
+let sidebarAdsState = [];
 
 const refundStatusLabels = {
     pending: '待審核',
@@ -550,6 +600,8 @@ function showPage(page) {
         else if (page === 'refunds') loadRefundRequests();
         else if (page === 'inventory') loadInventory();
         else if (page === 'customers') loadCustomers();
+        else if (page === 'featured_products') loadFeaturedProductsAdmin();
+        else if (page === 'sidebar_ads') loadSidebarAdsAdmin();
         else if (page === 'promotions') loadPromotions();
         else if (page === 'chat') loadChat();
     }
@@ -1046,6 +1098,271 @@ async function loadCustomers() {
         const tbody = document.querySelector('#customersTable tbody');
         if (tbody) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#dc2626;">客戶資料載入失敗</td></tr>';
+        }
+    }
+}
+
+async function loadFeaturedProductsAdmin() {
+    const tbody = document.querySelector('#featuredProductsAdminTable tbody');
+    const msg = document.getElementById('featuredProductsMsg');
+    if (!tbody) return;
+
+    if (msg) {
+        msg.textContent = '';
+        msg.style.color = '#64748b';
+    }
+
+    try {
+        const data = await opsApi.get('../api/admin.php?action=get_featured_products');
+        const configRows = Array.isArray(data.featured_products) ? data.featured_products : [];
+        const products = Array.isArray(data.products) ? data.products.filter(p => Number(p.is_active) === 1) : [];
+
+        const productOptions = ['<option value="0">-- 請選擇商品 --</option>']
+            .concat(products.map(p => `<option value="${p.product_id}">${escapeHtml(p.name)} (${escapeHtml(p.category || '未分類')})</option>`));
+
+        const defaults = ['最多人購買', '店長推薦', '回購人氣王', '今日熱銷', '高評價商品', '限量精選'];
+
+        tbody.innerHTML = '';
+        for (let i = 0; i < 6; i++) {
+            const rowConfig = configRows[i] || {};
+            const pid = Number(rowConfig.product_id || 0);
+            const badge = rowConfig.badge ? String(rowConfig.badge) : defaults[i];
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>#${i + 1}</td>
+                <td>
+                    <select class="admin-input featured-product-select" data-index="${i}" style="width:100%;">
+                        ${productOptions.join('')}
+                    </select>
+                </td>
+                <td>
+                    <input type="text" class="admin-input featured-product-badge" data-index="${i}" value="${escapeHtml(badge)}" maxlength="24" placeholder="例如：最多人購買">
+                </td>
+            `;
+            tbody.appendChild(tr);
+            const selectEl = tr.querySelector('.featured-product-select');
+            if (selectEl) selectEl.value = String(pid);
+        }
+
+        const saveBtn = document.getElementById('saveFeaturedProductsBtn');
+        if (saveBtn && !saveBtn.dataset.bound) {
+            saveBtn.dataset.bound = '1';
+            saveBtn.addEventListener('click', saveFeaturedProductsAdmin);
+        }
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:#dc2626;">熱門商品設定載入失敗</td></tr>';
+    }
+}
+
+async function saveFeaturedProductsAdmin() {
+    const msg = document.getElementById('featuredProductsMsg');
+    const rows = [];
+    for (let i = 0; i < 6; i++) {
+        const selectEl = document.querySelector(`.featured-product-select[data-index="${i}"]`);
+        const badgeEl = document.querySelector(`.featured-product-badge[data-index="${i}"]`);
+        rows.push({
+            product_id: Number(selectEl?.value || 0),
+            badge: String(badgeEl?.value || '').trim()
+        });
+    }
+
+    try {
+        const res = await opsApi.post('../api/admin.php?action=save_featured_products', {
+            featured_json: JSON.stringify(rows)
+        });
+
+        if (res.success) {
+            if (msg) {
+                msg.textContent = '已儲存，首頁熱門商品已更新';
+                msg.style.color = '#0f766e';
+            }
+        } else if (msg) {
+            let detailText = '';
+            if (res.details && typeof res.details === 'object') {
+                const dbMsg = res.details.db ? `DB: ${res.details.db}` : '';
+                const fileMsg = res.details.file ? `File: ${res.details.file}` : '';
+                detailText = [dbMsg, fileMsg].filter(Boolean).join(' | ');
+            }
+            msg.textContent = detailText ? `${res.error || '儲存失敗'} (${detailText})` : (res.error || '儲存失敗');
+            msg.style.color = '#dc2626';
+        }
+    } catch (error) {
+        if (msg) {
+            msg.textContent = '儲存失敗';
+            msg.style.color = '#dc2626';
+        }
+    }
+}
+
+async function loadSidebarAdsAdmin() {
+    const tbody = document.querySelector('#sidebarAdsAdminTable tbody');
+    const msg = document.getElementById('sidebarAdsMsg');
+    if (!tbody) return;
+
+    if (msg) {
+        msg.textContent = '';
+        msg.style.color = '#64748b';
+    }
+
+    try {
+        const data = await opsApi.get('../api/admin.php?action=get_sidebar_ads');
+        const rows = Array.isArray(data.sidebar_ads) ? data.sidebar_ads : [];
+        sidebarAdsState = Array.from({ length: 4 }, (_, i) => {
+            const row = rows[i] || {};
+            return {
+                image_url: String(row.image_url || '').trim(),
+                link_url: String(row.link_url || './products.php').trim() || './products.php',
+                alt: String(row.alt || `側邊廣告 ${i + 1}`).trim() || `側邊廣告 ${i + 1}`
+            };
+        });
+
+        tbody.innerHTML = '';
+        for (let i = 0; i < 4; i++) {
+            const row = sidebarAdsState[i] || {};
+            const imageUrl = String(row.image_url || '').trim();
+            const hasImage = imageUrl !== '';
+            const preview = hasImage ? imageUrl : 'https://via.placeholder.com/240x120?text=%E6%AD%A1%E8%BF%8E%E8%AB%AE%E8%A9%A2%E6%8A%95%E5%BB%A3';
+            const statusText = hasImage ? '已上架圖片' : '未上傳（前台顯示歡迎諮詢投廣）';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>#${i + 1}</td>
+                <td>
+                    <img src="${escapeHtml(preview)}" alt="預覽${i + 1}" class="sidebar-ad-preview" style="width:160px;height:90px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;">
+                </td>
+                <td>
+                    <span class="sidebar-ad-status" data-index="${i}" style="font-size:13px;color:${hasImage ? '#0f766e' : '#b45309'};">${escapeHtml(statusText)}</span>
+                </td>
+                <td>
+                    <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="sidebar-ad-file" data-index="${i}" style="margin-bottom:8px;">
+                    <button type="button" class="btn btn-secondary sidebar-ad-upload-btn" data-index="${i}">上傳圖片</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        tbody.querySelectorAll('.sidebar-ad-upload-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const idx = Number(btn.getAttribute('data-index') || 0);
+                uploadSidebarAdImage(idx);
+            });
+        });
+
+        const saveBtn = document.getElementById('saveSidebarAdsBtn');
+        if (saveBtn && !saveBtn.dataset.bound) {
+            saveBtn.dataset.bound = '1';
+            saveBtn.addEventListener('click', saveSidebarAdsAdmin);
+        }
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:#dc2626;">側邊廣告設定載入失敗</td></tr>';
+    }
+}
+
+async function persistSidebarAdsState() {
+    const rows = Array.from({ length: 4 }, (_, i) => {
+        const row = sidebarAdsState[i] || {};
+        return {
+            image_url: String(row.image_url || '').trim(),
+            link_url: String(row.link_url || './products.php').trim() || './products.php',
+            alt: String(row.alt || `側邊廣告 ${i + 1}`).trim() || `側邊廣告 ${i + 1}`
+        };
+    });
+
+    return opsApi.post('../api/admin.php?action=save_sidebar_ads', {
+        sidebar_json: JSON.stringify(rows)
+    });
+}
+
+async function uploadSidebarAdImage(index) {
+    const msg = document.getElementById('sidebarAdsMsg');
+    const fileEl = document.querySelector(`.sidebar-ad-file[data-index="${index}"]`);
+    const previewEl = document.querySelectorAll('.sidebar-ad-preview')[index];
+    const statusEl = document.querySelector(`.sidebar-ad-status[data-index="${index}"]`);
+
+    if (!fileEl || !fileEl.files || !fileEl.files[0]) {
+        if (msg) {
+            msg.textContent = '請先選擇圖片檔案';
+            msg.style.color = '#dc2626';
+        }
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append('ad_image', fileEl.files[0]);
+
+    try {
+        if (msg) {
+            msg.textContent = '圖片上傳中...';
+            msg.style.color = '#64748b';
+        }
+
+        const response = await fetch('../api/admin.php?action=upload_sidebar_ad_image', {
+            method: 'POST',
+            credentials: 'include',
+            body: fd
+        });
+        const result = await response.json();
+
+        if (!result.success || !result.image_url) {
+            let detail = '';
+            if (Array.isArray(result.details) && result.details.length) {
+                detail = '（' + result.details.join(' | ') + '）';
+            }
+            throw new Error((result.error || '上傳失敗') + detail);
+        }
+
+        if (!sidebarAdsState[index]) {
+            sidebarAdsState[index] = {
+                image_url: '',
+                link_url: './products.php',
+                alt: `側邊廣告 ${index + 1}`
+            };
+        }
+        sidebarAdsState[index].image_url = result.image_url;
+
+        const saveRes = await persistSidebarAdsState();
+        if (!saveRes || !saveRes.success) {
+            throw new Error((saveRes && saveRes.error) ? saveRes.error : '上傳後自動儲存失敗');
+        }
+
+        if (previewEl) {
+            previewEl.src = result.image_url;
+        }
+        if (statusEl) {
+            statusEl.textContent = '已上架圖片';
+            statusEl.style.color = '#0f766e';
+        }
+        if (msg) {
+            msg.textContent = `第 ${index + 1} 格圖片已上傳並完成投放`; 
+            msg.style.color = '#0f766e';
+        }
+    } catch (error) {
+        if (msg) {
+            msg.textContent = error.message || '上傳失敗';
+            msg.style.color = '#dc2626';
+        }
+    }
+}
+
+async function saveSidebarAdsAdmin() {
+    const msg = document.getElementById('sidebarAdsMsg');
+    try {
+        const res = await persistSidebarAdsState();
+
+        if (res.success) {
+            if (msg) {
+                msg.textContent = '側邊廣告設定已同步';
+                msg.style.color = '#0f766e';
+            }
+        } else if (msg) {
+            msg.textContent = res.error || '儲存失敗';
+            msg.style.color = '#dc2626';
+        }
+    } catch (error) {
+        if (msg) {
+            msg.textContent = '儲存失敗';
+            msg.style.color = '#dc2626';
         }
     }
 }

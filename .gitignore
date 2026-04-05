@@ -1,0 +1,12 @@
+# 上傳的圖片（使用者上傳內容，不進版本控制）
+public/uploads/sidebar_ads/*
+!public/uploads/sidebar_ads/.gitkeep
+storage/sidebar_ads/*
+!storage/sidebar_ads/.gitkeep
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+
+# 敏感設定（如有）
+# config/local.php

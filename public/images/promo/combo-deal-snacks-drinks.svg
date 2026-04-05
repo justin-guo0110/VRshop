@@ -1,0 +1,57 @@
+<svg width="1200" height="680" viewBox="0 0 1200 680" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="組合優惠活動素材">
+  <defs>
+    <linearGradient id="bg" x1="52" y1="44" x2="1148" y2="644" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B2A3F"/>
+      <stop offset="0.48" stop-color="#14556E"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <radialGradient id="light" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1008 130) rotate(132) scale(460 360)">
+      <stop stop-color="#99F6E4" stop-opacity="0.56"/>
+      <stop offset="1" stop-color="#99F6E4" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="110" y1="126" x2="662" y2="562" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="tag" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#0F766E"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1200" height="680" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#082337" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+
+  <rect x="20" y="20" width="1160" height="640" rx="36" fill="url(#bg)"/>
+  <rect x="20" y="20" width="1160" height="640" rx="36" fill="url(#light)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="86" y="114" width="626" height="448" rx="34" fill="url(#glass)" stroke="rgba(255,255,255,0.2)"/>
+  </g>
+
+  <rect x="122" y="152" width="228" height="52" rx="26" fill="url(#tag)"/>
+  <text x="236" y="186" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="22" font-weight="700" fill="#E6FFFA">COMBO DEAL</text>
+
+  <text x="122" y="266" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="58" font-weight="900" fill="#F8FAFC">組合優惠</text>
+  <text x="122" y="346" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="78" font-weight="900" fill="#A7F3D0">同步開跑</text>
+
+  <rect x="122" y="392" width="260" height="58" rx="18" fill="#ECFEFF" fill-opacity="0.96"/>
+  <text x="252" y="429" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="30" font-weight="800" fill="#0E7490">飲料 2 件 88 折</text>
+  <rect x="396" y="392" width="276" height="58" rx="18" fill="#CCFBF1" fill-opacity="0.96"/>
+  <text x="534" y="429" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="30" font-weight="800" fill="#0F5B68">零食 3 件折 NT$20</text>
+
+  <rect x="122" y="482" width="448" height="52" rx="26" fill="#FFFFFF" fill-opacity="0.92"/>
+  <text x="346" y="516" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="27" font-weight="800" fill="#0F5B68">結帳自動計算，任搭更划算</text>
+
+  <g filter="url(#shadow)">
+    <rect x="804" y="154" width="320" height="360" rx="40" fill="#DFFCF7"/>
+    <rect x="804" y="154" width="320" height="360" rx="40" stroke="#99F6E4" stroke-width="2"/>
+    <ellipse cx="900" cy="304" rx="70" ry="84" fill="#2DD4BF"/>
+    <rect x="966" y="218" width="118" height="132" rx="22" fill="#14B8A6"/>
+    <rect x="986" y="190" width="78" height="24" rx="12" fill="#A7F3D0"/>
+    <circle cx="934" cy="392" r="36" fill="#0F766E"/>
+    <circle cx="1016" cy="392" r="36" fill="#0F766E"/>
+    <rect x="870" y="430" width="188" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.94"/>
+    <text x="964" y="461" text-anchor="middle" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="24" font-weight="900" fill="#0F5B68">任搭更划算</text>
+  </g>
+</svg>

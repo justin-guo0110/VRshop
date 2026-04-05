@@ -35,6 +35,8 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
                     <a href="./admin.php?page=orders">📋 訂單管理</a>
                     <a href="./admin.php?page=products">📦 商品管理</a>
                     <a href="./admin.php?page=inventory">📚 庫存管理</a>
+                    <a href="./admin.php?page=featured_products">⭐ 熱門商品管理</a>
+                    <a href="./admin.php?page=sidebar_ads">🖼️ 側邊廣告管理</a>
                     <a href="./admin.php?page=chat">💬 客服系統</a>
                 <?php else: ?>
                     <a href="./index.php">首頁</a>
@@ -81,58 +83,40 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
         </div>
     </header>
 
-    <main class="container" style="padding-top: 0; display: grid; grid-template-columns: 180px 1fr; gap: 12px;">
+    <main class="container home-layout">
         <!-- 左側廣告框架 -->
-        <aside class="sidebar-ads-box">
-            <a href="./products.php" class="sidebar-ad sidebar-ad-featured">
-                <div class="ad-chip">限時 48H</div>
-                <strong>春季補給站</strong>
-                <span>能量飲任選第 2 件 5 折，今晚 23:59 截止</span>
-                <em>立即搶購</em>
+        <aside class="sidebar-ads-box" id="sidebarAdsBox">
+            <a href="./products.php" class="sidebar-ad sidebar-ad-image">
+                <div class="sidebar-ad-placeholder">歡迎諮詢投廣</div>
             </a>
-            <a href="./products.php" class="sidebar-ad">
-                <strong>滿額免運</strong>
-                <span>宅配滿 NT$499、超商滿 NT$299 自動免運</span>
+            <a href="./products.php" class="sidebar-ad sidebar-ad-image">
+                <div class="sidebar-ad-placeholder">歡迎諮詢投廣</div>
             </a>
-            <a href="./products.php" class="sidebar-ad">
-                <strong>飲料組合</strong>
-                <span>任選 2 件 88 折，結帳直接帶入</span>
+            <a href="./products.php" class="sidebar-ad sidebar-ad-image">
+                <div class="sidebar-ad-placeholder">歡迎諮詢投廣</div>
             </a>
-            <a href="./products.php" class="sidebar-ad">
-                <strong>零食優惠</strong>
-                <span>任選 3 件折 NT$20，越湊越划算</span>
+            <a href="./products.php" class="sidebar-ad sidebar-ad-image">
+                <div class="sidebar-ad-placeholder">歡迎諮詢投廣</div>
             </a>
         </aside>
 
         <!-- 主內容區 -->
-        <div>
+        <div class="home-main-content">
         <section class="promo-slider" id="promoSlider">
             <div class="promo-slider-inner" id="promoSliderInner">
-                <div class="promo-slide">
-                    <div class="promo-slide-text">
-                        <h3>新會員首購 9 折券</h3>
-                        <p>現在註冊立即送首購券，滿 NT$199 即可折抵，首單最容易轉單。</p>
-                    </div>
-                    <div class="promo-slide-cta">
-                        <a href="./login.php" class="btn btn-secondary">立即註冊</a>
+                <div class="promo-slide promo-slide-new-member">
+                    <div class="promo-slide-media" aria-hidden="true">
+                        <img src="../public/images/promo/new-member-first-order-9off.svg" alt="新會員首購9折券促銷素材">
                     </div>
                 </div>
-                <div class="promo-slide">
-                    <div class="promo-slide-text">
-                        <h3>滿額免運自動套用</h3>
-                        <p>宅配滿 NT$499、超商取貨滿 NT$299，不用輸入券，結帳自動免運。</p>
-                    </div>
-                    <div class="promo-slide-cta">
-                        <a href="./checkout.php" class="btn btn-secondary">前往結帳</a>
+                <div class="promo-slide promo-slide-image-only promo-slide-free-shipping">
+                    <div class="promo-slide-media" aria-hidden="true">
+                        <img src="../public/images/promo/free-shipping-threshold.svg" alt="滿額免運自動套用促銷素材">
                     </div>
                 </div>
-                <div class="promo-slide">
-                    <div class="promo-slide-text">
-                        <h3>組合優惠同步開跑</h3>
-                        <p>飲料任選 2 件 88 折，零食任選 3 件折 NT$20，結帳會自動計算。</p>
-                    </div>
-                    <div class="promo-slide-cta">
-                        <a href="./products.php" class="btn btn-secondary">查看活動商品</a>
+                <div class="promo-slide promo-slide-image-only promo-slide-combo-deal">
+                    <div class="promo-slide-media" aria-hidden="true">
+                        <img src="../public/images/promo/combo-deal-snacks-drinks.svg" alt="組合優惠同步開跑促銷素材">
                     </div>
                 </div>
             </div>
@@ -144,7 +128,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
         </section>
         
         <!-- Hero 區域 -->
-        <section class="hero-section" style="margin: 0; padding: 52px 16px;">
+        <section class="hero-section home-hero">
             <div style="max-width: 1100px; margin: 0 auto;">
                 <h1>歡迎來到 VR Mall</h1>
                 <p>探索最新的虛擬實境產品，體驗未來購物的無限可能</p>
@@ -214,7 +198,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
         // 載入熱門商品
         async function loadFeaturedProducts() {
             try {
-                const response = await fetch('../api/shop.php?action=search_products');
+                const response = await fetch('../api/shop.php?action=featured_products');
                 const data = await response.json();
                 const container = document.getElementById('featuredProducts');
 
@@ -226,17 +210,24 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
                 const products = data.products.slice(0, 6);
                 container.innerHTML = '';
 
-                products.forEach(product => {
+                products.forEach((product, index) => {
+                    const featuredLabel = product.featured_badge || '精選推薦';
                     const card = document.createElement('div');
                     card.className = 'product-card';
                     card.innerHTML = `
                         <div class="featured-card-media">
+                            <div class="featured-card-badges">
+                                <span class="featured-badge featured-badge-primary">${featuredLabel}</span>
+                            </div>
                             <img src="${typeof fixImageUrl === 'function' ? fixImageUrl(product.image_url) : (product.image_url || 'https://via.placeholder.com/300x200?text=No+Image')}" alt="${product.name}" onerror="this.onerror=null;this.src='https://via.placeholder.com/300x200?text=No+Image';">
                         </div>
                         <div class="featured-card-body">
                             <h3>${product.name}</h3>
-                            <p class="price">$${Number(product.price).toFixed(2)}</p>
-                            <p class="featured-category">${product.category || '未分類'}</p>
+                            <p class="price">NT$ ${Number(product.price).toFixed(0)}</p>
+                            <div class="featured-meta-row">
+                                <p class="featured-category">${product.category || '未分類'}</p>
+                                <span class="featured-chip">快速出貨</span>
+                            </div>
                             <a class="btn btn-secondary" href="./product_detail.php?product_id=${product.product_id}">查看詳情</a>
                         </div>
                     `;
@@ -247,6 +238,66 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
                 console.error('載入商品失敗:', error);
                 document.getElementById('featuredProducts').innerHTML =
                     '<p style="text-align:center;padding:40px;color:#d14343;">載入商品時發生錯誤</p>';
+            }
+        }
+
+        function renderSidebarAds(ads) {
+            const box = document.getElementById('sidebarAdsBox');
+            if (!box) return;
+
+            const list = Array.isArray(ads) ? ads.slice(0, 4) : [];
+            if (!list.length) return;
+
+            box.innerHTML = '';
+            list.forEach((row, idx) => {
+                const imageUrl = String(row.image_url || '').trim();
+                const linkUrl = String(row.link_url || './products.php').trim();
+                const alt = String(row.alt || `側邊廣告 ${idx + 1}`).trim();
+
+                const a = document.createElement('a');
+                a.className = 'sidebar-ad sidebar-ad-image';
+                a.href = linkUrl || './products.php';
+
+                if (!imageUrl) {
+                    a.innerHTML = '<div class="sidebar-ad-placeholder">歡迎諮詢投廣</div>';
+                    box.appendChild(a);
+                    return;
+                }
+
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = alt || `側邊廣告 ${idx + 1}`;
+                img.loading = 'lazy';
+                img.onerror = function () {
+                    const parent = this.parentElement;
+                    if (!parent) return;
+                    parent.innerHTML = '<div class="sidebar-ad-placeholder">歡迎諮詢投廣</div>';
+                };
+
+                a.appendChild(img);
+                box.appendChild(a);
+            });
+
+            if (!box.children.length) {
+                for (let i = 0; i < 4; i++) {
+                    const a = document.createElement('a');
+                    a.className = 'sidebar-ad sidebar-ad-image';
+                    a.href = './products.php';
+                    a.innerHTML = '<div class="sidebar-ad-placeholder">歡迎諮詢投廣</div>';
+                    box.appendChild(a);
+                }
+            }
+        }
+
+        async function loadSidebarAds() {
+            try {
+                const response = await fetch('../api/shop.php?action=sidebar_ads');
+                const data = await response.json();
+                if (data && data.success && Array.isArray(data.sidebar_ads)) {
+                    renderSidebarAds(data.sidebar_ads);
+                }
+            } catch (error) {
+                console.error('載入側邊廣告失敗:', error);
             }
         }
 
@@ -284,6 +335,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
 
         document.addEventListener('DOMContentLoaded', function () {
             loadFeaturedProducts();
+            loadSidebarAds();
             initPromoSlider();
 
             document.querySelectorAll('.js-open-chat').forEach(function (el) {

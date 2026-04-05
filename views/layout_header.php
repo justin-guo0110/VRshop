@@ -47,6 +47,8 @@ $currentUser = $_SESSION['user'] ?? null;
                             <a href="../views/admin.php?page=orders">📋 訂單管理</a>
                             <a href="../views/admin.php?page=refunds">↩️ 退單審核</a>
                             <a href="../views/admin.php?page=inventory">📚 庫存管理</a>
+                            <a href="../views/admin.php?page=featured_products">⭐ 熱門商品管理</a>
+                            <a href="../views/admin.php?page=sidebar_ads">🖼️ 側邊廣告管理</a>
                             <a href="../views/admin.php?page=customers">👥 客戶管理</a>
                             <a href="../views/admin.php?page=promotions">🎁 促銷管理</a>
                             <a href="../views/admin.php?page=chat">💬 客服系統</a>

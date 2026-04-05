@@ -4,6 +4,12 @@ require_once __DIR__ . '/db.php';
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 switch ($action) {
+    case 'featured_products':
+        featured_products();
+        break;
+    case 'sidebar_ads':
+        sidebar_ads();
+        break;
     case 'search_products':
         search_products();
         break;
@@ -37,7 +43,38 @@ function search_products(): void {
     $page = max(1, intval($_GET['page'] ?? 1));
     $page_size = max(1, intval($_GET['page_size'] ?? 12));
 
-    $sql = 'SELECT product_id, name, category, description, price, stock, image_url, is_active FROM products WHERE is_active = 1';
+    $sql = 'SELECT 
+                product_id,
+                name,
+                category,
+                description,
+                price,
+                stock,
+                image_url,
+                is_active,
+                COALESCE((
+                    SELECT SUM(oi.quantity)
+                    FROM order_items oi
+                    JOIN orders o ON o.order_id = oi.order_id
+                    WHERE oi.product_id = products.product_id
+                      AND o.status IN ("pending", "accepted", "preparing", "shipping", "done")
+                ), 0) AS sold_count,
+                CASE
+                    WHEN product_id >= (
+                        SELECT COALESCE(MAX(p2.product_id), 0) - 6
+                        FROM products p2
+                        WHERE p2.is_active = 1
+                    ) THEN 1
+                    ELSE 0
+                END AS is_new,
+                CASE
+                    WHEN name LIKE "%折%" OR name LIKE "%特價%" OR name LIKE "%限時%"
+                      OR description LIKE "%折%" OR description LIKE "%特價%" OR description LIKE "%限時%"
+                    THEN 1
+                    ELSE 0
+                END AS is_limited_offer
+            FROM products
+            WHERE is_active = 1';
     $params = [];
     $types = '';
     
@@ -68,7 +105,22 @@ function search_products(): void {
     }
     
     // Count total
-    $count_sql = str_replace('SELECT product_id, name, category, description, price, stock, image_url, is_active', 'SELECT COUNT(*) as cnt', $sql);
+    $count_sql = 'SELECT COUNT(*) as cnt FROM products WHERE is_active = 1';
+    if ($keyword !== '') {
+        $count_sql .= ' AND (name LIKE ? OR description LIKE ?)';
+    }
+    if ($category !== '') {
+        $count_sql .= ' AND category = ?';
+    }
+    if ($min_price > 0) {
+        $count_sql .= ' AND price >= ?';
+    }
+    if ($max_price < PHP_FLOAT_MAX) {
+        $count_sql .= ' AND price <= ?';
+    }
+    if ($in_stock) {
+        $count_sql .= ' AND stock > 0';
+    }
     $count_stmt = $db->prepare($count_sql);
     if (!empty($params)) {
         $count_stmt->bind_param($types, ...$params);
@@ -102,6 +154,268 @@ function search_products(): void {
     $res = $stmt->get_result();
     $products = $res->fetch_all(MYSQLI_ASSOC);
     respond_json(['products' => $products, 'total' => $total, 'page' => $page, 'page_size' => $page_size]);
+}
+
+function default_featured_products_config(): array {
+    return [
+        ['product_id' => 0, 'badge' => '最多人購買'],
+        ['product_id' => 0, 'badge' => '店長推薦'],
+        ['product_id' => 0, 'badge' => '回購人氣王'],
+        ['product_id' => 0, 'badge' => '今日熱銷'],
+        ['product_id' => 0, 'badge' => '高評價商品'],
+        ['product_id' => 0, 'badge' => '限量精選'],
+    ];
+}
+
+function normalize_featured_products_config(array $raw): array {
+    $normalized = [];
+    foreach ($raw as $index => $row) {
+        if (!is_array($row)) continue;
+        $productId = intval($row['product_id'] ?? 0);
+        $badge = trim((string)($row['badge'] ?? ''));
+        if ($badge === '') {
+            $badge = default_featured_products_config()[$index]['badge'] ?? '精選推薦';
+        }
+        $normalized[] = [
+            'product_id' => max(0, $productId),
+            'badge' => substr($badge, 0, 24),
+        ];
+    }
+
+    while (count($normalized) < 6) {
+        $default = default_featured_products_config()[count($normalized)] ?? ['product_id' => 0, 'badge' => '精選推薦'];
+        $normalized[] = $default;
+    }
+
+    if (count($normalized) > 6) {
+        $normalized = array_slice($normalized, 0, 6);
+    }
+
+    return array_values($normalized);
+}
+
+function load_featured_products_config_from_file(): ?array {
+    $path = __DIR__ . '/../storage/featured_products.json';
+    if (!is_file($path)) {
+        return null;
+    }
+    $raw = @file_get_contents($path);
+    if ($raw === false || trim($raw) === '') {
+        return null;
+    }
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded)) {
+        return null;
+    }
+    return normalize_featured_products_config($decoded);
+}
+
+function load_featured_products_config_from_db(mysqli $db): ?array {
+    $stmt = $db->prepare('SELECT config_value FROM promotion_config WHERE config_type = ? AND config_key = ? AND is_active = 1 LIMIT 1');
+    if (!$stmt) {
+        return null;
+    }
+    $type = 'featured_products';
+    $key = 'homepage';
+    $stmt->bind_param('ss', $type, $key);
+    if (!$stmt->execute()) {
+        return null;
+    }
+    $res = $stmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    if (!$row) {
+        return null;
+    }
+
+    $decoded = json_decode((string)($row['config_value'] ?? ''), true);
+    if (!is_array($decoded)) {
+        return null;
+    }
+
+    return normalize_featured_products_config($decoded);
+}
+
+function featured_products(): void {
+    $db = get_db();
+    $config = load_featured_products_config_from_db($db);
+    if (!is_array($config)) {
+        $config = load_featured_products_config_from_file();
+    }
+    if (!is_array($config)) {
+        $config = default_featured_products_config();
+    }
+
+    $map = [];
+    foreach ($config as $idx => $row) {
+        if (!is_array($row)) continue;
+        $pid = intval($row['product_id'] ?? 0);
+        if ($pid <= 0) continue;
+        $badge = trim((string)($row['badge'] ?? ''));
+        $map[$pid] = [
+            'order' => intval($idx),
+            'badge' => $badge !== '' ? $badge : '精選推薦',
+        ];
+    }
+
+    $products = [];
+
+    if (!empty($map)) {
+        $ids = array_keys($map);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $types = str_repeat('i', count($ids));
+        $sql = "SELECT product_id, name, category, description, price, stock, image_url, is_active
+                FROM products
+                WHERE is_active = 1 AND product_id IN ($placeholders)";
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param($types, ...$ids);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            $pid = intval($row['product_id']);
+            $row['featured_badge'] = $map[$pid]['badge'] ?? '精選推薦';
+            $row['_order'] = $map[$pid]['order'] ?? 999;
+            $products[] = $row;
+        }
+
+        usort($products, function ($a, $b) {
+            return ($a['_order'] ?? 999) <=> ($b['_order'] ?? 999);
+        });
+        foreach ($products as &$p) {
+            unset($p['_order']);
+        }
+        unset($p);
+    }
+
+    if (count($products) < 6) {
+        $need = 6 - count($products);
+        $excludeIds = array_map(fn($p) => intval($p['product_id']), $products);
+        $extraSql = 'SELECT product_id, name, category, description, price, stock, image_url, is_active
+                     FROM products
+                     WHERE is_active = 1';
+        if (!empty($excludeIds)) {
+            $extraSql .= ' AND product_id NOT IN (' . implode(',', array_fill(0, count($excludeIds), '?')) . ')';
+        }
+        $extraSql .= ' ORDER BY product_id DESC LIMIT ?';
+
+        $stmt = $db->prepare($extraSql);
+        if (!empty($excludeIds)) {
+            $types = str_repeat('i', count($excludeIds)) . 'i';
+            $params = array_merge($excludeIds, [$need]);
+            $stmt->bind_param($types, ...$params);
+        } else {
+            $stmt->bind_param('i', $need);
+        }
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $fallbackLabels = ['最多人購買', '店長推薦', '回購人氣王', '今日熱銷', '高評價商品', '限量精選'];
+        while ($row = $res->fetch_assoc()) {
+            $row['featured_badge'] = $fallbackLabels[count($products)] ?? '精選推薦';
+            $products[] = $row;
+        }
+    }
+
+    respond_json(['products' => array_slice($products, 0, 6)]);
+}
+
+function default_sidebar_ads_config(): array {
+    return [
+        ['image_url' => '', 'link_url' => './products.php', 'alt' => '側邊廣告 1'],
+        ['image_url' => '', 'link_url' => './products.php', 'alt' => '側邊廣告 2'],
+        ['image_url' => '', 'link_url' => './products.php', 'alt' => '側邊廣告 3'],
+        ['image_url' => '', 'link_url' => './products.php', 'alt' => '側邊廣告 4'],
+    ];
+}
+
+function normalize_sidebar_ads_config(array $raw): array {
+    $normalized = [];
+    foreach ($raw as $index => $row) {
+        if (!is_array($row)) continue;
+        $imageUrl = trim((string)($row['image_url'] ?? ''));
+        $linkUrl = trim((string)($row['link_url'] ?? ''));
+        $alt = trim((string)($row['alt'] ?? ''));
+
+        if ($imageUrl === '') {
+            $imageUrl = default_sidebar_ads_config()[$index]['image_url'] ?? '';
+        }
+        if ($linkUrl === '') {
+            $linkUrl = './products.php';
+        }
+        if ($alt === '') {
+            $alt = '側邊廣告 ' . ($index + 1);
+        }
+
+        $normalized[] = [
+            'image_url' => substr($imageUrl, 0, 500),
+            'link_url' => substr($linkUrl, 0, 500),
+            'alt' => substr($alt, 0, 120),
+        ];
+    }
+
+    while (count($normalized) < 4) {
+        $normalized[] = default_sidebar_ads_config()[count($normalized)] ?? ['image_url' => '', 'link_url' => './products.php', 'alt' => '側邊廣告'];
+    }
+
+    if (count($normalized) > 4) {
+        $normalized = array_slice($normalized, 0, 4);
+    }
+
+    return array_values($normalized);
+}
+
+function load_sidebar_ads_config_from_db(mysqli $db): ?array {
+    $type = 'sidebar_ads';
+    $key = 'homepage';
+    $stmt = $db->prepare('SELECT config_value FROM promotion_config WHERE config_type = ? AND config_key = ? AND is_active = 1 LIMIT 1');
+    if (!$stmt) {
+        return null;
+    }
+    $stmt->bind_param('ss', $type, $key);
+    if (!$stmt->execute()) {
+        return null;
+    }
+
+    $res = $stmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    if (!$row) {
+        return null;
+    }
+
+    $decoded = json_decode((string)($row['config_value'] ?? ''), true);
+    if (!is_array($decoded)) {
+        return null;
+    }
+
+    return normalize_sidebar_ads_config($decoded);
+}
+
+function load_sidebar_ads_config_from_file(): ?array {
+    $path = __DIR__ . '/../storage/sidebar_ads.json';
+    if (!is_file($path)) {
+        return null;
+    }
+    $content = @file_get_contents($path);
+    if ($content === false || trim($content) === '') {
+        return null;
+    }
+    $decoded = json_decode($content, true);
+    if (!is_array($decoded)) {
+        return null;
+    }
+
+    return normalize_sidebar_ads_config($decoded);
+}
+
+function sidebar_ads(): void {
+    $db = get_db();
+    $config = load_sidebar_ads_config_from_db($db);
+    if (!is_array($config)) {
+        $config = load_sidebar_ads_config_from_file();
+    }
+    if (!is_array($config)) {
+        $config = default_sidebar_ads_config();
+    }
+
+    respond_json(['success' => true, 'sidebar_ads' => $config]);
 }
 
 function get_product(): void {
