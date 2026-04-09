@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $currentUser = $_SESSION['user'] ?? null;
-$pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
+$pageTitle = 'VR Shopping Mall - 您的虛擬實境購物天堂';
 ?>
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -27,7 +27,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
     <header class="site-header">
         <div class="container header-inner">
 
-            <a href="./index.php" class="logo" style="text-decoration: none;">VR Mall</a>
+            <a href="./index.php" class="logo" style="text-decoration: none;">VR Shopping Mall</a>
 
             <nav class="nav">
                 <?php if ($currentUser && ($currentUser['role'] ?? '') === 'admin'): ?>
@@ -130,7 +130,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
         <!-- Hero 區域 -->
         <section class="hero-section home-hero">
             <div style="max-width: 1100px; margin: 0 auto;">
-                <h1>歡迎來到 VR Mall</h1>
+                <h1>歡迎來到 VR Shopping Mall</h1>
                 <p>探索最新的虛擬實境產品，體驗未來購物的無限可能</p>
                 <div class="hero-buttons">
                     <a href="./products.php" class="btn">瀏覽商品</a>
@@ -175,7 +175,7 @@ $pageTitle = 'VR Mall - 您的虛擬實境購物天堂';
     <footer class="site-footer">
         <div class="container">
             <div class="footer-grid">
-                <div class="footer-brand">© <?php echo date('Y'); ?> VR Mall</div>
+                <div class="footer-brand">© <?php echo date('Y'); ?> VR Shopping Mall</div>
                 <div class="footer-contact">
                     <p><strong>聯絡我們：</strong><a href="#" class="js-open-chat">開啟客服聊天室</a></p>
                     <p><strong>電話：</strong>02-2905-2000</p>

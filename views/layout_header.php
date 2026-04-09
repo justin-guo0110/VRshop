@@ -10,7 +10,7 @@ $currentUser = $_SESSION['user'] ?? null;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VR Mall</title>
+    <title>VR Shopping Mall</title>
     <link rel="stylesheet" href="../public/css/style.css">
     <link rel="stylesheet" href="../public/css/enhance.css?v=<?php echo filemtime(__DIR__ . '/../public/css/enhance.css'); ?>">
     <link rel="stylesheet" href="../public/css/cart.css?v=<?php echo filemtime(__DIR__ . '/../public/css/cart.css'); ?>">
@@ -20,7 +20,7 @@ $currentUser = $_SESSION['user'] ?? null;
 <body>
     <header class="site-header">
         <div class="container header-inner">
-            <a href="./index.php" class="logo" style="text-decoration: none;">VR Mall</a>
+            <a href="./index.php" class="logo" style="text-decoration: none;">VR Shopping Mall</a>
             <nav class="nav">
                 <?php if (!($currentUser && ($currentUser['role'] ?? '') === 'admin')): ?>
                     <a href="../views/index.php">首頁</a>

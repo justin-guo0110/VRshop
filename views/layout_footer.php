@@ -2,7 +2,7 @@
     <footer class="site-footer">
         <div class="container">
             <div class="footer-grid">
-                <div class="footer-brand">© <?php echo date('Y'); ?> VR Mall</div>
+                <div class="footer-brand">© <?php echo date('Y'); ?> VR Shopping Mall</div>
                 <div class="footer-contact">
                     <p><strong>聯絡我們：</strong><a href="#" class="js-open-chat">開啟客服聊天室</a></p>
                     <p><strong>電話：</strong>02-2905-2000</p>

@@ -3,7 +3,7 @@
 <div class="login-wrapper">
     <section class="accordion-container">
         <div class="login-header" style="text-align: center; padding: 20px 0;">
-            <h1 style="margin: 0; color: var(--primary);">VR Mall</h1>
+            <h1 style="margin: 0; color: var(--primary);">VR Shopping Mall</h1>
             <p style="margin: 5px 0 0; color: var(--muted);">歡迎來到您的虛擬購物天堂</p>
         </div>
 

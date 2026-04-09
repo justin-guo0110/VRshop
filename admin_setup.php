@@ -1,6 +1,6 @@
 <?php
 /**
- * VR Mall - 管理员登录配置工具
+ * VR Shopping Mall - 管理员登录配置工具
  * 用于创建和测试管理员账户
  */
 
@@ -92,7 +92,7 @@ $admins = $admins_result->fetch_all(MYSQLI_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VR Mall - 管理员配置</title>
+    <title>VR Shopping Mall - 管理员配置</title>
     <style>
         * {
             margin: 0;
@@ -294,7 +294,7 @@ $admins = $admins_result->fetch_all(MYSQLI_ASSOC);
 <body>
 <div class="container">
     <div class="header">
-        <h1>🔐 VR Mall 管理员配置</h1>
+        <h1>🔐 VR Shopping Mall 管理员配置</h1>
         <p>创建或登录管理员账户以访问后台</p>
     </div>
     
