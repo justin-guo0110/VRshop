@@ -981,14 +981,26 @@ function review_refund_request(array $adminUser): void {
             throw new Exception('Review update failed');
         }
 
-        // If decision is approved, cancel the order
+        // If decision is approved, mark order status when schema supports a cancel-like value.
         if ($decision === 'approved') {
             $orderId = intval($request['order_id']);
-            $cancelStatus = 'cancelled';
-            $updateOrderStmt = $db->prepare('UPDATE orders SET status = ? WHERE order_id = ?');
-            $updateOrderStmt->bind_param('si', $cancelStatus, $orderId);
-            if (!$updateOrderStmt->execute()) {
-                throw new Exception('Order cancellation failed');
+            $statusColumnRes = $db->query("SHOW COLUMNS FROM orders LIKE 'status'");
+            $statusColumn = $statusColumnRes ? $statusColumnRes->fetch_assoc() : null;
+            $statusType = strtolower((string)($statusColumn['Type'] ?? ''));
+
+            $cancelStatus = null;
+            if (strpos($statusType, "'cancelled'") !== false) {
+                $cancelStatus = 'cancelled';
+            } elseif (strpos($statusType, "'canceled'") !== false) {
+                $cancelStatus = 'canceled';
+            }
+
+            if ($cancelStatus !== null) {
+                $updateOrderStmt = $db->prepare('UPDATE orders SET status = ? WHERE order_id = ?');
+                $updateOrderStmt->bind_param('si', $cancelStatus, $orderId);
+                if (!$updateOrderStmt->execute()) {
+                    throw new Exception('Order cancellation failed: ' . $updateOrderStmt->error);
+                }
             }
         }
 
@@ -997,6 +1009,7 @@ function review_refund_request(array $adminUser): void {
     } catch (Throwable $e) {
         $db->rollback();
         $msg = $e->getMessage();
+        error_log('review_refund_request failed: ' . $msg);
         if ($msg === 'Request not found') {
             respond_json(['error' => '退單申請不存在'], 404);
         }

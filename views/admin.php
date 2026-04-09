@@ -512,6 +512,7 @@ let currentOrderKeyword = '';
 let currentRefundStatus = 'pending';
 let currentRefundKeyword = '';
 let sidebarAdsState = [];
+const SIDEBAR_AD_PLACEHOLDER = 'https://via.placeholder.com/240x120?text=%E6%AD%A1%E8%BF%8E%E8%AB%AE%E8%A9%A2%E6%8A%95%E5%BB%A3';
 
 const refundStatusLabels = {
     pending: '待審核',
@@ -1222,7 +1223,7 @@ async function loadSidebarAdsAdmin() {
             const row = sidebarAdsState[i] || {};
             const imageUrl = String(row.image_url || '').trim();
             const hasImage = imageUrl !== '';
-            const preview = hasImage ? imageUrl : 'https://via.placeholder.com/240x120?text=%E6%AD%A1%E8%BF%8E%E8%AB%AE%E8%A9%A2%E6%8A%95%E5%BB%A3';
+            const preview = hasImage ? imageUrl : SIDEBAR_AD_PLACEHOLDER;
             const statusText = hasImage ? '已上架圖片' : '未上傳（前台顯示歡迎諮詢投廣）';
 
             const tr = document.createElement('tr');
@@ -1236,7 +1237,10 @@ async function loadSidebarAdsAdmin() {
                 </td>
                 <td>
                     <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="sidebar-ad-file" data-index="${i}" style="margin-bottom:8px;">
-                    <button type="button" class="btn btn-secondary sidebar-ad-upload-btn" data-index="${i}">上傳圖片</button>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-secondary sidebar-ad-upload-btn" data-index="${i}">上傳圖片</button>
+                        <button type="button" class="btn btn-danger sidebar-ad-unpublish-btn" data-index="${i}" ${hasImage ? '' : 'disabled'}>下架圖片</button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1246,6 +1250,13 @@ async function loadSidebarAdsAdmin() {
             btn.addEventListener('click', function () {
                 const idx = Number(btn.getAttribute('data-index') || 0);
                 uploadSidebarAdImage(idx);
+            });
+        });
+
+        tbody.querySelectorAll('.sidebar-ad-unpublish-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const idx = Number(btn.getAttribute('data-index') || 0);
+                unpublishSidebarAdImage(idx);
             });
         });
 
@@ -1333,6 +1344,10 @@ async function uploadSidebarAdImage(index) {
             statusEl.textContent = '已上架圖片';
             statusEl.style.color = '#0f766e';
         }
+        const unpublishBtn = document.querySelector(`.sidebar-ad-unpublish-btn[data-index="${index}"]`);
+        if (unpublishBtn) {
+            unpublishBtn.disabled = false;
+        }
         if (msg) {
             msg.textContent = `第 ${index + 1} 格圖片已上傳並完成投放`; 
             msg.style.color = '#0f766e';
@@ -1340,6 +1355,54 @@ async function uploadSidebarAdImage(index) {
     } catch (error) {
         if (msg) {
             msg.textContent = error.message || '上傳失敗';
+            msg.style.color = '#dc2626';
+        }
+    }
+}
+
+async function unpublishSidebarAdImage(index) {
+    const msg = document.getElementById('sidebarAdsMsg');
+    const previewEl = document.querySelectorAll('.sidebar-ad-preview')[index];
+    const statusEl = document.querySelector(`.sidebar-ad-status[data-index="${index}"]`);
+    const unpublishBtn = document.querySelector(`.sidebar-ad-unpublish-btn[data-index="${index}"]`);
+
+    const current = sidebarAdsState[index] || null;
+    if (!current || !String(current.image_url || '').trim()) {
+        if (msg) {
+            msg.textContent = `第 ${index + 1} 格目前沒有已上架圖片`; 
+            msg.style.color = '#b45309';
+        }
+        return;
+    }
+
+    if (!confirm(`確定要下架第 ${index + 1} 格圖片嗎？`)) {
+        return;
+    }
+
+    try {
+        sidebarAdsState[index].image_url = '';
+        const saveRes = await persistSidebarAdsState();
+        if (!saveRes || !saveRes.success) {
+            throw new Error((saveRes && saveRes.error) ? saveRes.error : '下架後自動儲存失敗');
+        }
+
+        if (previewEl) {
+            previewEl.src = SIDEBAR_AD_PLACEHOLDER;
+        }
+        if (statusEl) {
+            statusEl.textContent = '未上傳（前台顯示歡迎諮詢投廣）';
+            statusEl.style.color = '#b45309';
+        }
+        if (unpublishBtn) {
+            unpublishBtn.disabled = true;
+        }
+        if (msg) {
+            msg.textContent = `第 ${index + 1} 格圖片已下架`; 
+            msg.style.color = '#0f766e';
+        }
+    } catch (error) {
+        if (msg) {
+            msg.textContent = error.message || '下架失敗';
             msg.style.color = '#dc2626';
         }
     }

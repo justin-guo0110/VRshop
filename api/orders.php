@@ -109,8 +109,9 @@ function request_refund(): void {
     
     $order = $checkOrder;
 
-    $allowed = ['accepted', 'preparing'];
-    if (!in_array($order['status'], $allowed, true)) {
+    // Support both old/new status naming across different schema versions.
+    $allowed = ['pending', 'accepted', 'preparing', 'created'];
+    if (!in_array((string)$order['status'], $allowed, true)) {
         respond_json(['error' => '目前訂單狀態不可申請退單'], 422);
     }
 
@@ -254,8 +255,13 @@ function place_order(): void {
         if (intval($couponRow['used_count']) >= intval($couponRow['max_usage'])) {
             respond_json(['error' => '優惠券已使用完畢'], 422);
         }
-        if ($subtotal < floatval($couponRow['min_purchase'])) {
-            respond_json(['error' => '未達優惠券最低消費門檻'], 422);
+        $minPurchase = round(floatval($couponRow['min_purchase']), 2);
+        $currentSubtotal = round($subtotal, 2);
+        // Add a tiny epsilon to avoid floating-point precision causing false negatives at the threshold.
+        if (($currentSubtotal + 0.00001) < $minPurchase) {
+            respond_json([
+                'error' => sprintf('未達優惠券最低消費門檻（目前 $%.2f，需滿 $%.2f）', $currentSubtotal, $minPurchase)
+            ], 422);
         }
 
         if (promo_is_welcome_coupon($couponRow)) {
@@ -356,9 +362,19 @@ function place_order(): void {
         $values[] = $shippingFee;
     }
 
+    $initialStatus = 'pending';
+    $statusColumnRes = $db->query("SHOW COLUMNS FROM orders LIKE 'status'");
+    if ($statusColumnRes) {
+        $statusColumn = $statusColumnRes->fetch_assoc();
+        $statusType = strtolower((string)($statusColumn['Type'] ?? ''));
+        if (strpos($statusType, "'accepted'") !== false) {
+            $initialStatus = 'accepted';
+        }
+    }
+
     $columns[] = 'status';
     $types .= 's';
-    $values[] = 'accepted';
+    $values[] = $initialStatus;
 
     $placeholders = implode(',', array_fill(0, count($columns), '?'));
     $sql = 'INSERT INTO orders (' . implode(',', $columns) . ') VALUES (' . $placeholders . ')';
@@ -392,6 +408,7 @@ function place_order(): void {
         $db->commit();
     } catch (Throwable $e) {
         $db->rollback();
+        error_log('place_order failed: ' . $e->getMessage());
         respond_json(['error' => 'Failed to place order'], 500);
     }
 

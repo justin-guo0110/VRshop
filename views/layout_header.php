@@ -55,7 +55,7 @@ $currentUser = $_SESSION['user'] ?? null;
                         </div>
                     </div>
                 <?php endif; ?>
-                <?php if ($currentUser): ?>
+                <?php if ($currentUser && ($currentUser['role'] ?? '') !== 'admin'): ?>
                     <div class="nav-dropdown user-welcome-dropdown" id="userWelcomeDropdown">
                         <button type="button" class="nav-dropdown-toggle welcome-toggle" id="userWelcomeToggle" aria-expanded="false" aria-controls="userWelcomeMenu">
                             歡迎 <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?>
@@ -75,6 +75,8 @@ $currentUser = $_SESSION['user'] ?? null;
                             </div>
                         </div>
                     </div>
+                <?php endif; ?>
+                <?php if ($currentUser): ?>
                     <button class="btn btn-secondary" id="logoutBtn" type="button">登出</button>
                 <?php else: ?>
                     <a class="btn" href="../views/login.php">登入</a>
