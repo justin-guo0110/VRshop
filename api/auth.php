@@ -43,7 +43,7 @@ function register(): void {
     
     // 密碼強度驗證
     if (strlen($password) < 8) {
-        respond_json(['error' => '密碼長度至少需要 8 個字符'], 422);
+        respond_json(['error' => '密碼長度至少需要 8 個字元'], 422);
     }
 
     $stmt = $db->prepare('SELECT member_id FROM members WHERE email = ?');
@@ -153,13 +153,13 @@ function request_password_reset(): void {
     $resetUrl = build_reset_url($token);
     $subject = 'VR Mall 密碼重設';
     $name = $user['name'] ?? $email;
-    $html = "<p>{$name} 您好：</p><p>請在 30 分鐘內點擊下方連結重設密碼：</p><p><a href=\"{$resetUrl}\">{$resetUrl}</a></p><p>若您未發出此請求，請忽略此信。</p>";
+    $html = "<p>{$name} 您好：</p><p>請在 30 分鐘內點選下方連結重設密碼：</p><p><a href=\"{$resetUrl}\">{$resetUrl}</a></p><p>若您未發出此請求，請忽略此信。</p>";
     $text = "{$name} 您好：\n請在 30 分鐘內開啟以下連結重設密碼：\n{$resetUrl}\n若您未發出此請求，請忽略此信。";
 
     // 試著寄送郵件
     $mailResult = send_mail($email, $subject, $html, $text);
     
-    // 在開發環境下，如果失敗，返回詳細的錯誤信息給前端
+    // 在開發環境下，如果失敗，返回詳細的錯誤資訊給前端
     if (!$mailResult['success']) {
         error_log('Password reset mail failed: ' . ($mailResult['message'] ?? 'unknown error'));
         
@@ -224,7 +224,7 @@ function reset_password(): void {
     
     // 密碼強度驗證
     if (strlen($password) < 8) {
-        respond_json(['error' => '密碼長度至少需要 8 個字符'], 422);
+        respond_json(['error' => '密碼長度至少需要 8 個字元'], 422);
     }
     
     if ($password !== $confirm) {

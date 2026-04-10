@@ -190,7 +190,7 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
                 </div>
             </div>
 
-            <button class="btn btn-primary" id="updateShippingBtn">保存運費設定</button>
+            <button class="btn btn-primary" id="updateShippingBtn">儲存運費設定</button>
         </div>
     </div>
 
@@ -232,7 +232,7 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
                 </div>
             </div>
 
-            <button class="btn btn-primary" id="updateBundleBtn">保存組合優惠設定</button>
+            <button class="btn btn-primary" id="updateBundleBtn">儲存組合優惠設定</button>
         </div>
     </div>
 </div>
@@ -246,7 +246,7 @@ async function loadConfig() {
         const data = await response.json();
         
         if (!data.success) {
-            showAlert('error', data.error || '無法加載配置');
+            showAlert('error', data.error || '無法載入配置');
             return;
         }
 
@@ -265,7 +265,7 @@ async function loadConfig() {
         document.getElementById('snackFixed').value = bundle.snack_discount_fixed?.value || '20';
     } catch (err) {
         console.error('Failed to load config:', err);
-        showAlert('error', '加載配置失敗');
+        showAlert('error', '載入配置失敗');
     }
 }
 
@@ -355,7 +355,7 @@ function showAlert(type, message) {
 document.getElementById('updateShippingBtn').addEventListener('click', updateShippingConfig);
 document.getElementById('updateBundleBtn').addEventListener('click', updateBundleConfig);
 
-// 加載頁面時獲取配置
+// 載入頁面時獲取配置
 document.addEventListener('DOMContentLoaded', loadConfig);
 </script>
 

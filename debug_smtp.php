@@ -3,7 +3,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 $config = require __DIR__ . '/config/mail.php';
 
-echo "=== SMTP 連接測試 ===\n";
+echo "=== SMTP 連線測試 ===\n";
 echo "Host: " . $config['smtp']['host'] . "\n";
 echo "Port: " . $config['smtp']['port'] . "\n";
 echo "Username: " . $config['smtp']['username'] . "\n";
@@ -22,7 +22,7 @@ try {
     $mail->Timeout = $config['smtp']['timeout'];
     $mail->CharSet = 'UTF-8';
 
-    echo "✅ SMTP 連接成功！\n\n";
+    echo "✅ SMTP 連線成功！\n\n";
     
     // 測試寄送
     $mail->setFrom($config['from_email'], $config['from_name']);
@@ -37,7 +37,7 @@ try {
         echo "❌ 郵件寄送失敗：" . $mail->ErrorInfo . "\n";
     }
 } catch (Exception $e) {
-    echo "❌ SMTP 連接失敗！\n";
-    echo "錯誤信息：" . $e->getMessage() . "\n";
+    echo "❌ SMTP 連線失敗！\n";
+    echo "錯誤資訊：" . $e->getMessage() . "\n";
 }
 ?>

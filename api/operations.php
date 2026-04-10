@@ -1,7 +1,7 @@
 <?php
 /**
- * 电商后台营运管理 API
- * 包含：PIM、OMS、CRM、营销工具、数据分析等
+ * 電商後台營運管理 API
+ * 包含：PIM、OMS、CRM、營銷工具、資料分析等
  */
 require_once __DIR__ . '/db.php';
 $user = require_admin();
@@ -9,7 +9,7 @@ $user = require_admin();
 $action = $_GET['action'] ?? '';
 
 switch ($action) {
-    // ===== CRM & 客户管理 =====
+    // ===== CRM & 客戶管理 =====
     case 'list_customers_with_labels':
         list_customers_with_labels();
         break;
@@ -23,7 +23,7 @@ switch ($action) {
         get_customer_profile();
         break;
 
-    // ===== 促销管理 =====
+    // ===== 促銷管理 =====
     case 'list_promotions':
         list_promotions();
         break;
@@ -37,7 +37,7 @@ switch ($action) {
         generate_promo_code();
         break;
 
-    // ===== 数据分析 =====
+    // ===== 資料分析 =====
     case 'get_sales_dashboard':
         get_sales_dashboard();
         break;
@@ -54,7 +54,7 @@ switch ($action) {
         get_abandoned_carts();
         break;
 
-    // ===== 库存管理 =====
+    // ===== 庫存管理 =====
     case 'get_inventory_alerts':
         get_inventory_alerts();
         break;
@@ -76,12 +76,12 @@ switch ($action) {
         delete_product();
         break;
 
-    // ===== 订单管理 =====
+    // ===== 訂單管理 =====
     case 'list_orders':
         list_orders();
         break;
 
-    // ===== 产品规格管理 =====
+    // ===== 產品規格管理 =====
     case 'list_product_variants':
         list_product_variants();
         break;
@@ -104,7 +104,7 @@ switch ($action) {
         respond_json(['error' => 'Unknown action'], 400);
 }
 
-// ============ 商品管理函数 ============
+// ============ 商品管理函式 ============
 function list_products() {
     $db = get_db();
     
@@ -186,7 +186,7 @@ function delete_product() {
     }
 }
 
-// ============ 订单管理函数 ============
+// ============ 訂單管理函式 ============
 function list_orders() {
     $db = get_db();
     
@@ -207,7 +207,7 @@ function list_orders() {
     respond_json(['success' => true, 'orders' => $orders]);
 }
 
-// ============ CRM 函数 ============
+// ============ CRM 函式 ============
 function list_customers_with_labels() {
     $db = get_db();
     
@@ -241,11 +241,11 @@ function get_customer_profile() {
         respond_json(['error' => 'Invalid member_id'], 422);
     }
     
-    // 基本信息
+    // 基本資訊
     $memberRes = $db->query("SELECT * FROM members WHERE member_id = $member_id");
     $member = $memberRes->fetch_assoc();
     
-    // 订单统计
+    // 訂單統計
     $statsRes = $db->query("
         SELECT 
             COUNT(*) as total_orders,
@@ -256,7 +256,7 @@ function get_customer_profile() {
     ");
     $stats = $statsRes->fetch_assoc();
     
-    // 购买历史
+    // 購買歷史
     $ordersRes = $db->query("
         SELECT order_id, total_amount, status, created_at FROM orders 
         WHERE member_id = $member_id ORDER BY created_at DESC LIMIT 10
@@ -266,7 +266,7 @@ function get_customer_profile() {
         $orders[] = $o;
     }
     
-    // 客户标签
+    // 客戶標籤
     $labelsRes = $db->query("
         SELECT cl.label_id, cl.label_name FROM customer_labels cl
         JOIN customer_label_mapping clm ON cl.label_id = clm.label_id
@@ -317,7 +317,7 @@ function remove_customer_label() {
     respond_json(['error' => 'Failed'], 500);
 }
 
-// ============ 促销管理函数 ============
+// ============ 促銷管理函式 ============
 function list_promotions() {
     $db = get_db();
     
@@ -402,11 +402,11 @@ function generate_promo_code() {
     respond_json(['error' => 'Code already exists or insert failed'], 500);
 }
 
-// ============ 数据分析函数 ============
+// ============ 資料分析函式 ============
 function get_sales_dashboard() {
     $db = get_db();
     
-    // 今日营业额
+    // 今日營業額
     $todayRes = $db->query('
         SELECT 
             COUNT(*) as total_orders,
@@ -416,7 +416,7 @@ function get_sales_dashboard() {
     ');
     $today = $todayRes->fetch_assoc();
     
-    // 本月数据
+    // 本月資料
     $monthRes = $db->query('
         SELECT 
             COUNT(*) as total_orders,
@@ -427,7 +427,7 @@ function get_sales_dashboard() {
     ');
     $month = $monthRes->fetch_assoc();
     
-    // 按日期汇总（最近7天）
+    // 按日期彙總（最近7天）
     $weekRes = $db->query('
         SELECT DATE(created_at) as date, COUNT(*) as orders, SUM(total_amount) as revenue
         FROM orders
@@ -450,7 +450,7 @@ function get_sales_dashboard() {
 function get_product_ranking() {
     $db = get_db();
     
-    // 热卖商品（按销量）
+    // 熱賣商品（按銷量）
     $sql = '
         SELECT p.product_id, p.name, p.price, p.stock,
                COUNT(oi.order_item_id) as sales_count,
@@ -475,7 +475,7 @@ function get_product_ranking() {
 function get_conversion_funnel() {
     $db = get_db();
     
-    // 获取漏斗数据
+    // 獲取漏斗資料
     $funnel = [
         'page_views' => 0,
         'product_views' => 0,
@@ -496,7 +496,7 @@ function get_conversion_funnel() {
         $funnel[$key] = intval($row['cnt']);
     }
     
-    // 计算转化率
+    // 計算轉化率
     $conv_rates = [];
     if ($funnel['page_views'] > 0) {
         $conv_rates['product_view_rate'] = round($funnel['product_views'] / $funnel['page_views'] * 100, 2);
@@ -559,7 +559,7 @@ function get_abandoned_carts() {
     respond_json(['abandoned_carts' => $carts]);
 }
 
-// ============ 库存管理函数 ============
+// ============ 庫存管理函式 ============
 function get_inventory_alerts() {
     $db = get_db();
     
@@ -598,7 +598,7 @@ function resolve_inventory_alert() {
     respond_json(['error' => 'Failed'], 500);
 }
 
-// ============ 产品规格管理函数 ============
+// ============ 產品規格管理函式 ============
 function list_product_variants() {
     $db = get_db();
     $product_id = intval($_GET['product_id'] ?? 0);
@@ -665,7 +665,7 @@ function update_product_variant() {
     respond_json(['error' => 'Failed'], 500);
 }
 
-// ============ 物流管理函数 ============
+// ============ 物流管理函式 ============
 function create_logistics_order() {
     $db = get_db();
     $order_id = intval($_POST['order_id'] ?? 0);

@@ -21,9 +21,9 @@
             <h2>功能檢查</h2>
             <button onclick="checkAPIEndpoints()">檢查 API 端點</button>
             <button onclick="checkNavigation()">檢查導航</button>
-            <button onclick="checkDataLoading()">檢查數據加載</button>
-            <button onclick="testLoadProducts()">測試商品加載</button>
-            <button onclick="testLoadOrders()">測試訂單加載</button>
+            <button onclick="checkDataLoading()">檢查資料載入</button>
+            <button onclick="testLoadProducts()">測試商品載入</button>
+            <button onclick="testLoadOrders()">測試訂單載入</button>
         </div>
         
         <div class="card">
@@ -101,7 +101,7 @@
         
         function checkDataLoading() {
             results.innerHTML = '';
-            log('數據加載', '請在打開的後台頁面中按 F12 查看控制台，檢查是否有 JavaScript 錯誤');
+            log('資料載入', '請在開啟的後台頁面中按 F12 檢視控制檯，檢查是否有 JavaScript 錯誤');
         }
         
         async function testLoadProducts() {

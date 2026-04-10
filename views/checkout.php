@@ -32,7 +32,7 @@ if (!isset($_SESSION['user'])) {
                 <span class="step-dot">3</span>
                 <div class="step-text">
                     <strong>完成下單</strong>
-                    <small>送出訂單並查看結果</small>
+                    <small>送出訂單並檢視結果</small>
                 </div>
             </li>
         </ol>
@@ -97,7 +97,7 @@ if (!isset($_SESSION['user'])) {
                     </label>
                     <label>
                         <span>門市地址（選填）</span>
-                        <input type="text" id="pickupStoreAddress" placeholder="例如：台北市大安區復興南路一段100號" maxlength="180">
+                        <input type="text" id="pickupStoreAddress" placeholder="例如：臺北市大安區復興南路一段100號" maxlength="180">
                     </label>
                 </div>
             </section>
@@ -141,7 +141,7 @@ if (!isset($_SESSION['user'])) {
                     </div>
                     <label class="card-save-option">
                         <input type="checkbox" id="saveCardInfo" value="1">
-                        <span>記住卡片資訊（不保存安全碼）</span>
+                        <span>記住卡片資訊（不儲存安全碼）</span>
                     </label>
                     <button type="button" class="btn btn-secondary btn-sm checkout-inline-action" id="clearSavedCardBtn">清除已記住卡片</button>
                 </div>

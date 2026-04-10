@@ -2,7 +2,7 @@
 // 測試 PHPMailer 和 Gmail SMTP
 require_once __DIR__ . '/lib/mailer.php';
 
-echo "測試 Gmail SMTP 連接...\n\n";
+echo "測試 Gmail SMTP 連線...\n\n";
 
 $testResult = send_mail(
     'justinguo0110@gmail.com',

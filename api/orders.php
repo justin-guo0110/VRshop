@@ -73,7 +73,7 @@ function request_refund(): void {
     
     // Validate user has member_id
     if (empty($user['member_id'])) {
-        respond_json(['error' => '用戶信息不完整，請重新登入'], 401);
+        respond_json(['error' => '使用者資訊不完整，請重新登入'], 401);
     }
     
     $orderId = intval($_POST['order_id'] ?? 0);

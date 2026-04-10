@@ -151,7 +151,7 @@ $pageTitle = 'VR Shopping Mall - 您的虛擬實境購物天堂';
                 <p style="text-align: center; padding: 40px;">載入中...</p>
             </div>
             <div style="text-align: center; margin-top: 30px;">
-                <a href="./products.php" class="btn">查看更多商品</a>
+                <a href="./products.php" class="btn">檢視更多商品</a>
             </div>
         </section>
 
@@ -228,7 +228,7 @@ $pageTitle = 'VR Shopping Mall - 您的虛擬實境購物天堂';
                                 <p class="featured-category">${product.category || '未分類'}</p>
                                 <span class="featured-chip">快速出貨</span>
                             </div>
-                            <a class="btn btn-secondary" href="./product_detail.php?product_id=${product.product_id}">查看詳情</a>
+                            <a class="btn btn-secondary" href="./product_detail.php?product_id=${product.product_id}">檢視詳情</a>
                         </div>
                     `;
                     container.appendChild(card);

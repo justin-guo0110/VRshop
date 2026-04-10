@@ -1,7 +1,7 @@
 <?php
 $conn = new mysqli('localhost', 'root', '', 'vr_mall');
 if ($conn->connect_error) {
-    echo "連接失敗: " . $conn->connect_error;
+    echo "連線失敗: " . $conn->connect_error;
     exit;
 }
 
@@ -18,7 +18,7 @@ DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;";
 
 if ($conn->query($sql) === TRUE) {
-    echo "password_resets 表創建成功！";
+    echo "password_resets 表建立成功！";
 } else {
     echo "錯誤: " . $conn->error;
 }

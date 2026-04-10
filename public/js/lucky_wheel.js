@@ -20,11 +20,11 @@ function createLuckyWheelHTML() {
                         <g id="wheelGroup">
                             <!-- 8 個獎項扇形 -->
                         </g>
-                        <!-- 中心圆 -->
+                        <!-- 中心圓 -->
                         <circle cx="160" cy="160" r="35" fill="white" stroke="#333" stroke-width="2"/>
                         <text x="160" y="165" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">轉</text>
                     </svg>
-                    <!-- 轉盤指針 -->
+                    <!-- 轉盤指標 -->
                     <div class="wheel-pointer"></div>
                 </div>
                 
@@ -94,7 +94,7 @@ function updateSpinInfo(data) {
     
     info.innerHTML = infoHtml;
     
-    // 更新按钮状态
+    // 更新按鈕狀態
     const btn = document.getElementById('spinBtn');
     if (btn) {
         btn.disabled = !data.can_spin;
@@ -462,9 +462,9 @@ function addLuckyWheelStyles() {
     document.head.appendChild(styles);
 }
 
-// 在登入成功后显示转盘
+// 在登入成功後顯示轉盤
 function showLuckyWheelAfterLogin() {
-    // 延迟1秒后显示，让用户有时间看到欢迎消息
+    // 延遲1秒後顯示，讓使用者有時間看到歡迎訊息
     setTimeout(() => {
         openLuckyWheel();
     }, 1000);

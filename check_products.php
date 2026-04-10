@@ -3,10 +3,10 @@ require_once 'api/db.php';
 
 $db = get_db();
 
-// 检查商品数量
+// 檢查商品數量
 $result = $db->query('SELECT COUNT(*) as count FROM products');
 $row = $result->fetch_assoc();
-echo "商品总数: " . $row['count'] . "\n\n";
+echo "商品總數: " . $row['count'] . "\n\n";
 
 // 列出所有商品
 echo "所有商品列表:\n";

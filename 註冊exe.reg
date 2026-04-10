@@ -15,4 +15,4 @@ Windows Registry Editor Version 5.00
 @="\"C:\\Users\\4142\\Documents\\VRMall\\shopping one.exe\" \"%1\""
 ```
 
-把上面EXE檔的位置改成你放的地方
+把上面exe檔的路徑，修改成你放的路徑

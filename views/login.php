@@ -88,7 +88,7 @@ function toggleAccordion(itemId) {
     const items = document.querySelectorAll('.accordion-item');
     items.forEach(item => {
         if (item.id === itemId) {
-            // 如果點擊的是當前區塊，通常維持展開或不做動作 (手風琴邏輯)
+            // 如果點選的是當前區塊，通常維持展開或不做動作 (手風琴邏輯)
             item.classList.add('active');
         } else {
             // 關閉其他所有區塊
@@ -99,7 +99,7 @@ function toggleAccordion(itemId) {
 
 /**
  * 為了保持與 app.js 的相容性
- * 如果原本 app.js 有 switchTab 函數，我們將其重新映射至手風琴邏輯
+ * 如果原本 app.js 有 switchTab 函式，我們將其重新對映至手風琴邏輯
  */
 window.switchTab = function(target) {
     const mapping = {

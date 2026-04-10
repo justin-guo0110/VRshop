@@ -43,7 +43,7 @@ switch ($action) {
 }
 
 /**
- * 幸运转盘8个奖项配置
+ * 幸運轉盤8個獎項配置
  */
 function get_wheel_prizes(): array {
     $defaults = [
@@ -95,14 +95,14 @@ function get_wheel_prizes(): array {
 }
 
 /**
- * 获取用户的转盘次数信息
+ * 獲取使用者的轉盤次數資訊
  */
 function get_spin_info(array $user): void {
     $db = get_db();
     $member_id = $user['member_id'];
     $totalColumn = get_order_total_column($db);
 
-    // 计算用户的总订单金额
+    // 計算使用者的總訂單金額
     $stmt = $db->prepare("SELECT SUM($totalColumn) as total FROM orders WHERE member_id = ?");
     if (!$stmt) {
         respond_json(['error' => '初始化轉盤失敗'], 500);
@@ -115,7 +115,7 @@ function get_spin_info(array $user): void {
     // 每個帳號每天固定可轉 1 次（不看消費）
     $spin_count = 1;
 
-    // 查询今天已转的次数
+    // 查詢今天已轉的次數
     $today = date('Y-m-d');
     $stmt = $db->prepare('SELECT COUNT(*) as spins_today FROM lucky_wheel_spins WHERE member_id = ? AND spin_date = ?');
     $stmt->bind_param('is', $member_id, $today);
@@ -139,33 +139,33 @@ function get_spin_info(array $user): void {
 }
 
 /**
- * 执行转盘抽奖
+ * 執行轉盤抽獎
  */
 function perform_spin(array $user): void {
     $db = get_db();
     $member_id = $user['member_id'];
 
-    // 验证用户是否有转盘次数
+    // 驗證使用者是否有轉盤次數
     $info = get_spin_info_data($db, $member_id);
     if (!$info['can_spin']) {
         respond_json(['error' => '今日轉盤次數已用完'], 422);
     }
 
-    // 随机选择奖项（加权随机，让好奖项概率更低）
+    // 隨機選擇獎項（加權隨機，讓好獎項機率更低）
     $prizes = get_wheel_prizes();
-    $weights = [15, 20, 15, 20, 8, 15, 5, 2]; // 对应8个奖项的权重
+    $weights = [15, 20, 15, 20, 8, 15, 5, 2]; // 對應8個獎項的權重
     
     $selected_index = weighted_random($weights);
     $prize = $prizes[$selected_index];
 
-    // 生成优惠券
+    // 生成優惠券
     $coupon_id = null;
     $coupon_id = create_coupon($db, $member_id, $prize);
     if (!$coupon_id) {
         respond_json(['error' => '產生優惠券失敗'], 500);
     }
 
-    // 记录转盘记录
+    // 記錄轉盤記錄
     $today = date('Y-m-d');
     $stmt = $db->prepare('INSERT INTO lucky_wheel_spins (member_id, spin_date, result_index, coupon_id) VALUES (?, ?, ?, ?)');
     $stmt->bind_param('isii', $member_id, $today, $selected_index, $coupon_id);
@@ -184,12 +184,12 @@ function perform_spin(array $user): void {
 }
 
 /**
- * 获取转盘信息数据（不包含响应）
+ * 獲取轉盤資訊資料（不包含響應）
  */
 function get_spin_info_data($db, $member_id): array {
     $totalColumn = get_order_total_column($db);
 
-    // 计算用户的总订单金额
+    // 計算使用者的總訂單金額
     $stmt = $db->prepare("SELECT SUM($totalColumn) as total FROM orders WHERE member_id = ?");
     if (!$stmt) {
         return [
@@ -208,7 +208,7 @@ function get_spin_info_data($db, $member_id): array {
     // 每個帳號每天固定可轉 1 次（不看消費）
     $spin_count = 1;
 
-    // 查询今天已转的次数
+    // 查詢今天已轉的次數
     $today = date('Y-m-d');
     $stmt = $db->prepare('SELECT COUNT(*) as spins_today FROM lucky_wheel_spins WHERE member_id = ? AND spin_date = ?');
     $stmt->bind_param('is', $member_id, $today);
@@ -231,7 +231,7 @@ function get_spin_info_data($db, $member_id): array {
 }
 
 /**
- * 加权随机化
+ * 加權隨機化
  */
 function weighted_random(array $weights): int {
     $sum = array_sum($weights);
@@ -247,7 +247,7 @@ function weighted_random(array $weights): int {
 }
 
 /**
- * 创建优惠券
+ * 建立優惠券
  */
 function create_coupon($db, $member_id, $prize): ?int {
     $coupon_code = 'VR' . strtoupper(uniqid());
@@ -270,7 +270,7 @@ function create_coupon($db, $member_id, $prize): ?int {
 }
 
 /**
- * 获取优惠券详情
+ * 獲取優惠券詳情
  */
 function get_coupon_detail($db, $coupon_id): array {
     $stmt = $db->prepare('SELECT coupon_id, coupon_code, discount_type, discount_value, min_purchase, expiry_date, description FROM coupons WHERE coupon_id = ?');
@@ -281,7 +281,7 @@ function get_coupon_detail($db, $coupon_id): array {
 }
 
 /**
- * 获取用户的优惠券列表
+ * 獲取使用者的優惠券列表
  */
 function list_coupons(array $user): void {
     $db = get_db();
@@ -307,7 +307,7 @@ function list_coupons(array $user): void {
 }
 
 /**
- * 使用优惠券
+ * 使用優惠券
  */
 function use_coupon(array $user): void {
     $db = get_db();
@@ -318,7 +318,7 @@ function use_coupon(array $user): void {
         respond_json(['error' => 'Coupon code required'], 422);
     }
 
-    // 验证优惠券
+    // 驗證優惠券
     $stmt = $db->prepare('SELECT coupon_id, used_count, max_usage, discount_type, discount_value, min_purchase, expiry_date 
                           FROM coupons WHERE coupon_code = ? AND member_id = ?');
     $stmt->bind_param('si', $coupon_code, $member_id);
@@ -326,18 +326,18 @@ function use_coupon(array $user): void {
     $result = $stmt->get_result()->fetch_assoc();
 
     if (!$result) {
-        respond_json(['error' => '优惠券不存在或无效'], 404);
+        respond_json(['error' => '優惠券不存在或無效'], 404);
     }
 
     if ($result['used_count'] >= $result['max_usage']) {
-        respond_json(['error' => '优惠券已使用过'], 422);
+        respond_json(['error' => '優惠券已使用過'], 422);
     }
 
     if (strtotime($result['expiry_date']) < time()) {
-        respond_json(['error' => '优惠券已过期'], 422);
+        respond_json(['error' => '優惠券已過期'], 422);
     }
 
-    // 更新使用次数
+    // 更新使用次數
     $new_count = $result['used_count'] + 1;
     $stmt = $db->prepare('UPDATE coupons SET used_count = ? WHERE coupon_code = ?');
     $stmt->bind_param('is', $new_count, $coupon_code);
@@ -353,6 +353,6 @@ function use_coupon(array $user): void {
             ]
         ]);
     } else {
-        respond_json(['error' => '使用优惠券失败'], 500);
+        respond_json(['error' => '使用優惠券失敗'], 500);
     }
 }

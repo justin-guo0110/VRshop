@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>API 测试</title>
+    <title>API 測試</title>
     <style>
         body { font-family: Arial; margin: 20px; }
         .result { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 4px; }
@@ -10,12 +10,12 @@
     </style>
 </head>
 <body>
-    <h1>API 测试</h1>
+    <h1>API 測試</h1>
     
-    <button onclick="testProducts()">测试 list_products</button>
-    <button onclick="testOrders()">测试 list_orders</button>
-    <button onclick="testCustomers()">测试 list_customers</button>
-    <button onclick="testDashboard()">测试 get_sales_dashboard</button>
+    <button onclick="testProducts()">測試 list_products</button>
+    <button onclick="testOrders()">測試 list_orders</button>
+    <button onclick="testCustomers()">測試 list_customers</button>
+    <button onclick="testDashboard()">測試 get_sales_dashboard</button>
     
     <div id="output"></div>
     
@@ -37,7 +37,7 @@
         } catch (error) {
             output.innerHTML += `
             <div class="result" style="color: red;">
-                <h3>${endpoint} - 错误</h3>
+                <h3>${endpoint} - 錯誤</h3>
                 <p>${error.message}</p>
             </div>
             `;

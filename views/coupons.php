@@ -3,7 +3,7 @@
 <div class="profile-page">
 <?php if (!$currentUser): ?>
     <div class="card">
-        <p>請 <a href="login.php">登入</a> 以查看您的優惠券。</p>
+        <p>請 <a href="login.php">登入</a> 以檢視您的優惠券。</p>
     </div>
 <?php else: ?>
     <section>

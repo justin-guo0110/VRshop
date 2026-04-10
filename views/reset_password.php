@@ -9,9 +9,9 @@ require_once __DIR__ . '/layout_header.php';
     </div>
     <form id="resetPasswordForm" style="display: none;">
         <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES); ?>">
-        <label>新密碼（至少 8 個字符）</label>
-        <input type="password" name="password" id="passwordInput" required minlength="8" placeholder="請輸入至少 8 個字符的密碼">
-        <small style="color: #666; display: block; margin-top: 4px;">密碼長度至少需要 8 個字符</small>
+        <label>新密碼（至少 8 個字元）</label>
+        <input type="password" name="password" id="passwordInput" required minlength="8" placeholder="請輸入至少 8 個字元的密碼">
+        <small style="color: #666; display: block; margin-top: 4px;">密碼長度至少需要 8 個字元</small>
         <label>確認新密碼</label>
         <input type="password" name="confirm_password" id="confirmPasswordInput" required minlength="8" placeholder="請再次輸入密碼">
         <div id="passwordMatch" style="margin-top: 4px; font-size: 0.9rem;"></div>

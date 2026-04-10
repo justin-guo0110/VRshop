@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>数据库对比检查</title>
+    <title>資料庫對比檢查</title>
     <style>
         body { font-family: Arial; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -24,12 +24,12 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔍 後台 vs 用戶端 - 商品數據對比</h1>
+        <h1>🔍 後台 vs 使用者端 - 商品資料對比</h1>
         
         <div class="status" id="status">準備檢查...</div>
         
         <div style="margin: 20px 0;">
-            <button onclick="compareData()">🔄 比較數據</button>
+            <button onclick="compareData()">🔄 比較資料</button>
             <button onclick="checkAPIs()">⚙️ 檢查 API</button>
         </div>
         
@@ -41,7 +41,7 @@
             </div>
             
             <div class="side frontend">  
-                <h3>用戶端 (Frontend)</h3>
+                <h3>使用者端 (Frontend)</h3>
                 <p>API: <code>api/shop.php?action=search_products</code></p>
                 <div id="frontendData"></div>
             </div>
@@ -59,18 +59,18 @@
             const comparison = document.getElementById('comparison');
             const analysis = document.getElementById('analysis');
             
-            status.innerHTML = '⏳ 正在加載後台数据...';
+            status.innerHTML = '⏳ 正在載入後台資料...';
             
             try {
-                // 後台数据
+                // 後台資料
                 const backendRes = await fetch('../api/operations.php?action=list_products', {
                     credentials: 'include'
                 });
                 const backendData = await backendRes.json();
                 
-                status.innerHTML = '⏳ 正在加載用戶端数据...';
+                status.innerHTML = '⏳ 正在載入使用者端資料...';
                 
-                // 用戶端数据  
+                // 使用者端資料  
                 const frontendRes = await fetch('../api/shop.php?action=search_products&page_size=100', {
                     credentials: 'include'
                 });
@@ -83,7 +83,7 @@
                 const backendProducts = backendData.products || [];
                 const frontendProducts = frontendData.products || [];
                 
-                // 顯示後台數據
+                // 顯示後台資料
                 let backendHtml = `<p><strong>商品總數: ${backendProducts.length}</strong></p>`;
                 backendHtml += '<table><tr><th>ID</th><th>名稱</th><th>價格</th><th>庫存</th><th>狀態</th></tr>';
                 backendProducts.slice(0, 5).forEach(p => {
@@ -99,7 +99,7 @@
                 backendHtml += '</table>';
                 document.getElementById('backendData').innerHTML = backendHtml;
                 
-                // 顯示用戶端數據
+                // 顯示使用者端資料
                 let frontendHtml = `<p><strong>商品總數: ${frontendProducts.length}</strong></p>`;
                 frontendHtml += '<table><tr><th>ID</th><th>名稱</th><th>價格</th><th>庫存</th><th>是否上架</th></tr>';
                 frontendProducts.slice(0, 5).forEach(p => {
@@ -120,7 +120,7 @@
                 if (backendProducts.length === frontendProducts.length) {
                     analysisHtml += '<div class="status ok">✅ 商品總數相同</div>';
                 } else {
-                    analysisHtml += `<div class="status warn">⚠️ 商品數量不同（後台: ${backendProducts.length}, 用戶端: ${frontendProducts.length}）</div>`;
+                    analysisHtml += `<div class="status warn">⚠️ 商品數量不同（後台: ${backendProducts.length}, 使用者端: ${frontendProducts.length}）</div>`;
                 }
                 
                 // 檢查 ID 順序
@@ -132,7 +132,7 @@
                     analysisHtml += '<div class="status warn">⚠️ 商品順序不同</div>';
                 }
                 
-                // 檢查是否是同一個數據庫表
+                // 檢查是否是同一個資料庫表
                 if (backendProducts.length > 0 && frontendProducts.length > 0) {
                     const sampleBackend = backendProducts[0];
                     const sameFrontend = frontendProducts.find(p => p.product_id === sampleBackend.product_id);
@@ -140,17 +140,17 @@
                     if (sameFrontend && 
                         sameFrontend.name === sampleBackend.name &&
                         sameFrontend.price === sampleBackend.price) {
-                        analysisHtml += '<div class="status ok">✅ 數據完全相同，使用同一數據庫表</div>';
+                        analysisHtml += '<div class="status ok">✅ 資料完全相同，使用同一資料庫表</div>';
                     }
                 }
                 
                 analysisHtml += '<h4>技術詳情</h4>';
                 analysisHtml += '<ul>';
-                analysisHtml += '<li><strong>後台來源:</strong> api/operations.php → list_products() 函數</li>';
-                analysisHtml += '<li><strong>用戶端來源:</strong> api/shop.php → search_products() 函數</li>';
-                analysisHtml += '<li><strong>數據庫表:</strong> 都來自 <code>products</code> 表</li>';
+                analysisHtml += '<li><strong>後台來源:</strong> api/operations.php → list_products() 函式</li>';
+                analysisHtml += '<li><strong>使用者端來源:</strong> api/shop.php → search_products() 函式</li>';
+                analysisHtml += '<li><strong>資料庫表:</strong> 都來自 <code>products</code> 表</li>';
                 analysisHtml += '<li><strong>查詢語句:</strong> 後台只查 is_active=1 的商品（用於管理）</li>';
-                analysisHtml += '<li><strong>查詢語句:</strong> 用戶端同樣查 is_active=1 的商品</li>';
+                analysisHtml += '<li><strong>查詢語句:</strong> 使用者端同樣查 is_active=1 的商品</li>';
                 analysisHtml += '</ul>';
                 
                 document.getElementById('analysisContent').innerHTML = analysisHtml;
@@ -173,9 +173,9 @@
                     credentials: 'include'
                 });
                 
-                let msg = '<div class="status ok">✅ 兩個 API 都可正常訪問</div>';
+                let msg = '<div class="status ok">✅ 兩個 API 都可正常存取</div>';
                 msg += `<p>後台 API 狀態碼: ${backends.status}</p>`;
-                msg += `<p>用戶端 API 狀態碼: ${fronts.status}</p>`;
+                msg += `<p>使用者端 API 狀態碼: ${fronts.status}</p>`;
                 status.innerHTML = msg;
             } catch (error) {
                 status.innerHTML = `<div class="status warn">❌ API 檢查失敗: ${error.message}</div>`;

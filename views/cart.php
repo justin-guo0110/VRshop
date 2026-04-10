@@ -20,7 +20,7 @@
             <span class="step-dot">3</span>
             <div class="step-text">
                 <strong>完成下單</strong>
-                <small>送出訂單並查看結果</small>
+                <small>送出訂單並檢視結果</small>
             </div>
         </li>
     </ol>

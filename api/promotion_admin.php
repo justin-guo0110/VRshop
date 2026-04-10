@@ -21,7 +21,7 @@ switch ($action) {
 function get_promotion_config(): void {
     $user = require_login();
     if (!isset($user['role']) || $user['role'] !== 'admin') {
-        respond_json(['error' => '只有管理員可以訪問'], 403);
+        respond_json(['error' => '只有管理員可以存取'], 403);
     }
 
     $db = get_db();
@@ -52,7 +52,7 @@ function get_promotion_config(): void {
         }
     }
     
-    // 獲取默認規則用於顯示
+    // 獲取預設規則用於顯示
     $rules = promo_get_rules();
     
     respond_json([
@@ -66,7 +66,7 @@ function get_promotion_config(): void {
 function update_shipping_config(): void {
     $user = require_login();
     if (!isset($user['role']) || $user['role'] !== 'admin') {
-        respond_json(['error' => '只有管理員可以訪問'], 403);
+        respond_json(['error' => '只有管理員可以存取'], 403);
     }
 
     $homeFee = floatval($_POST['home_fee'] ?? 0);
@@ -111,7 +111,7 @@ function update_shipping_config(): void {
 function update_bundle_config(): void {
     $user = require_login();
     if (!isset($user['role']) || $user['role'] !== 'admin') {
-        respond_json(['error' => '只有管理員可以訪問'], 403);
+        respond_json(['error' => '只有管理員可以存取'], 403);
     }
 
     $beverageQty = intval($_POST['beverage_qty'] ?? 2);
@@ -153,7 +153,7 @@ function update_bundle_config(): void {
 
         $db->commit();
         
-        // 清除靜態緩存以立即應用新規則
+        // 清除靜態快取以立即應用新規則
         respond_json([
             'success' => true,
             'message' => '組合優惠設定已更新',

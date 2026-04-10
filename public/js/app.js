@@ -106,7 +106,7 @@ async function bindHeaderCouponDropdown() {
             `;
         }).join('');
 
-        list.innerHTML = `${items}<a class="coupon-dropdown-more" href="../views/coupons.php">查看全部優惠券</a>`;
+        list.innerHTML = `${items}<a class="coupon-dropdown-more" href="../views/coupons.php">檢視全部優惠券</a>`;
     } catch (error) {
         list.innerHTML = '<p class="coupon-dropdown-error">優惠券載入失敗</p>';
     }
@@ -184,9 +184,9 @@ function bindAuth() {
                 const res = await api.post('../api/auth.php?action=request_password_reset', data);
                 if (forgotMsg) {
                     let msgHtml = res.message || (res.success ? '若帳號存在，將寄送重設連結。' : res.error || '送出失敗');
-                    // 如果返回了重設連結（開發模式），顯示為可點擊的連結
+                    // 如果返回了重設連結（開發模式），顯示為可點選的連結
                     if (res.reset_link) {
-                        msgHtml = `${msgHtml}<br><a href="${res.reset_link}" style="color:#0066cc;text-decoration:underline;margin-top:8px;display:inline-block;">點擊此連結重設密碼</a>`;
+                        msgHtml = `${msgHtml}<br><a href="${res.reset_link}" style="color:#0066cc;text-decoration:underline;margin-top:8px;display:inline-block;">點選此連結重設密碼</a>`;
                     }
                     forgotMsg.innerHTML = msgHtml;
                     forgotMsg.className = 'message ' + (res.success ? 'success' : 'error');
@@ -461,7 +461,7 @@ async function bindSearch() {
                 <p class="price">$${Number(p.price).toFixed(2)}</p>
                 <p style="margin:0;"><span class="stock-badge ${inStock ? 'in' : 'out'}">${inStock ? `庫存：${p.stock}` : '缺貨'}</span></p>
                 <div class="card-actions">
-                    <a class="btn btn-sm" href="product_detail.php?product_id=${p.product_id}">查看詳情</a>
+                    <a class="btn btn-sm" href="product_detail.php?product_id=${p.product_id}">檢視詳情</a>
                     <button class="btn btn-sm btn-primary add-to-cart" data-product-id="${p.product_id}" ${inStock ? '' : 'disabled'}>
                         ${inStock ? '加入購物車' : '缺貨'}
                     </button>
@@ -602,13 +602,13 @@ function bindAdmin() {
     const adminContainer = document.querySelector('.admin-container');
     if (!adminContainer) return;
 
-    // 加載儀表板統計
+    // 載入儀表板統計
     async function loadDashboard() {
         try {
             const res = await api.get('../api/admin.php?action=list_orders');
             const orders = res.orders || [];
             
-            // 計算統計數據
+            // 計算統計資料
             const totalOrders = orders.length;
             const pendingOrders = orders.filter(o => ['accepted', 'pending', 'preparing'].includes(o.status)).length;
             const totalRevenue = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
@@ -640,7 +640,7 @@ function bindAdmin() {
         }
     }
 
-    // 加載訂單表格
+    // 載入訂單表格
     async function loadOrders(filterStatus = 'all', searchKeyword = '') {
         try {
             const res = await api.get('../api/admin.php?action=list_orders');
@@ -694,7 +694,7 @@ function bindAdmin() {
         }
     }
 
-    // 加載商品表格
+    // 載入商品表格
     async function loadProducts() {
         try {
             const res = await api.get('../api/admin.php?action=list_products');
@@ -748,7 +748,7 @@ function bindAdmin() {
             if (targetPage) {
                 targetPage.classList.add('active');
                 
-                // 根據頁面加載相應數據
+                // 根據頁面載入相應資料
                 if (page === 'dashboard') loadDashboard();
                 else if (page === 'orders') loadOrders();
                 else if (page === 'products') loadProducts();
@@ -767,7 +767,7 @@ function bindAdmin() {
         });
     }
 
-    // 訂單過滤按鈕
+    // 訂單過濾按鈕
     document.querySelectorAll('.order-filter-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
             const status = btn.getAttribute('data-status');
@@ -808,7 +808,7 @@ function bindAdmin() {
 
     // 訂單刪除和商品刪除事件
     document.addEventListener('click', async (e) => {
-        // 商品保存
+        // 商品儲存
         const saveId = e.target.getAttribute('data-save');
         if (saveId) {
             const productsTable = document.getElementById('productsTable');
@@ -865,7 +865,7 @@ function bindAdmin() {
         }
     });
 
-    // 商品保存事件（保留舊的監聽方式）
+    // 商品儲存事件（保留舊的監聽方式）
     document.addEventListener('click', async (e) => {
         const saveId = e.target.getAttribute('data-save');
         if (saveId) {
@@ -944,7 +944,7 @@ function bindAdmin() {
         });
     }
 
-    // 初始加載儀表板
+    // 初始載入儀表板
     loadDashboard();
 }
 
@@ -1203,7 +1203,7 @@ app.loadCheckoutCart = async function () {
     
     wrap.innerHTML = html;
     
-    // 設置購物車數據
+    // 設定購物車資料
     window.checkoutCartItems = {};
     items.forEach(item => {
         window.checkoutCartItems[item.product_id] = {
@@ -1214,7 +1214,7 @@ app.loadCheckoutCart = async function () {
         };
     });
     
-    // 綁定複選框事件
+    // 繫結核取方塊事件
     document.querySelectorAll('.item-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
             const productId = e.target.dataset.productId;
@@ -1227,7 +1227,7 @@ app.loadCheckoutCart = async function () {
         });
     });
     
-    // 綁定數量調整事件
+    // 繫結數量調整事件
     document.querySelectorAll('.qty-input').forEach(input => {
         input.addEventListener('change', async (e) => {
             const productId = e.target.dataset.productId;
@@ -1264,7 +1264,7 @@ app.loadCheckoutCart = async function () {
         });
     });
     
-    // 綁定加/減按鈕事件
+    // 繫結加/減按鈕事件
     document.querySelectorAll('.qty-btn-plus').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const productId = e.target.dataset.productId;
@@ -1287,7 +1287,7 @@ app.loadCheckoutCart = async function () {
         });
     });
     
-    // 綁定刪除按鈕事件
+    // 繫結刪除按鈕事件
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const productId = e.target.dataset.productId;
@@ -1812,10 +1812,10 @@ app.initCheckoutPage = function () {
         toggleCreditCardSection();
     };
 
-    // 為所有廣播按鈕添加事件監聽
+    // 為所有廣播按鈕新增事件監聽
     document.querySelectorAll('input[name="shipping_method"], input[name="payment_method"]').forEach(el => {
         el.addEventListener('change', () => {
-            // 更新選項項目的視覺効果
+            // 更新選項項目的視覺效果
             const container = el.closest('.options-group');
             if (container) {
                 container.querySelectorAll('.option-item').forEach(item => {
@@ -1833,7 +1833,7 @@ app.initCheckoutPage = function () {
         });
     });
 
-    // 為所有選項項目添加點擊事件
+    // 為所有選項項目新增點選事件
     document.querySelectorAll('.option-item').forEach(item => {
         item.addEventListener('click', (e) => {
             if (e.target.tagName !== 'INPUT') {
@@ -2000,7 +2000,7 @@ app.initCheckoutPage = function () {
 
 app.statusText = function (status) {
     switch (status) {
-        case 'pending': return '已接單';  // 舊數據相容
+        case 'pending': return '已接單';  // 舊資料相容
         case 'accepted': return '已接單';
         case 'preparing': return '備貨中';
         case 'shipping': return '運送中';
@@ -2069,7 +2069,7 @@ app.loadOrders = async function (statusFilter = app.currentOrderFilter || 'all')
                 <td><span class="order-status ${statusClass}">${app.statusText(effectiveStatus)}</span></td>
                 <td>
                     <div class="orders-actions">
-                        <button class="btn btn-secondary btn-sm view-order" data-id="${o.order_id}">查看明細</button>
+                        <button class="btn btn-secondary btn-sm view-order" data-id="${o.order_id}">檢視明細</button>
                         ${refundBtn}
                     </div>
                 </td>
@@ -2174,7 +2174,7 @@ app.initOrdersPage = function () {
             if (!detailRow || !detailBox) return;
             if (detailRow.style.display !== 'none') {
                 detailRow.style.display = 'none';
-                btn.textContent = '查看明細';
+                btn.textContent = '檢視明細';
                 return;
             }
             detailBox.innerHTML = '<div class="order-detail-card">明細載入中...</div>';
@@ -2266,7 +2266,7 @@ app.initOrderSuccessPage = async function () {
     }
 
     if (!Number.isInteger(orderId) || orderId <= 0) {
-        detailWrap.innerHTML = '<div class="order-detail-card">查無訂單編號，請至「我的訂單」查看。</div>';
+        detailWrap.innerHTML = '<div class="order-detail-card">查無訂單編號，請至「我的訂單」檢視。</div>';
         return;
     }
 
@@ -2274,9 +2274,9 @@ app.initOrderSuccessPage = async function () {
         const res = await api.get(`../api/orders.php?action=get_order_detail&order_id=${orderId}`);
         if (!res.order) {
             const errorMsg = res.error === '找不到此訂單' 
-                ? '此訂單不存在或無法訪問'
+                ? '此訂單不存在或無法存取'
                 : '訂單明細載入失敗';
-            detailWrap.innerHTML = `<div class="order-detail-card">${errorMsg}，請至「我的訂單」查看。<br><br><button class="btn btn-secondary" onclick="location.href='./orders.php'">前往我的訂單</button></div>`;
+            detailWrap.innerHTML = `<div class="order-detail-card">${errorMsg}，請至「我的訂單」檢視。<br><br><button class="btn btn-secondary" onclick="location.href='./orders.php'">前往我的訂單</button></div>`;
             return;
         }
 
@@ -2299,7 +2299,7 @@ app.initOrderSuccessPage = async function () {
         html += '</div>';
         detailWrap.innerHTML = html;
     } catch (e) {
-        detailWrap.innerHTML = '<div class="order-detail-card">訂單明細載入失敗，請至「我的訂單」查看。</div>';
+        detailWrap.innerHTML = '<div class="order-detail-card">訂單明細載入失敗，請至「我的訂單」檢視。</div>';
     }
 };
 

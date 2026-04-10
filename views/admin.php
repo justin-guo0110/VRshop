@@ -1,7 +1,7 @@
 <?php require_once __DIR__ . '/layout_header.php'; ?>
 <?php if (!$currentUser || ($currentUser['role'] ?? '') !== 'admin'): ?>
     <div class="card">
-        <p>您沒有權限訪問此頁面。</p>
+        <p>您沒有權限存取此頁面。</p>
     </div>
 <?php else: ?>
 
@@ -284,7 +284,7 @@
                 <div class="admin-card">
                     <h3>👥 客戶列表</h3>
                     <table class="admin-table" id="customersTable">
-                        <thead><tr><th>ID</th><th>名稱</th><th>郵箱</th><th>標籤</th><th>操作</th></tr></thead>
+                        <thead><tr><th>ID</th><th>名稱</th><th>信箱</th><th>標籤</th><th>操作</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -484,7 +484,7 @@
     </div>
 
 <script>
-// API 調用工具
+// API 呼叫工具
 const opsApi = {
     get: (url) => fetch(url, { credentials: 'include' }).then(r => r.json()),
     post: (url, data) => {
@@ -499,7 +499,7 @@ const opsApi = {
 };
 
 const orderStatusLabels = {
-    pending: '已接單',      // 舊數據相容
+    pending: '已接單',      // 舊資料相容
     accepted: '已接單',
     preparing: '準備中',
     shipping: '運送中',
@@ -594,7 +594,7 @@ function showPage(page) {
     if (pageEl) {
         pageEl.style.display = 'block';
         
-        // 加載相應數據
+        // 載入相應資料
         if (page === 'dashboard') loadDashboard();
         else if (page === 'products') loadProducts();
         else if (page === 'orders') loadOrders();
@@ -608,7 +608,7 @@ function showPage(page) {
     }
 }
 
-// 加載銷售看板
+// 載入銷售看板
 async function loadDashboard() {
     try {
         const data = await opsApi.get('../api/admin.php?action=dashboard_stats');
@@ -628,7 +628,7 @@ async function loadDashboard() {
         renderTopProducts(data.top_products || []);
         drawSalesTrendChart(data.daily_sales || []);
     } catch (error) {
-        console.error('加載看板:', error);
+        console.error('載入看板:', error);
         const note = document.getElementById('salesTrendNote');
         if (note) note.textContent = '載入失敗，請稍後再試';
     }
@@ -777,7 +777,7 @@ function drawSalesTrendChart(points) {
     }
 }
 
-// 加載商品列表
+// 載入商品列表
 async function loadProducts() {
     try {
         const data = await opsApi.get('../api/shop.php?action=list_products');
@@ -807,7 +807,7 @@ async function loadProducts() {
             tbody.appendChild(tr);
         });
         
-        // 添加保存和删除按钮的事件监听器
+        // 新增儲存和刪除按鈕的事件監聽器
         document.querySelectorAll('.save-product').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.preventDefault();
@@ -827,13 +827,13 @@ async function loadProducts() {
                 try {
                     const result = await opsApi.post('../api/shop.php', productData);
                     if (result.success) {
-                        alert('商品已保存！');
-                        loadProducts(); // 刷新列表
+                        alert('商品已儲存！');
+                        loadProducts(); // 重新整理列表
                     } else {
-                        alert('保存失敗：' + (result.error || '未知錯誤'));
+                        alert('儲存失敗：' + (result.error || '未知錯誤'));
                     }
                 } catch (error) {
-                    alert('保存失敗：' + error.message);
+                    alert('儲存失敗：' + error.message);
                 }
             });
         });
@@ -851,7 +851,7 @@ async function loadProducts() {
                     });
                     if (result.success) {
                         alert('商品已刪除！');
-                        loadProducts(); // 刷新列表
+                        loadProducts(); // 重新整理列表
                     } else {
                         alert('刪除失敗：' + (result.error || '未知錯誤'));
                     }
@@ -861,11 +861,11 @@ async function loadProducts() {
             });
         });
     } catch (error) {
-        console.error('加載商品:', error);
+        console.error('載入商品:', error);
     }
 }
 
-// 加載訂單列表
+// 載入訂單列表
 async function loadOrders() {
     try {
         const data = await opsApi.get('../api/admin.php?action=list_orders');
@@ -955,7 +955,7 @@ async function loadOrders() {
             });
         });
     } catch (error) {
-        console.error('加載訂單:', error);
+        console.error('載入訂單:', error);
     }
 }
 
@@ -1051,7 +1051,7 @@ async function loadRefundRequests() {
             });
         });
     } catch (error) {
-        console.error('加載退單申請:', error);
+        console.error('載入退單申請:', error);
         const tbody = document.querySelector('#refundsTable tbody');
         if (tbody) {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#dc2626;">退單申請載入失敗</td></tr>';
@@ -1059,7 +1059,7 @@ async function loadRefundRequests() {
     }
 }
 
-// 加載客戶列表
+// 載入客戶列表
 async function loadCustomers() {
     try {
         const data = await opsApi.get('../api/admin.php?action=list_customers');
@@ -1095,7 +1095,7 @@ async function loadCustomers() {
             tbody.appendChild(tr);
         });
     } catch (error) {
-        console.error('加載客戶:', error);
+        console.error('載入客戶:', error);
         const tbody = document.querySelector('#customersTable tbody');
         if (tbody) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#dc2626;">客戶資料載入失敗</td></tr>';
@@ -1430,7 +1430,7 @@ async function saveSidebarAdsAdmin() {
     }
 }
 
-// 加載促銷列表
+// 載入促銷列表
 async function loadPromotions() {
     try {
         bindPromotionFormActions();
@@ -1440,7 +1440,7 @@ async function loadPromotions() {
         await loadPromotionRuleConfig();
         await loadWheelPrizes();
     } catch (error) {
-        console.error('加載促銷:', error);
+        console.error('載入促銷:', error);
         const tableBody = document.querySelector('#promotionsTable tbody');
         if (tableBody) {
             tableBody.innerHTML = '<tr><td colspan="6" style="color:#dc2626;">促銷載入失敗</td></tr>';
@@ -1850,18 +1850,18 @@ async function saveWheelPrizes() {
     }
 }
 
-// 加載庫存列表
+// 載入庫存列表
 async function loadInventory() {
     try {
         if (typeof window.adminInventoryRefresh === 'function') {
             window.adminInventoryRefresh();
         }
     } catch (error) {
-        console.error('加載庫存:', error);
+        console.error('載入庫存:', error);
     }
 }
 
-// 加載客服聊天（如果有 admin_chat.js，則由 admin_chat.js 處理）
+// 載入客服聊天（如果有 admin_chat.js，則由 admin_chat.js 處理）
 async function loadChat() {
     // 此功能由 admin_chat.js 處理
     console.log('客服系統已就緒');
@@ -1919,7 +1919,7 @@ async function loadChat() {
         }
     }
 
-    /* 统计卡片 */
+    /* 統計卡片 */
     .admin-stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
