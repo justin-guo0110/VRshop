@@ -1143,11 +1143,14 @@ function update_product_status(): void {
         respond_json(['error' => 'Product id required'], 422);
     }
     $stmt = $db->prepare('UPDATE products SET is_active = ? WHERE product_id = ?');
+    if (!$stmt) {
+        respond_json(['error' => 'Prepare failed: ' . $db->error], 500);
+    }
     $stmt->bind_param('ii', $is_active, $product_id);
     if ($stmt->execute()) {
         respond_json(['success' => true]);
     }
-    respond_json(['error' => 'Update failed'], 500);
+    respond_json(['error' => 'Update failed: ' . $stmt->error], 500);
 }
 
 function update_product(): void {
@@ -1163,11 +1166,14 @@ function update_product(): void {
         respond_json(['error' => 'Invalid data'], 422);
     }
     $stmt = $db->prepare('UPDATE products SET name = ?, category = ?, description = ?, price = ?, stock = ?, image_url = ? WHERE product_id = ?');
+    if (!$stmt) {
+        respond_json(['error' => 'Prepare failed: ' . $db->error], 500);
+    }
     $stmt->bind_param('sssdisi', $name, $category, $description, $price, $stock, $image_url, $product_id);
     if ($stmt->execute()) {
         respond_json(['success' => true]);
     }
-    respond_json(['error' => 'Update failed'], 500);
+    respond_json(['error' => 'Update failed: ' . $stmt->error], 500);
 }
 
 function create_product(): void {

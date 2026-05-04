@@ -466,7 +466,7 @@ function update_product(): void {
     }
     
     $stmt = $db->prepare('UPDATE products SET name=?, category=?, price=?, stock=?, image_url=?, is_active=? WHERE product_id=?');
-    $stmt->bind_param('ssdisissi', $name, $category, $price, $stock, $image_url, $is_active, $product_id);
+    $stmt->bind_param('ssdisii', $name, $category, $price, $stock, $image_url, $is_active, $product_id);
     
     if ($stmt->execute()) {
         respond_json(['success' => true, 'message' => '商品已更新']);
