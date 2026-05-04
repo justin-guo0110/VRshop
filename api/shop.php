@@ -466,6 +466,10 @@ function update_product(): void {
     }
     
     $stmt = $db->prepare('UPDATE products SET name=?, category=?, price=?, stock=?, image_url=?, is_active=? WHERE product_id=?');
+    if (!$stmt) {
+        respond_json(['error' => '更新失敗：SQL prepare 錯誤'], 500);
+        return;
+    }
     $stmt->bind_param('ssdisii', $name, $category, $price, $stock, $image_url, $is_active, $product_id);
     
     if ($stmt->execute()) {

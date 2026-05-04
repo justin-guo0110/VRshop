@@ -1,0 +1,22 @@
+[
+    {
+        "image_url": "..\/public\/uploads\/sidebar_ads\/ad_20260411_165924_ab8ebc31.jpg",
+        "link_url": ".\/products.php",
+        "alt": "側邊廣告 1"
+    },
+    {
+        "image_url": "..\/public\/uploads\/sidebar_ads\/ad_20260504_151305_c668328c.jpg",
+        "link_url": ".\/products.php",
+        "alt": "側邊廣告 2"
+    },
+    {
+        "image_url": "..\/public\/uploads\/sidebar_ads\/ad_20260504_151315_25298adf.jpg",
+        "link_url": ".\/products.php",
+        "alt": "側邊廣告 3"
+    },
+    {
+        "image_url": "..\/public\/uploads\/sidebar_ads\/ad_20260504_151325_4655d65d.jpg",
+        "link_url": ".\/products.php",
+        "alt": "側邊廣告 4"
+    }
+]
