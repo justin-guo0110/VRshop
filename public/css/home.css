@@ -326,38 +326,62 @@
     margin: 4px auto 10px;
     position: relative;
     overflow: hidden;
-    border-radius: 18px;
-    box-shadow: 0 18px 32px rgba(5, 24, 39, 0.22);
-    background: linear-gradient(135deg, #1f2933 0%, #111827 100%);
+    border-radius: 24px;
+    box-shadow: 0 20px 48px rgba(15, 34, 58, 0.2), 0 0 1px rgba(15, 34, 58, 0.1);
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f766e 100%);
     color: #fff;
     min-height: 0;
-    border: 1px solid rgba(186, 230, 253, 0.28);
+    border: 1px solid rgba(20, 184, 166, 0.15);
+    transition: box-shadow 0.35s ease;
+}
+
+.promo-slider:hover {
+    box-shadow: 0 24px 56px rgba(15, 34, 58, 0.28), 0 0 1px rgba(15, 34, 58, 0.12);
 }
 
 .promo-slider::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.02));
     pointer-events: none;
     z-index: 1;
 }
 
+.promo-slider::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 120% -20%, rgba(20, 184, 166, 0.12) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
 .promo-slider-inner {
     display: flex;
-    transition: transform 0.5s ease;
+    transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
     min-height: inherit;
 }
 
 .promo-slide {
     min-width: 100%;
-    padding: 8px 12px 24px;
+    padding: 20px 28px 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 14px;
+    gap: 24px;
     position: relative;
     z-index: 0;
+    animation: slideIn 0.5s ease-out forwards;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .promo-slide-text h3 {
@@ -377,28 +401,28 @@
 }
 
 .promo-slide-new-member {
-    background: radial-gradient(circle at 86% 14%, rgba(253, 224, 71, 0.2) 0, rgba(253, 224, 71, 0) 40%), linear-gradient(135deg, #052f49 0%, #0f4b68 56%, #0f766e 100%);
+    background: linear-gradient(135deg, rgba(15, 118, 110, 0.95) 0%, rgba(8, 145, 178, 0.85) 50%, rgba(15, 34, 58, 0.9) 100%), radial-gradient(circle at 120% 0%, rgba(253, 224, 71, 0.15) 0%, transparent 50%);
     justify-content: center;
-    padding: 8px 12px 24px;
+    padding: 20px 28px 28px;
 }
 
 .promo-slide-image-only {
     justify-content: center;
-    padding: 8px 12px 24px;
+    padding: 20px 28px 28px;
 }
 
 .promo-slide-free-shipping {
-    background: radial-gradient(circle at 86% 14%, rgba(125, 211, 252, 0.24) 0, rgba(125, 211, 252, 0) 40%), linear-gradient(135deg, #11253c 0%, #164e63 56%, #0d9488 100%);
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.92) 0%, rgba(15, 118, 110, 0.88) 50%, rgba(8, 75, 104, 0.9) 100%), radial-gradient(circle at 120% 0%, rgba(125, 211, 252, 0.12) 0%, transparent 50%);
 }
 
 .promo-slide-combo-deal {
-    background: radial-gradient(circle at 86% 14%, rgba(110, 231, 183, 0.22) 0, rgba(110, 231, 183, 0) 40%), linear-gradient(135deg, #0b2a3f 0%, #14556e 56%, #0f766e 100%);
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.88) 0%, rgba(13, 148, 136, 0.84) 50%, rgba(15, 118, 110, 0.9) 100%), radial-gradient(circle at 120% 0%, rgba(110, 231, 183, 0.1) 0%, transparent 50%);
 }
 
 .promo-slide-media {
-    width: 240px;
-    max-width: 28%;
-    min-width: 170px;
+    width: 260px;
+    max-width: 32%;
+    min-width: 180px;
     flex-shrink: 0;
 }
 
@@ -406,15 +430,17 @@
     width: 100%;
     height: auto;
     display: block;
-    border-radius: 14px;
-    border: 1px solid rgba(207, 250, 254, 0.4);
-    box-shadow: 0 14px 26px rgba(2, 20, 33, 0.34);
-    transition: transform 0.28s ease, box-shadow 0.28s ease;
+    border-radius: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: transform 0.35s cubic-bezier(0.4, 0.0, 0.2, 1), box-shadow 0.35s ease, filter 0.35s ease;
+    filter: brightness(1);
 }
 
 .promo-slide:hover .promo-slide-media img {
-    transform: translateY(-2px) scale(1.006);
-    box-shadow: 0 16px 28px rgba(2, 20, 33, 0.42);
+    transform: translateY(-8px) scale(1.04);
+    box-shadow: 0 24px 56px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    filter: brightness(1.08);
 }
 
 .promo-slide-new-member .promo-slide-media {
@@ -450,28 +476,42 @@
 .promo-dots {
     position: absolute;
     left: 50%;
-    bottom: 12px;
+    bottom: 18px;
     transform: translateX(-50%);
     display: flex;
-    gap: 10px;
+    gap: 12px;
     z-index: 2;
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(12px);
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .promo-dot {
-    width: 24px;
+    width: 10px;
     height: 10px;
     border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.5);
-    background: rgba(255, 255, 255, 0.22);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.25);
     cursor: pointer;
     padding: 0;
-    transition: all 0.22s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.promo-dot:hover {
+    background: rgba(255, 255, 255, 0.45);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: scale(1.15);
 }
 
 .promo-dot.active {
-    width: 34px;
+    width: 32px;
     background: #fff;
     border-color: #fff;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
 }
 
 
@@ -761,16 +801,21 @@
         gap: 8px;
     }
 
+    .promo-slider {
+        border-radius: 20px;
+        margin: 4px auto 8px;
+    }
+
     .promo-slide {
         flex-wrap: wrap;
         align-items: flex-start;
-        padding: 12px 12px 32px;
+        padding: 16px 14px 24px;
     }
 
     .promo-slide-media {
         order: 2;
         width: 100%;
-        max-width: 320px;
+        max-width: 280px;
         min-width: 0;
     }
 
@@ -784,7 +829,7 @@
 
     .promo-slide-new-member .promo-slide-media img,
     .promo-slide-image-only .promo-slide-media img {
-        max-height: 220px;
+        max-height: 200px;
     }
 
     .promo-slide-cta {
@@ -792,16 +837,18 @@
     }
 
     .promo-dots {
-        bottom: 8px;
+        bottom: 12px;
+        gap: 8px;
+        padding: 8px 12px;
     }
 
     .promo-dot {
-        width: 20px;
-        height: 9px;
+        width: 8px;
+        height: 8px;
     }
 
     .promo-dot.active {
-        width: 28px;
+        width: 24px;
     }
 }
 

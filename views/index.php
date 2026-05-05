@@ -307,30 +307,60 @@ $pageTitle = 'VR Shopping Mall - 您的虛擬實境購物天堂';
             if (!inner || !dots.length) return;
             let current = 0;
             const total = dots.length;
+            let autoPlayTimer = null;
+            let isHovering = false;
 
-            function goTo(index) {
-                current = (index + total) % total;
+            function updateSlide() {
                 inner.style.transform = 'translateX(' + (-100 * current) + '%)';
                 dots.forEach((d, i) => {
                     d.classList.toggle('active', i === current);
                 });
             }
 
+            function goToSlide(index) {
+                current = (index + total) % total;
+                updateSlide();
+                resetAutoPlay();
+            }
+
+            function nextSlide() {
+                goToSlide(current + 1);
+            }
+
+            function resetAutoPlay() {
+                if (autoPlayTimer) clearInterval(autoPlayTimer);
+                if (!isHovering) {
+                    autoPlayTimer = setInterval(nextSlide, 5000);
+                }
+            }
+
             dots.forEach(d => {
                 d.addEventListener('click', () => {
                     const idx = parseInt(d.dataset.index, 10) || 0;
-                    goTo(idx);
+                    goToSlide(idx);
+                });
+                d.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        const idx = parseInt(d.dataset.index, 10) || 0;
+                        goToSlide(idx);
+                    }
                 });
             });
 
-            let timer = setInterval(() => goTo(current + 1), 6000);
             const slider = document.getElementById('promoSlider');
             if (slider) {
-                slider.addEventListener('mouseenter', () => clearInterval(timer));
+                slider.addEventListener('mouseenter', () => {
+                    isHovering = true;
+                    if (autoPlayTimer) clearInterval(autoPlayTimer);
+                });
                 slider.addEventListener('mouseleave', () => {
-                    timer = setInterval(() => goTo(current + 1), 6000);
+                    isHovering = false;
+                    resetAutoPlay();
                 });
             }
+
+            updateSlide();
+            resetAutoPlay();
         }
 
         document.addEventListener('DOMContentLoaded', function () {
