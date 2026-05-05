@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/promotion_helpers.php';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
@@ -15,6 +16,9 @@ switch ($action) {
         break;
     case 'get_product':
         get_product();
+        break;
+    case 'promotions_overview':
+        promotions_overview();
         break;
     case 'list_products':
         require_admin();
@@ -433,6 +437,121 @@ function get_product(): void {
         respond_json(['error' => 'Product not found'], 404);
     }
     respond_json(['product' => $product]);
+}
+
+function promotions_overview(): void {
+    $db = get_db();
+    $rules = promo_get_rules();
+    $bundleRules = is_array($rules['bundle_rules'] ?? null) ? $rules['bundle_rules'] : [];
+    $shippingFees = is_array($rules['shipping_fees'] ?? null) ? $rules['shipping_fees'] : [];
+    $shippingThresholds = is_array($rules['free_shipping_thresholds'] ?? null) ? $rules['free_shipping_thresholds'] : [];
+
+    $normalizedBundleRules = [];
+    foreach ($bundleRules as $rule) {
+        if (!is_array($rule)) {
+            continue;
+        }
+        $trigger = (isset($rule['trigger']) && is_array($rule['trigger'])) ? $rule['trigger'] : [];
+        $condition = (isset($trigger['condition']) && is_array($trigger['condition']))
+            ? $trigger['condition']
+            : (is_array($rule['condition'] ?? null) ? $rule['condition'] : []);
+        $reward = (isset($rule['reward']) && is_array($rule['reward'])) ? $rule['reward'] : [];
+        $type = (string)($reward['type'] ?? ($rule['type'] ?? ''));
+        if ($type === '') {
+            continue;
+        }
+
+        $rewardProductId = intval($reward['product_id'] ?? ($rule['reward_product_id'] ?? 0));
+        $rewardUnitPrice = 0.0;
+        if ($type === 'gift' && $rewardProductId > 0) {
+            $rewardUnitPrice = promo_get_product_price($rewardProductId);
+        }
+
+        $quickAddItems = [];
+        $triggerMinQty = max(1, intval($trigger['min_qty'] ?? ($condition['min_quantity'] ?? 1)));
+        $triggerProductId = 0;
+
+        $conditionProductIds = is_array($condition['product_ids'] ?? null) ? array_values(array_map('intval', $condition['product_ids'])) : [];
+        if (!empty($conditionProductIds)) {
+            $ids = array_filter($conditionProductIds, fn($id) => $id > 0);
+            if (!empty($ids)) {
+                $placeholders = implode(',', array_fill(0, count($ids), '?'));
+                $types = str_repeat('i', count($ids));
+                $sql = "SELECT product_id FROM products WHERE is_active = 1 AND stock > 0 AND product_id IN ($placeholders) ORDER BY stock DESC, product_id DESC LIMIT 1";
+                $stmt = $db->prepare($sql);
+                if ($stmt) {
+                    $stmt->bind_param($types, ...$ids);
+                    $stmt->execute();
+                    $row = $stmt->get_result()->fetch_assoc();
+                    if ($row) {
+                        $triggerProductId = intval($row['product_id']);
+                    }
+                }
+            }
+        } else {
+            $conditionCategories = is_array($condition['categories'] ?? null) ? $condition['categories'] : [];
+            foreach ($conditionCategories as $category) {
+                $cat = trim((string)$category);
+                if ($cat === '') {
+                    continue;
+                }
+                $stmt = $db->prepare('SELECT product_id FROM products WHERE is_active = 1 AND stock > 0 AND category = ? ORDER BY stock DESC, product_id DESC LIMIT 1');
+                if ($stmt) {
+                    $stmt->bind_param('s', $cat);
+                    $stmt->execute();
+                    $row = $stmt->get_result()->fetch_assoc();
+                    if ($row) {
+                        $triggerProductId = intval($row['product_id']);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($triggerProductId > 0) {
+            $quickAddItems[] = [
+                'product_id' => $triggerProductId,
+                'quantity' => $triggerMinQty,
+                'role' => 'trigger',
+            ];
+        }
+        if ($type === 'gift' && $rewardProductId > 0) {
+            $quickAddItems[] = [
+                'product_id' => $rewardProductId,
+                'quantity' => max(1, intval($reward['qty'] ?? ($rule['reward_quantity'] ?? 1))),
+                'role' => 'gift',
+            ];
+        }
+
+        $normalizedBundleRules[] = [
+            'code' => (string)($rule['code'] ?? uniqid('bundle_', true)),
+            'label' => (string)($rule['label'] ?? '組合優惠'),
+            'type' => $type,
+            'trigger' => [
+                'min_qty' => max(1, intval($trigger['min_qty'] ?? ($condition['min_quantity'] ?? 1))),
+                'step' => max(1, intval($trigger['step'] ?? ($rule['step'] ?? 1))),
+                'condition' => [
+                    'product_ids' => array_values(array_map('intval', is_array($condition['product_ids'] ?? null) ? $condition['product_ids'] : [])),
+                    'categories' => array_values(array_map('strval', is_array($condition['categories'] ?? null) ? $condition['categories'] : [])),
+                ],
+            ],
+            'reward' => [
+                'type' => $type,
+                'value' => floatval($reward['value'] ?? ($rule['value'] ?? 0)),
+                'product_id' => $rewardProductId,
+                'qty' => max(1, intval($reward['qty'] ?? ($rule['reward_quantity'] ?? 1))),
+                'unit_price' => $rewardUnitPrice,
+            ],
+            'quick_add_items' => $quickAddItems,
+        ];
+    }
+
+    respond_json([
+        'success' => true,
+        'bundle_rules' => $normalizedBundleRules,
+        'shipping_fees' => $shippingFees,
+        'free_shipping_thresholds' => $shippingThresholds,
+    ]);
 }
 
 // 管理員專用：列出所有商品（包括已下架）

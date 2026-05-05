@@ -463,6 +463,7 @@ function place_order(): void {
         'promotion_discount' => $promotionDiscount,
         'coupon_discount' => $couponDiscount,
         'promotion_details' => $promotionResult['details'] ?? [],
+        'promotion_reward_lines' => $promotionResult['reward_lines'] ?? [],
         'discount' => $discount,
         'total' => $total
     ]);

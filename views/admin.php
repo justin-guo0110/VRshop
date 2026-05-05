@@ -457,6 +457,18 @@
                         </div>
                     </div>
                     <button type="button" class="btn btn-primary" id="promoRuleSaveBundleBtn">儲存組合優惠設定</button>
+
+                    <div id="bundleRulesEditor" style="margin-top:24px;padding:14px;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;">
+                        <h4 style="margin:0 0 10px;">自訂組合優惠規則</h4>
+                        <div id="bundleRulesContainer"></div>
+                        <div style="margin-top:12px;">
+                            <button type="button" class="btn btn-secondary" id="promoRuleAddBundleRuleBtn">新增組合優惠規則</button>
+                        </div>
+                        <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                            <button type="button" class="btn btn-primary" id="promoRuleSaveBundleRulesBtn">儲存自訂組合優惠規則</button>
+                            <span style="font-size:13px;color:#64748b;max-width:520px;">若已使用自訂規則，系統將優先套用自訂組合優惠；若未定義，仍會保留傳統飲料/零食組合設定。</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="admin-card">
@@ -1665,6 +1677,232 @@ function showPromotionRuleMessage(text, isSuccess) {
     }
 }
 
+function createBundleRuleCard(rule = {}) {
+    const row = document.createElement('div');
+    row.className = 'bundle-rule-card';
+    row.style = 'border:1px solid #d1d5db;padding:12px;border-radius:8px;margin-bottom:12px;background:#f8fafc;';
+
+    const ruleIndex = Math.random().toString(36).slice(2, 8);
+    const getId = (key) => `${key}_${ruleIndex}`;
+
+    const trigger = (rule.trigger && typeof rule.trigger === 'object') ? rule.trigger : {};
+    const reward = (rule.reward && typeof rule.reward === 'object') ? rule.reward : {};
+    const triggerCondition = (trigger.condition && typeof trigger.condition === 'object') ? trigger.condition : (rule.condition || {});
+    const triggerMinQty = Number(trigger.min_qty || triggerCondition.min_quantity || 1);
+    const triggerStep = Number(trigger.step || rule.step || triggerMinQty || 1);
+    const rewardType = reward.type || rule.type || 'percent';
+    const rewardValue = rewardType === 'gift'
+        ? Number(reward.qty || rule.reward_quantity || 1)
+        : Number(reward.value || rule.value || 0);
+    const rewardProductId = Number(reward.product_id || rule.reward_product_id || 0) || '';
+    const matchRaw = triggerCondition.categories
+        ? triggerCondition.categories.join(',')
+        : (triggerCondition.product_ids ? triggerCondition.product_ids.join(',') : '');
+
+    row.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <strong style="font-size:15px;">規則名稱</strong>
+            <button type="button" class="btn btn-secondary btn-sm bundleRuleRemoveBtn" style="padding:6px 10px;">移除</button>
+        </div>
+        <div class="admin-grid" style="grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+                <label style="font-weight:700;display:block;margin-bottom:6px;">規則名稱</label>
+                <input type="text" id="${getId('bundleRuleLabel')}" class="admin-input" value="${rule.label ?? ''}" placeholder="例如：買餅乾送可樂">
+            </div>
+            <div>
+                <label style="font-weight:700;display:block;margin-bottom:6px;">判斷類型</label>
+                <select id="${getId('bundleRuleMatchType')}" class="admin-input">
+                    <option value="category">商品分類</option>
+                    <option value="product">商品ID</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-weight:700;display:block;margin-bottom:6px;">分類名稱 / 商品ID</label>
+                <input type="text" id="${getId('bundleRuleMatchValue')}" class="admin-input" value="${matchRaw}" placeholder="例如：餅乾 或 12">
+            </div>
+            <div>
+                <label style="font-weight:700;display:block;margin-bottom:6px;">最少購買數量</label>
+                <input type="number" id="${getId('bundleRuleQty')}" min="1" step="1" class="admin-input" value="${triggerMinQty}">
+            </div>
+            <div>
+                <label style="font-weight:700;display:block;margin-bottom:6px;">每滿幾件觸發一次</label>
+                <input type="number" id="${getId('bundleRuleStep')}" min="1" step="1" class="admin-input" value="${triggerStep}">
+            </div>
+            <div>
+                <label style="font-weight:700;display:block;margin-bottom:6px;">優惠類型</label>
+                <select id="${getId('bundleRuleAction')}" class="admin-input">
+                    <option value="percent">折扣百分比</option>
+                    <option value="fixed">固定金額</option>
+                    <option value="gift">贈品</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-weight:700;display:block;margin-bottom:6px;">折扣值 / 贈品數量</label>
+                <input type="number" id="${getId('bundleRuleValue')}" min="0" step="0.01" class="admin-input" value="${rewardValue}">
+            </div>
+            <div style="grid-column:1/-1;">
+                <label style="font-weight:700;display:block;margin-bottom:6px;">贈品商品ID（買X送Y / 贈品類型必填）</label>
+                <input type="number" id="${getId('bundleRuleGiftProductId')}" min="1" step="1" class="admin-input" value="${rewardProductId}" placeholder="例如：34">
+            </div>
+        </div>
+        <input type="hidden" class="bundleRuleCode" value="${rule.code ?? ''}">
+    `;
+
+    const actionSelect = row.querySelector(`#${getId('bundleRuleAction')}`);
+    const valueInput = row.querySelector(`#${getId('bundleRuleValue')}`);
+    const giftInput = row.querySelector(`#${getId('bundleRuleGiftProductId')}`);
+
+    if (rewardType) {
+        actionSelect.value = rewardType;
+        if (rewardType === 'gift') {
+            valueInput.value = reward.qty ?? rule.reward_quantity ?? 1;
+        } else {
+            valueInput.value = reward.value ?? rule.value ?? '';
+        }
+    }
+
+    const matchTypeSelect = row.querySelector(`#${getId('bundleRuleMatchType')}`);
+    if (triggerCondition.product_ids) {
+        matchTypeSelect.value = 'product';
+    } else if (triggerCondition.categories) {
+        matchTypeSelect.value = 'category';
+    }
+
+    const removeBtn = row.querySelector('.bundleRuleRemoveBtn');
+    removeBtn.addEventListener('click', () => {
+        row.remove();
+    });
+
+    return row;
+}
+
+function renderBundleRules(rules) {
+    const container = document.getElementById('bundleRulesContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!Array.isArray(rules) || rules.length === 0) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.style = 'color:#475569;font-size:14px;margin-bottom:12px;';
+        emptyMessage.textContent = '尚未設定自訂組合優惠規則。點擊「新增組合優惠規則」開始新增。';
+        container.appendChild(emptyMessage);
+        return;
+    }
+
+    rules.forEach((rule) => {
+        const card = createBundleRuleCard(rule);
+        container.appendChild(card);
+    });
+}
+
+function collectBundleRules() {
+    const container = document.getElementById('bundleRulesContainer');
+    if (!container) return [];
+    const rules = [];
+    container.querySelectorAll('.bundle-rule-card').forEach((card) => {
+        const labelInput = card.querySelector('input[id^="bundleRuleLabel_"]');
+        const matchTypeSelect = card.querySelector('select[id^="bundleRuleMatchType_"]');
+        const matchValueInput = card.querySelector('input[id^="bundleRuleMatchValue_"]');
+        const qtyInput = card.querySelector('input[id^="bundleRuleQty_"]');
+        const stepInput = card.querySelector('input[id^="bundleRuleStep_"]');
+        const actionSelect = card.querySelector('select[id^="bundleRuleAction_"]');
+        const valueInput = card.querySelector('input[id^="bundleRuleValue_"]');
+        const giftInput = card.querySelector('input[id^="bundleRuleGiftProductId_"]');
+        const codeInput = card.querySelector('.bundleRuleCode');
+
+        const label = labelInput?.value.trim() || '';
+        const matchType = matchTypeSelect?.value || 'category';
+        const matchValue = matchValueInput?.value.trim() || '';
+        const minQuantity = Math.max(1, parseInt(qtyInput?.value || '1', 10));
+        const stepQuantity = Math.max(1, parseInt(stepInput?.value || String(minQuantity), 10));
+        const actionType = actionSelect?.value || 'percent';
+        const actionValue = parseFloat(valueInput?.value || '0');
+        const giftProductId = parseInt(giftInput?.value || '0', 10);
+        const code = codeInput?.value || '';
+
+        const condition = {};
+        if (matchType === 'product') {
+            condition.product_ids = matchValue.split(',').map((v) => parseInt(v.trim(), 10)).filter((v) => v > 0);
+        } else {
+            condition.categories = matchValue.split(',').map((v) => v.trim()).filter((v) => v !== '');
+        }
+
+        const rule = {
+            code: code || `bundle_${Math.random().toString(36).substr(2, 8)}`,
+            label,
+            type: actionType, // 舊欄位相容
+            trigger: {
+                min_qty: minQuantity,
+                step: stepQuantity,
+                condition
+            },
+            condition: { ...condition, min_quantity: minQuantity }, // 舊欄位相容
+            step: stepQuantity,
+            reward: {
+                type: actionType
+            }
+        };
+
+        if (actionType === 'gift') {
+            const normalizedQty = Math.max(1, actionValue > 0 ? actionValue : 1);
+            rule.reward.product_id = giftProductId;
+            rule.reward.qty = normalizedQty;
+            rule.reward_product_id = giftProductId; // 舊欄位相容
+            rule.reward_quantity = normalizedQty; // 舊欄位相容
+        } else {
+            rule.reward.value = actionValue;
+            rule.value = actionValue; // 舊欄位相容
+            if (actionType === 'fixed' && actionValue <= 0) {
+                rule.reward.value = 0;
+                rule.value = 0;
+            }
+        }
+
+        rules.push(rule);
+    });
+    return rules;
+}
+
+function addNewBundleRule(rule = {}) {
+    const container = document.getElementById('bundleRulesContainer');
+    if (!container) return;
+    const card = createBundleRuleCard(rule);
+    container.appendChild(card);
+}
+
+async function savePromotionCustomBundleRules() {
+    const rules = collectBundleRules();
+    if (rules.length === 0) {
+        showPromotionRuleMessage('請至少新增一條自訂組合優惠規則', false);
+        return;
+    }
+
+    const invalidRule = rules.find((rule) => {
+        if (!rule.label) return true;
+        if (rule.type === 'gift') {
+            const rewardProductId = Number(rule.reward?.product_id || rule.reward_product_id || 0);
+            return rewardProductId <= 0;
+        }
+        return false;
+    });
+    if (invalidRule) {
+        showPromotionRuleMessage('請確認每條規則皆有名稱，且贈品規則需填寫贈品商品ID', false);
+        return;
+    }
+
+    try {
+        const res = await opsApi.post('../api/promotion_admin.php?action=update_bundle', {
+            bundle_rules_json: JSON.stringify(rules)
+        });
+        if (res.success) {
+            showPromotionRuleMessage('自訂組合優惠規則已更新', true);
+        } else {
+            showPromotionRuleMessage(res.error || '自訂組合優惠規則更新失敗', false);
+        }
+    } catch (error) {
+        showPromotionRuleMessage('自訂組合優惠規則更新失敗', false);
+    }
+}
+
 async function loadPromotionRuleConfig() {
     try {
         const data = await opsApi.get('../api/promotion_admin.php?action=get_config');
@@ -1691,6 +1929,9 @@ async function loadPromotionRuleConfig() {
         setValue('promoRuleSnackQty', bundle.snack_discount_qty?.value, '3');
         setValue('promoRuleSnackFixed', bundle.snack_discount_fixed?.value, '20');
 
+        const bundleRules = data.bundle_rules || [];
+        renderBundleRules(bundleRules);
+
         bindPromotionRuleActions();
     } catch (error) {
         showPromotionRuleMessage('促銷規則載入失敗', false);
@@ -1708,6 +1949,18 @@ function bindPromotionRuleActions() {
     if (bundleBtn && !bundleBtn.dataset.bound) {
         bundleBtn.dataset.bound = '1';
         bundleBtn.addEventListener('click', savePromotionBundleRules);
+    }
+
+    const customBundleBtn = document.getElementById('promoRuleSaveBundleRulesBtn');
+    if (customBundleBtn && !customBundleBtn.dataset.bound) {
+        customBundleBtn.dataset.bound = '1';
+        customBundleBtn.addEventListener('click', savePromotionCustomBundleRules);
+    }
+
+    const addCustomRuleBtn = document.getElementById('promoRuleAddBundleRuleBtn');
+    if (addCustomRuleBtn && !addCustomRuleBtn.dataset.bound) {
+        addCustomRuleBtn.dataset.bound = '1';
+        addCustomRuleBtn.addEventListener('click', () => addNewBundleRule());
     }
 }
 

@@ -30,7 +30,16 @@ function promo_load_db_config(mysqli $db): array {
                 $dbRules['free_shipping_thresholds']['超商取貨'] = floatval($val);
             }
         } elseif ($type === 'bundle') {
-            if ($key === 'beverage_discount_qty') {
+            if ($key === 'bundle_rules') {
+                $rules = promo_parse_json_value($val);
+                if (is_array($rules)) {
+                    foreach ($rules as $rule) {
+                        if (is_array($rule)) {
+                            $dbRules['bundle_rules'][] = $rule;
+                        }
+                    }
+                }
+            } elseif ($key === 'beverage_discount_qty') {
                 $bundleConfig['beverage_qty'] = intval($val);
             } elseif ($key === 'beverage_discount_percent') {
                 $bundleConfig['beverage_percent'] = floatval($val);
@@ -73,12 +82,57 @@ function promo_load_db_config(mysqli $db): array {
 }
 
 function promo_parse_json_value(string $val): mixed {
+    $json = $val;
     if (strpos($val, 'json:') === 0) {
         $json = substr($val, 5);
-        $decoded = json_decode($json, true);
-        return is_array($decoded) ? $decoded : null;
     }
-    return null;
+    $decoded = json_decode($json, true);
+    return is_array($decoded) ? $decoded : null;
+}
+
+function promo_get_product_price(int $productId): float {
+    $db = get_db();
+    $stmt = $db->prepare('SELECT price FROM products WHERE product_id = ? LIMIT 1');
+    if (!$stmt) {
+        return 0.0;
+    }
+    $stmt->bind_param('i', $productId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    return $row ? floatval($row['price']) : 0.0;
+}
+
+function promo_item_matches_rule(array $item, array $rule): bool {
+    $category = trim((string)($item['category'] ?? ''));
+    $productId = intval($item['product_id'] ?? 0);
+    $trigger = (isset($rule['trigger']) && is_array($rule['trigger'])) ? $rule['trigger'] : [];
+    $condition = (isset($trigger['condition']) && is_array($trigger['condition']))
+        ? $trigger['condition']
+        : (($rule['condition'] ?? []));
+
+    if (!empty($condition['product_ids']) && is_array($condition['product_ids'])) {
+        $allowedIds = array_map('intval', $condition['product_ids']);
+        if (in_array($productId, $allowedIds, true)) {
+            return true;
+        }
+    }
+
+    if (!empty($condition['categories']) && is_array($condition['categories']) && $category !== '') {
+        return in_array($category, $condition['categories'], true);
+    }
+
+    if (!empty($rule['product_ids']) && is_array($rule['product_ids'])) {
+        $allowedIds = array_map('intval', $rule['product_ids']);
+        if (in_array($productId, $allowedIds, true)) {
+            return true;
+        }
+    }
+
+    if (!empty($rule['categories']) && is_array($rule['categories']) && $category !== '') {
+        return in_array($category, $rule['categories'], true);
+    }
+
+    return false;
 }
 
 function promo_get_rules(): array {
@@ -163,14 +217,14 @@ function promo_get_shipping_quote(string $shippingMethod, float $subtotal): arra
 function promo_calculate_bundle_discount(array $items): array {
     $rules = promo_get_rules();
     $details = [];
+    $rewardLines = [];
     $totalDiscount = 0.0;
 
     foreach ($rules['bundle_rules'] as $rule) {
         $matchedQty = 0;
         $matchedSubtotal = 0.0;
         foreach ($items as $item) {
-            $category = trim((string)($item['category'] ?? ''));
-            if ($category === '' || !in_array($category, $rule['categories'], true)) {
+            if (!promo_item_matches_rule($item, $rule)) {
                 continue;
             }
             $qty = max(0, intval($item['quantity'] ?? 0));
@@ -183,16 +237,71 @@ function promo_calculate_bundle_discount(array $items): array {
             continue;
         }
 
-        $discount = 0.0;
-        if ($rule['type'] === 'percent' && $matchedQty >= 2) {
-            $discount = round($matchedSubtotal * (floatval($rule['value']) / 100), 2);
+        $trigger = (isset($rule['trigger']) && is_array($rule['trigger'])) ? $rule['trigger'] : [];
+        $condition = (isset($trigger['condition']) && is_array($trigger['condition']))
+            ? $trigger['condition']
+            : (($rule['condition'] ?? []));
+
+        $minQuantity = max(1, intval($trigger['min_qty'] ?? ($condition['min_quantity'] ?? 0)));
+        if ($minQuantity === 0) {
+            $minQuantity = intval($trigger['step'] ?? ($rule['step'] ?? 0));
+            if ($minQuantity === 0) {
+                $minQuantity = 1;
+            }
         }
-        if ($rule['type'] === 'fixed_per_step' && $matchedQty >= intval($rule['step'] ?? 0)) {
-            $discount = floor($matchedQty / intval($rule['step'])) * floatval($rule['value']);
+
+        $stepQuantity = intval($trigger['step'] ?? ($rule['step'] ?? 0));
+        if ($stepQuantity <= 0) {
+            $stepQuantity = $minQuantity;
+        }
+        $times = intdiv($matchedQty, max(1, $stepQuantity));
+        if ($matchedQty < $minQuantity) {
+            $times = 0;
+        }
+
+        $reward = (isset($rule['reward']) && is_array($rule['reward'])) ? $rule['reward'] : [];
+        $ruleType = (string)($reward['type'] ?? ($rule['type'] ?? ''));
+
+        $discount = 0.0;
+        if ($ruleType === 'percent' && $times > 0) {
+            $percentValue = floatval($reward['value'] ?? ($rule['value'] ?? 0));
+            $discount = round($matchedSubtotal * ($percentValue / 100), 2);
+        }
+
+        if ($ruleType === 'fixed_per_step' && $times > 0) {
+            $fixedValue = floatval($reward['value'] ?? ($rule['value'] ?? 0));
+            $discount = $times * $fixedValue;
             if ($discount > $matchedSubtotal) {
                 $discount = $matchedSubtotal;
             }
             $discount = round($discount, 2);
+        }
+
+        if ($ruleType === 'fixed' && $times > 0) {
+            $fixedValue = floatval($reward['value'] ?? ($rule['value'] ?? 0));
+            $discount = min($fixedValue * $times, $matchedSubtotal);
+            $discount = round($discount, 2);
+        }
+
+        if ($ruleType === 'gift') {
+            // 贈品規則以最低門檻計次，避免 step 設定影響買一送一
+            $giftTimes = intdiv($matchedQty, max(1, $minQuantity));
+            if ($giftTimes <= 0) {
+                continue;
+            }
+            $rewardProductId = intval($reward['product_id'] ?? ($rule['reward_product_id'] ?? 0));
+            $rewardQuantity = max(1, intval($reward['qty'] ?? ($rule['reward_quantity'] ?? 1))) * $giftTimes;
+            if ($rewardProductId > 0) {
+                $rewardPrice = promo_get_product_price($rewardProductId);
+                $discount = round($rewardPrice * $rewardQuantity, 2);
+                $rewardLines[] = [
+                    'code' => $rule['code'] ?? uniqid('gift_', true),
+                    'label' => $rule['label'] ?? '組合贈品',
+                    'reward_product_id' => $rewardProductId,
+                    'reward_quantity' => $rewardQuantity,
+                    'reward_price' => $rewardPrice,
+                ];
+            }
         }
 
         if ($discount <= 0) {
@@ -200,10 +309,11 @@ function promo_calculate_bundle_discount(array $items): array {
         }
 
         $details[] = [
-            'code' => $rule['code'],
-            'label' => $rule['label'],
+            'code' => $rule['code'] ?? uniqid('bundle_', true),
+            'label' => $rule['label'] ?? '組合優惠',
             'discount' => $discount,
             'matched_quantity' => $matchedQty,
+            'applied_times' => ($ruleType === 'gift' ? intdiv($matchedQty, max(1, $minQuantity)) : $times),
         ];
         $totalDiscount += $discount;
     }
@@ -211,6 +321,7 @@ function promo_calculate_bundle_discount(array $items): array {
     return [
         'discount' => round($totalDiscount, 2),
         'details' => $details,
+        'reward_lines' => $rewardLines,
     ];
 }
 

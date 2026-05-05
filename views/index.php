@@ -155,6 +155,13 @@ $pageTitle = 'VR Shopping Mall - 您的虛擬實境購物天堂';
             </div>
         </section>
 
+        <section class="container home-promo-highlights">
+            <h2 class="section-title">本週促銷活動</h2>
+            <div id="homePromotionHighlights" class="home-promo-grid">
+                <p style="text-align:center;padding:24px;">載入中...</p>
+            </div>
+        </section>
+
         <!-- 促銷 Banner -->
         <section class="container">
             <div class="promo-banner">
@@ -238,6 +245,103 @@ $pageTitle = 'VR Shopping Mall - 您的虛擬實境購物天堂';
                 console.error('載入商品失敗:', error);
                 document.getElementById('featuredProducts').innerHTML =
                     '<p style="text-align:center;padding:40px;color:#d14343;">載入商品時發生錯誤</p>';
+            }
+        }
+
+        async function loadHomePromotionHighlights() {
+            const container = document.getElementById('homePromotionHighlights');
+            if (!container) return;
+            try {
+                const response = await fetch('../api/shop.php?action=promotions_overview');
+                const data = await response.json();
+                if (!data || !data.success) {
+                    container.innerHTML = '<p style="text-align:center;color:#b45309;">目前尚無促銷活動</p>';
+                    return;
+                }
+
+                const cards = [];
+                const shippingThresholds = data.free_shipping_thresholds || {};
+                if (Object.keys(shippingThresholds).length) {
+                    const lines = Object.entries(shippingThresholds).map(([method, amount]) => {
+                        return `${method} 滿 NT$ ${Number(amount).toFixed(0)} 免運`;
+                    });
+                    cards.push({
+                        title: '免運優惠',
+                        desc: lines.join(' / ')
+                    });
+                }
+
+                const rules = Array.isArray(data.bundle_rules) ? data.bundle_rules : [];
+                rules.forEach((rule) => {
+                    cards.push({
+                        title: '組合優惠',
+                        desc: rule.label || '組合促銷',
+                        ruleCode: rule.code || '',
+                        quickAddItems: Array.isArray(rule.quick_add_items) ? rule.quick_add_items : []
+                    });
+                });
+
+                if (!cards.length) {
+                    container.innerHTML = '<p style="text-align:center;color:#b45309;">目前尚無促銷活動</p>';
+                    return;
+                }
+
+                container.innerHTML = cards.slice(0, 8).map((card) => `
+                    <article class="home-promo-card">
+                        <h3>${card.title}</h3>
+                        <p>${card.desc}</p>
+                        ${
+                            card.ruleCode && Array.isArray(card.quickAddItems) && card.quickAddItems.length
+                                ? `<button type="button" class="home-promo-add-btn" data-rule-code="${card.ruleCode}">立即選購</button>`
+                                : '<a href="./products.php">立即選購</a>'
+                        }
+                    </article>
+                `).join('');
+
+                container.querySelectorAll('.home-promo-add-btn').forEach((btn) => {
+                    btn.addEventListener('click', async () => {
+                        const code = btn.getAttribute('data-rule-code');
+                        if (!code) {
+                            window.location.href = './products.php';
+                            return;
+                        }
+
+                        btn.disabled = true;
+                        const originalText = btn.textContent;
+                        btn.textContent = '加入中...';
+
+                        try {
+                            const payload = new URLSearchParams({ rule_code: code });
+                            const response = await fetch('../api/cart.php?action=add_promo_bundle', {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: payload.toString()
+                            });
+                            const result = await response.json();
+                            if (!result.success) {
+                                throw new Error(result.error || '加入購物車失敗');
+                            }
+                            if (window.app && typeof window.app.loadCartCount === 'function') {
+                                window.app.loadCartCount();
+                            }
+                            if (window.app && typeof window.app.toast === 'function') {
+                                window.app.toast('促銷組合已加入購物車', 'success');
+                            } else {
+                                alert('促銷組合已加入購物車');
+                            }
+                            window.location.href = './cart.php';
+                        } catch (error) {
+                            alert(error.message || '加入購物車失敗，請稍後再試');
+                        } finally {
+                            btn.disabled = false;
+                            btn.textContent = originalText;
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error('載入促銷活動失敗:', error);
+                container.innerHTML = '<p style="text-align:center;color:#d14343;">促銷活動載入失敗</p>';
             }
         }
 
@@ -365,6 +469,7 @@ $pageTitle = 'VR Shopping Mall - 您的虛擬實境購物天堂';
 
         document.addEventListener('DOMContentLoaded', function () {
             loadFeaturedProducts();
+            loadHomePromotionHighlights();
             loadSidebarAds();
             initPromoSlider();
 

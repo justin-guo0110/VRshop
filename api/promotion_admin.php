@@ -44,10 +44,17 @@ function get_promotion_config(): void {
                     'description' => $row['description']
                 ];
             } elseif ($type === 'bundle') {
-                $bundleConfig[$key] = [
-                    'value' => $val,
-                    'description' => $row['description']
-                ];
+                if ($key === 'bundle_rules') {
+                    $bundleRules = promo_parse_json_value($val);
+                    if (is_array($bundleRules)) {
+                        $bundleConfig['bundle_rules'] = $bundleRules;
+                    }
+                } else {
+                    $bundleConfig[$key] = [
+                        'value' => $val,
+                        'description' => $row['description']
+                    ];
+                }
             }
         }
     }
@@ -59,6 +66,7 @@ function get_promotion_config(): void {
         'success' => true,
         'shipping' => $shippingConfig,
         'bundle' => $bundleConfig,
+        'bundle_rules' => $bundleConfig['bundle_rules'] ?? [],
         'current_rules' => $rules
     ]);
 }
@@ -114,21 +122,64 @@ function update_bundle_config(): void {
         respond_json(['error' => '只有管理員可以存取'], 403);
     }
 
-    $beverageQty = intval($_POST['beverage_qty'] ?? 2);
-    $beveragePercent = floatval($_POST['beverage_percent'] ?? 12);
-    $snackQty = intval($_POST['snack_qty'] ?? 3);
-    $snackFixed = floatval($_POST['snack_fixed'] ?? 20);
-
-    if ($beverageQty < 1 || $beveragePercent < 0 || $beveragePercent > 100 ||
-        $snackQty < 1 || $snackFixed < 0) {
-        respond_json(['error' => '輸入值無效'], 422);
-    }
-
+    $bundleRulesJson = trim((string)($_POST['bundle_rules_json'] ?? ''));
     $db = get_db();
     $memberId = intval($user['member_id'] ?? 0);
 
     try {
         $db->begin_transaction();
+
+        if ($bundleRulesJson !== '') {
+            $bundleRules = json_decode($bundleRulesJson, true);
+            if (!is_array($bundleRules)) {
+                throw new Exception('Invalid bundle rules format');
+            }
+
+            foreach ($bundleRules as $rule) {
+                if (!is_array($rule) || empty($rule['label']) || empty($rule['type'])) {
+                    throw new Exception('每一條自訂規則都需要名稱和類型');
+                }
+                $type = (string)$rule['type'];
+                if ($type === 'gift') {
+                    $rewardProductId = intval($rule['reward']['product_id'] ?? ($rule['reward_product_id'] ?? 0));
+                    if ($rewardProductId <= 0) {
+                        throw new Exception('贈品規則必須設定贈品商品ID');
+                    }
+                }
+            }
+
+            $payload = json_encode($bundleRules, JSON_UNESCAPED_UNICODE);
+            if ($payload === false) {
+                throw new Exception('Invalid bundle rules payload');
+            }
+
+            $sql = 'INSERT INTO promotion_config (config_type, config_key, config_value, description, is_active)
+                    VALUES ("bundle", "bundle_rules", ?, "組合優惠規則", 1)
+                    ON DUPLICATE KEY UPDATE config_value = VALUES(config_value), description = VALUES(description), updated_at = NOW()';
+            $stmt = $db->prepare($sql);
+            if (!$stmt) {
+                throw new Exception('Failed to prepare bundle rules statement');
+            }
+            $stmt->bind_param('s', $payload);
+            if (!$stmt->execute()) {
+                throw new Exception('Failed to save bundle rules');
+            }
+
+            $db->commit();
+            respond_json(['success' => true, 'message' => '自訂組合優惠規則已更新']);
+            return;
+        }
+
+        $beverageQty = intval($_POST['beverage_qty'] ?? 2);
+        $beveragePercent = floatval($_POST['beverage_percent'] ?? 12);
+        $snackQty = intval($_POST['snack_qty'] ?? 3);
+        $snackFixed = floatval($_POST['snack_fixed'] ?? 20);
+
+        if ($beverageQty < 1 || $beveragePercent < 0 || $beveragePercent > 100 ||
+            $snackQty < 1 || $snackFixed < 0) {
+            respond_json(['error' => '輸入值無效'], 422);
+            return;
+        }
 
         $stmt = $db->prepare('UPDATE promotion_config SET config_value = ?, updated_by = ?, updated_at = NOW() WHERE config_type = "bundle" AND config_key = ?');
 
@@ -152,8 +203,6 @@ function update_bundle_config(): void {
         }
 
         $db->commit();
-        
-        // 清除靜態快取以立即應用新規則
         respond_json([
             'success' => true,
             'message' => '組合優惠設定已更新',

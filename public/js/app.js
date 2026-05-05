@@ -1314,6 +1314,8 @@ app.BUNDLE_PROMO_GROUPS = {
     beverage: ['咖啡', '奶類', '巧克力', '果汁', '碳酸飲料', '茶類', '運動飲料'],
     snack: ['糖果', '膨化零食', '餅乾']
 };
+app.checkoutPromotionRules = [];
+app.checkoutPromotionRulesLoaded = false;
 
 app.getCheckoutFees = function (shippingMethod, paymentMethod, subtotal) {
     const paymentFees = { '信用卡': 0, '貨到付款': 30 };
@@ -1327,6 +1329,30 @@ app.getCheckoutFees = function (shippingMethod, paymentMethod, subtotal) {
 
 app.checkoutCoupon = null;
 app.checkoutCouponsCache = [];
+
+app.loadCheckoutPromotionRules = async function () {
+    try {
+        const res = await api.get('../api/shop.php?action=promotions_overview');
+        if (!res || !res.success) return;
+        app.checkoutPromotionRules = Array.isArray(res.bundle_rules) ? res.bundle_rules : [];
+        if (res.shipping_fees && typeof res.shipping_fees === 'object') {
+            app.BASE_SHIPPING_FEES = {
+                ...app.BASE_SHIPPING_FEES,
+                ...res.shipping_fees
+            };
+        }
+        if (res.free_shipping_thresholds && typeof res.free_shipping_thresholds === 'object') {
+            app.FREE_SHIPPING = {
+                ...app.FREE_SHIPPING,
+                ...res.free_shipping_thresholds
+            };
+        }
+    } catch (e) {
+        app.checkoutPromotionRules = [];
+    } finally {
+        app.checkoutPromotionRulesLoaded = true;
+    }
+};
 
 app.getCheckoutSubtotal = function () {
     let subtotal = 0;
@@ -1344,47 +1370,97 @@ app.getCheckoutBundlePromotions = function () {
         details: []
     };
     if (!window.checkoutCartItems) return summary;
+    const checkedItems = Object.values(window.checkoutCartItems).filter(item => item.checked);
+    const rules = Array.isArray(app.checkoutPromotionRules) && app.checkoutPromotionRules.length
+        ? app.checkoutPromotionRules
+        : [];
+    if (!rules.length) {
+        let beverageQty = 0;
+        let beverageSubtotal = 0;
+        let snackQty = 0;
+        let snackSubtotal = 0;
 
-    let beverageQty = 0;
-    let beverageSubtotal = 0;
-    let snackQty = 0;
-    let snackSubtotal = 0;
+        checkedItems.forEach(item => {
+            const category = String(item.category || '').trim();
+            const quantity = Number(item.quantity || 0);
+            const lineSubtotal = Number(item.price || 0) * quantity;
+            if (app.BUNDLE_PROMO_GROUPS.beverage.includes(category)) {
+                beverageQty += quantity;
+                beverageSubtotal += lineSubtotal;
+            }
+            if (app.BUNDLE_PROMO_GROUPS.snack.includes(category)) {
+                snackQty += quantity;
+                snackSubtotal += lineSubtotal;
+            }
+        });
 
-    Object.values(window.checkoutCartItems).forEach(item => {
-        if (!item.checked) return;
+        if (beverageQty >= 2 && beverageSubtotal > 0) {
+            const discount = Number((beverageSubtotal * 0.12).toFixed(2));
+            summary.discount += discount;
+            summary.details.push({ code: 'beverage_2_88', label: '飲料任選 2 件 88 折', discount });
+        }
+        if (snackQty >= 3 && snackSubtotal > 0) {
+            const discount = Math.min(Math.floor(snackQty / 3) * 20, snackSubtotal);
+            summary.discount += discount;
+            summary.details.push({ code: 'snack_3_minus_20', label: '零食任選 3 件折 $20', discount: Number(discount.toFixed(2)) });
+        }
+        summary.discount = Number(summary.discount.toFixed(2));
+        return summary;
+    }
+
+    const itemMatchesRule = (item, rule) => {
+        const condition = rule?.trigger?.condition || {};
+        const productId = Number(item.product_id || 0);
         const category = String(item.category || '').trim();
-        const quantity = Number(item.quantity || 0);
-        const lineSubtotal = Number(item.price || 0) * quantity;
+        const productIds = Array.isArray(condition.product_ids) ? condition.product_ids.map(Number) : [];
+        const categories = Array.isArray(condition.categories) ? condition.categories.map(String) : [];
+        if (productIds.length && productIds.includes(productId)) return true;
+        if (categories.length && category && categories.includes(category)) return true;
+        return false;
+    };
 
-        if (app.BUNDLE_PROMO_GROUPS.beverage.includes(category)) {
-            beverageQty += quantity;
-            beverageSubtotal += lineSubtotal;
-        }
-        if (app.BUNDLE_PROMO_GROUPS.snack.includes(category)) {
-            snackQty += quantity;
-            snackSubtotal += lineSubtotal;
-        }
-    });
+    rules.forEach(rule => {
+        let matchedQty = 0;
+        let matchedSubtotal = 0;
+        checkedItems.forEach(item => {
+            if (!itemMatchesRule(item, rule)) return;
+            const qty = Math.max(0, Number(item.quantity || 0));
+            const price = Math.max(0, Number(item.price || 0));
+            matchedQty += qty;
+            matchedSubtotal += qty * price;
+        });
+        if (matchedQty <= 0 || matchedSubtotal <= 0) return;
 
-    if (beverageQty >= 2 && beverageSubtotal > 0) {
-        const discount = Number((beverageSubtotal * 0.12).toFixed(2));
+        const minQty = Math.max(1, Number(rule?.trigger?.min_qty || 1));
+        const step = Math.max(1, Number(rule?.trigger?.step || minQty || 1));
+        const times = matchedQty >= minQty ? Math.floor(matchedQty / step) : 0;
+
+        const reward = rule?.reward || {};
+        const type = String(reward.type || rule.type || '');
+        let discount = 0;
+        if (type !== 'gift' && times <= 0) return;
+        if (type === 'percent') {
+            discount = matchedSubtotal * (Number(reward.value || 0) / 100);
+        } else if (type === 'fixed_per_step') {
+            discount = Math.min(times * Number(reward.value || 0), matchedSubtotal);
+        } else if (type === 'fixed') {
+            discount = Math.min(times * Number(reward.value || 0), matchedSubtotal);
+        } else if (type === 'gift') {
+            const giftTimes = matchedQty >= minQty ? Math.floor(matchedQty / minQty) : 0;
+            if (giftTimes <= 0) return;
+            const rewardQty = Math.max(1, Number(reward.qty || 1)) * giftTimes;
+            const unitPrice = Number(reward.unit_price || 0);
+            discount = Math.max(0, unitPrice * rewardQty);
+        }
+        discount = Number(discount.toFixed(2));
+        if (discount <= 0) return;
         summary.discount += discount;
         summary.details.push({
-            code: 'beverage_2_88',
-            label: '飲料任選 2 件 88 折',
+            code: rule.code || 'bundle',
+            label: rule.label || '組合優惠',
             discount
         });
-    }
-
-    if (snackQty >= 3 && snackSubtotal > 0) {
-        const discount = Math.min(Math.floor(snackQty / 3) * 20, snackSubtotal);
-        summary.discount += discount;
-        summary.details.push({
-            code: 'snack_3_minus_20',
-            label: '零食任選 3 件折 $20',
-            discount: Number(discount.toFixed(2))
-        });
-    }
+    });
 
     summary.discount = Number(summary.discount.toFixed(2));
     return summary;
@@ -1402,10 +1478,17 @@ app.renderCheckoutPromotionTips = function (promotionInfo) {
         return;
     }
 
-    list.innerHTML = `
-        <div class="checkout-promo-item">活動中：飲料任選 2 件 88 折</div>
-        <div class="checkout-promo-item">活動中：零食任選 3 件折 $20</div>
-    `;
+    const rules = Array.isArray(app.checkoutPromotionRules) ? app.checkoutPromotionRules : [];
+    if (rules.length) {
+        list.innerHTML = rules.map(rule => `
+            <div class="checkout-promo-item">活動中：${app.escapeHtml(rule.label || '組合優惠')}</div>
+        `).join('');
+    } else {
+        list.innerHTML = `
+            <div class="checkout-promo-item">活動中：飲料任選 2 件 88 折</div>
+            <div class="checkout-promo-item">活動中：零食任選 3 件折 $20</div>
+        `;
+    }
 };
 
 app.loadCheckoutCoupons = async function () {
@@ -1685,6 +1768,7 @@ app.loadCheckoutAddresses = async function () {
 app.initCheckoutPage = function () {
     const placeBtn = document.getElementById('placeOrderBtn');
     if (!placeBtn) return;
+    app.loadCheckoutPromotionRules().then(() => app.updateCheckoutTotals());
     app.loadCheckoutCart();
     app.loadCheckoutAddresses();
     app.checkoutCoupon = null;
@@ -1974,6 +2058,7 @@ app.initCheckoutPage = function () {
                     promotion_discount: res.promotion_discount || 0,
                     coupon_discount: res.coupon_discount || 0,
                     promotion_details: res.promotion_details || [],
+                    promotion_reward_lines: res.promotion_reward_lines || [],
                     shipping_fee: res.shipping_fee || 0,
                     payment_fee: res.payment_fee || 0,
                     subtotal: res.subtotal || 0,

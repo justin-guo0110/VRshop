@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/cart_helpers.php';
+require_once __DIR__ . '/promotion_helpers.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -25,6 +26,9 @@ switch ($action) {
         break;
     case 'restore_last_order':
         cart_restore_last_order();
+        break;
+    case 'add_promo_bundle':
+        cart_add_promo_bundle();
         break;
     default:
         respond_json(['error' => 'Unknown action'], 400);
@@ -73,11 +77,36 @@ function cart_add(): void {
     if (!$product) {
         respond_json(['error' => 'Product not found'], 404);
     }
-    if (isset($_SESSION['cart'][$product_id])) {
-        $_SESSION['cart'][$product_id]['quantity'] += $quantity;
+    add_product_to_cart(intval($product['product_id']), $quantity, $product);
+
+    respond_json(['success' => true]);
+}
+
+function add_product_to_cart(int $productId, int $quantity, ?array $product = null): bool {
+    if ($productId <= 0 || $quantity <= 0) {
+        return false;
+    }
+
+    if (!is_array($product)) {
+        $db = get_db();
+        $stmt = $db->prepare('SELECT product_id, name, price, image_url, category FROM products WHERE product_id = ? AND is_active = 1');
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->bind_param('i', $productId);
+        $stmt->execute();
+        $product = $stmt->get_result()->fetch_assoc();
+    }
+
+    if (!$product) {
+        return false;
+    }
+
+    if (isset($_SESSION['cart'][$productId])) {
+        $_SESSION['cart'][$productId]['quantity'] += $quantity;
     } else {
-        $_SESSION['cart'][$product_id] = [
-            'product_id' => $product['product_id'],
+        $_SESSION['cart'][$productId] = [
+            'product_id' => intval($product['product_id']),
             'name' => $product['name'],
             'price' => $product['price'],
             'quantity' => $quantity,
@@ -88,10 +117,151 @@ function cart_add(): void {
 
     $memberId = current_member_id();
     if ($memberId > 0) {
-        save_member_cart_item($memberId, $product_id, intval($_SESSION['cart'][$product_id]['quantity']));
+        save_member_cart_item($memberId, $productId, intval($_SESSION['cart'][$productId]['quantity']));
+    }
+    return true;
+}
+
+function cart_add_promo_bundle(): void {
+    $ruleCode = trim((string)($_POST['rule_code'] ?? ''));
+    if ($ruleCode === '') {
+        respond_json(['error' => 'rule_code required'], 422);
     }
 
-    respond_json(['success' => true]);
+    $rules = promo_get_rules();
+    $bundleRules = is_array($rules['bundle_rules'] ?? null) ? $rules['bundle_rules'] : [];
+    $targetRule = null;
+    foreach ($bundleRules as $rule) {
+        if (!is_array($rule)) {
+            continue;
+        }
+        if ((string)($rule['code'] ?? '') === $ruleCode) {
+            $targetRule = $rule;
+            break;
+        }
+    }
+    if (!$targetRule) {
+        respond_json(['error' => '促銷規則不存在'], 404);
+    }
+
+    $db = get_db();
+    $trigger = (isset($targetRule['trigger']) && is_array($targetRule['trigger'])) ? $targetRule['trigger'] : [];
+    $condition = (isset($trigger['condition']) && is_array($trigger['condition']))
+        ? $trigger['condition']
+        : (is_array($targetRule['condition'] ?? null) ? $targetRule['condition'] : []);
+    $reward = (isset($targetRule['reward']) && is_array($targetRule['reward'])) ? $targetRule['reward'] : [];
+    $minQty = max(1, intval($trigger['min_qty'] ?? ($condition['min_quantity'] ?? 1)));
+
+    $toAdd = [];
+    $triggerProductId = 0;
+    $conditionProductIds = is_array($condition['product_ids'] ?? null) ? array_values(array_map('intval', $condition['product_ids'])) : [];
+    if (!empty($conditionProductIds)) {
+        $ids = array_filter($conditionProductIds, fn($id) => $id > 0);
+        if (!empty($ids)) {
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $types = str_repeat('i', count($ids));
+            $stmt = $db->prepare("SELECT product_id FROM products WHERE is_active = 1 AND stock > 0 AND product_id IN ($placeholders) ORDER BY stock DESC, product_id DESC LIMIT 1");
+            if ($stmt) {
+                $stmt->bind_param($types, ...$ids);
+                $stmt->execute();
+                $row = $stmt->get_result()->fetch_assoc();
+                if ($row) {
+                    $triggerProductId = intval($row['product_id']);
+                }
+            }
+        }
+    } else {
+        $conditionCategories = is_array($condition['categories'] ?? null) ? $condition['categories'] : [];
+        foreach ($conditionCategories as $category) {
+            $cat = trim((string)$category);
+            if ($cat === '') {
+                continue;
+            }
+            $stmt = $db->prepare('SELECT product_id FROM products WHERE is_active = 1 AND stock > 0 AND category = ? ORDER BY stock DESC, product_id DESC LIMIT 1');
+            if ($stmt) {
+                $stmt->bind_param('s', $cat);
+                $stmt->execute();
+                $row = $stmt->get_result()->fetch_assoc();
+                if ($row) {
+                    $triggerProductId = intval($row['product_id']);
+                    break;
+                }
+            }
+        }
+    }
+
+    if ($triggerProductId > 0) {
+        $toAdd[] = ['product_id' => $triggerProductId, 'quantity' => $minQty, 'role' => 'trigger'];
+    }
+
+    $type = (string)($reward['type'] ?? ($targetRule['type'] ?? ''));
+    $rewardProductId = intval($reward['product_id'] ?? ($targetRule['reward_product_id'] ?? 0));
+    if ($type === 'gift' && $rewardProductId <= 0) {
+        respond_json(['error' => '此買送活動缺少贈品商品設定，請通知管理員修正規則'], 422);
+    }
+    if ($type === 'gift' && $rewardProductId > 0) {
+        $toAdd[] = [
+            'product_id' => $rewardProductId,
+            'quantity' => max(1, intval($reward['qty'] ?? ($targetRule['reward_quantity'] ?? 1))),
+            'role' => 'gift'
+        ];
+    }
+
+    if (empty($toAdd)) {
+        respond_json(['error' => '此活動目前無可加入的商品'], 422);
+    }
+
+    $validRows = array_values(array_filter($toAdd, function ($row) {
+        return intval($row['product_id'] ?? 0) > 0 && intval($row['quantity'] ?? 0) > 0;
+    }));
+    if (empty($validRows)) {
+        respond_json(['error' => '此活動目前無可加入的商品'], 422);
+    }
+
+    // 全有全無：先驗證所有商品可加入，避免只加到部分商品
+    $productIds = array_values(array_unique(array_map(fn($row) => intval($row['product_id']), $validRows)));
+    $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+    $types = str_repeat('i', count($productIds));
+    $productStmt = $db->prepare("SELECT product_id, name, price, image_url, category FROM products WHERE is_active = 1 AND product_id IN ($placeholders)");
+    if (!$productStmt) {
+        respond_json(['error' => '促銷商品驗證失敗，請稍後再試'], 500);
+    }
+    $productStmt->bind_param($types, ...$productIds);
+    $productStmt->execute();
+    $productRows = $productStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $productMap = [];
+    foreach ($productRows as $p) {
+        $productMap[intval($p['product_id'])] = $p;
+    }
+
+    foreach ($validRows as $row) {
+        $pid = intval($row['product_id']);
+        if (!isset($productMap[$pid])) {
+            $roleText = ($row['role'] ?? '') === 'gift' ? '贈品' : '活動商品';
+            respond_json(['error' => $roleText . '目前已下架或不存在，無法加入整組活動'], 422);
+        }
+    }
+
+    $added = [];
+    foreach ($validRows as $row) {
+        $pid = intval($row['product_id']);
+        $qty = max(1, intval($row['quantity']));
+        $ok = add_product_to_cart($pid, $qty, $productMap[$pid]);
+        if (!$ok) {
+            respond_json(['error' => '加入組合商品失敗，請稍後再試'], 500);
+        }
+        $added[] = [
+            'product_id' => $pid,
+            'quantity' => $qty,
+            'role' => $row['role'],
+            'name' => $productMap[$pid]['name'] ?? ''
+        ];
+    }
+
+    respond_json([
+        'success' => true,
+        'added_items' => $added
+    ]);
 }
 
 function cart_update(): void {
