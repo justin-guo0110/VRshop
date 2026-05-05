@@ -292,7 +292,7 @@ function list_coupons(array $user): void {
             FROM coupons WHERE member_id = ?';
     
     if ($only_active) {
-        $sql .= ' AND is_active = 1 AND expiry_date > NOW()';
+        $sql .= ' AND is_active = 1 AND expiry_date > NOW() AND used_count < max_usage';
     }
     
     $sql .= ' ORDER BY created_at DESC';

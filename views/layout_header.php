@@ -20,7 +20,11 @@ $currentUser = $_SESSION['user'] ?? null;
 <body>
     <header class="site-header">
         <div class="container header-inner">
-            <a href="./index.php" class="logo" style="text-decoration: none;">VR Shopping Mall</a>
+            <?php if ($currentUser && ($currentUser['role'] ?? '') === 'admin'): ?>
+                <span class="logo" style="text-decoration: none;">VR Shopping Mall</span>
+            <?php else: ?>
+                <a href="./index.php" class="logo" style="text-decoration: none;">VR Shopping Mall</a>
+            <?php endif; ?>
             <nav class="nav">
                 <?php if (!($currentUser && ($currentUser['role'] ?? '') === 'admin')): ?>
                     <a href="../views/index.php">首頁</a>

@@ -388,20 +388,56 @@ function place_order(): void {
         $order_id = $insertOrder->insert_id;
 
         $itemStmt = $db->prepare("INSERT INTO order_items (order_id, product_id, quantity, $priceColumn) VALUES (?, ?, ?, ?)");
+        $stockStmt = $db->prepare('UPDATE products SET stock = stock - ? WHERE product_id = ?');
+        $hasStockMovements = table_exists($db, 'stock_movements');
+        $stockMovementStmt = null;
+        if ($hasStockMovements) {
+            $stockMovementStmt = $db->prepare('INSERT INTO stock_movements (product_id, variant_id, movement_type, quantity, reference_type, reference_id, notes, created_by) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)');
+        }
+
         foreach ($orderItems as $oi) {
             $itemStmt->bind_param('iiid', $order_id, $oi['product_id'], $oi['quantity'], $oi['price']);
             if (!$itemStmt->execute()) {
                 throw new Exception('Failed to insert order items');
             }
+
+            // Deduct stock from products table
+            $stockStmt->bind_param('ii', $oi['quantity'], $oi['product_id']);
+            if (!$stockStmt->execute()) {
+                throw new Exception('Failed to update product stock');
+            }
+
+            // Record stock movement if table exists
+            if ($hasStockMovements && $stockMovementStmt) {
+                $movementType = 'order';
+                $referenceType = 'order';
+                $notes = 'Order #' . $order_id;
+                $createdBy = $user['member_id'];
+                $stockMovementStmt->bind_param('isissis', $oi['product_id'], $movementType, $oi['quantity'], $referenceType, $order_id, $notes, $createdBy);
+                if (!$stockMovementStmt->execute()) {
+                    error_log('Failed to record stock movement for product ' . $oi['product_id']);
+                }
+            }
         }
 
         if ($couponRow) {
             $nextUsedCount = intval($couponRow['used_count']) + 1;
+            $maxUsage = intval($couponRow['max_usage']);
             $couponId = intval($couponRow['coupon_id']);
-            $updateCouponStmt = $db->prepare('UPDATE coupons SET used_count = ? WHERE coupon_id = ? AND member_id = ?');
-            $updateCouponStmt->bind_param('iii', $nextUsedCount, $couponId, $user['member_id']);
-            if (!$updateCouponStmt->execute()) {
-                throw new Exception('Failed to update coupon usage');
+            
+            // If coupon is fully used, delete it; otherwise update the count
+            if ($nextUsedCount >= $maxUsage) {
+                $deleteCouponStmt = $db->prepare('DELETE FROM coupons WHERE coupon_id = ? AND member_id = ?');
+                $deleteCouponStmt->bind_param('ii', $couponId, $user['member_id']);
+                if (!$deleteCouponStmt->execute()) {
+                    throw new Exception('Failed to delete used coupon');
+                }
+            } else {
+                $updateCouponStmt = $db->prepare('UPDATE coupons SET used_count = ? WHERE coupon_id = ? AND member_id = ?');
+                $updateCouponStmt->bind_param('iii', $nextUsedCount, $couponId, $user['member_id']);
+                if (!$updateCouponStmt->execute()) {
+                    throw new Exception('Failed to update coupon usage');
+                }
             }
         }
 
