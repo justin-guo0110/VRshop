@@ -365,11 +365,10 @@
 
 .promo-slide {
     min-width: 100%;
-    padding: 20px 28px 28px;
+    padding: 0;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
+    align-items: stretch;
+    justify-content: center;
     position: relative;
     z-index: 0;
     animation: slideIn 0.5s ease-out forwards;
@@ -420,57 +419,46 @@
 }
 
 .promo-slide-media {
-    width: 260px;
-    max-width: 32%;
-    min-width: 180px;
-    flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    display: flex;
+    align-items: stretch;
 }
 
 .promo-slide-media img {
     width: 100%;
-    height: auto;
+    height: 100%;
     display: block;
-    border-radius: 18px;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition: transform 0.35s cubic-bezier(0.4, 0.0, 0.2, 1), box-shadow 0.35s ease, filter 0.35s ease;
+    border-radius: 0;
+    object-fit: cover;
+    min-height: 340px;
+    border: none;
+    box-shadow: none;
+    transition: transform 0.35s cubic-bezier(0.4, 0.0, 0.2, 1), filter 0.35s ease;
     filter: brightness(1);
 }
 
 .promo-slide:hover .promo-slide-media img {
-    transform: translateY(-8px) scale(1.04);
-    box-shadow: 0 24px 56px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    filter: brightness(1.08);
+    transform: translateY(0) scale(1.02);
+    filter: brightness(1.06);
 }
 
-.promo-slide-new-member .promo-slide-media {
-    width: 100%;
-    max-width: 760px;
-    min-width: 0;
-}
-
+.promo-slide-new-member .promo-slide-media,
 .promo-slide-image-only .promo-slide-media {
     width: 100%;
-    max-width: 760px;
+    max-width: 100%;
     min-width: 0;
 }
 
-.promo-slide-new-member .promo-slide-media img {
-    width: 100%;
-    max-width: 100%;
-    aspect-ratio: 1200 / 680;
-    object-fit: contain;
-    max-height: 300px;
-    margin: 0 auto;
-}
-
+.promo-slide-new-member .promo-slide-media img,
 .promo-slide-image-only .promo-slide-media img {
     width: 100%;
-    max-width: 100%;
-    aspect-ratio: 1200 / 680;
-    object-fit: contain;
-    max-height: 300px;
-    margin: 0 auto;
+    height: 100%;
+    object-fit: cover;
+    min-height: 360px;
+    max-height: none;
+    margin: 0;
 }
 
 .promo-dots {
