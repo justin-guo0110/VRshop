@@ -59,10 +59,12 @@ $pageTitle = 'VR Shopping Mall - 您的虛擬實境購物天堂';
                     <div class="nav-dropdown user-welcome-dropdown" id="userWelcomeDropdown">
                         <button type="button" class="nav-dropdown-toggle welcome-toggle" id="userWelcomeToggle" aria-expanded="false" aria-controls="userWelcomeMenu">
                             歡迎 <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?>
+                            <span class="notification-badge" id="headerNotificationBadge" hidden></span>
                             <span style="font-size:11px;opacity:.9;">▼</span>
                         </button>
                         <div class="nav-dropdown-menu user-dropdown-menu" id="userWelcomeMenu">
                             <a href="./profile.php">個人資料</a>
+                            <a href="./notifications.php">通知中心<span class="notification-badge" id="notificationsLinkBadge" hidden></span></a>
                             <a href="./coupons.php">我的優惠券</a>
                             <?php if (($currentUser['role'] ?? '') !== 'admin'): ?>
                                 <a href="./orders.php">我的訂單</a>

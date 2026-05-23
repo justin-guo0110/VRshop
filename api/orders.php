@@ -195,14 +195,14 @@ function place_order(): void {
         respond_json(['error' => 'Cart is empty'], 422);
     }
     $placeholders = implode(',', array_fill(0, count($productIds), '?'));
-    $stmt = $db->prepare("SELECT product_id, price, name, category FROM products WHERE product_id IN ($placeholders) AND is_active = 1");
+    $stmt = $db->prepare("SELECT product_id, price, name, category, stock FROM products WHERE product_id IN ($placeholders) AND is_active = 1");
     $types = str_repeat('i', count($productIds));
     $stmt->bind_param($types, ...$productIds);
     $stmt->execute();
     $res = $stmt->get_result();
     $products = [];
     while ($row = $res->fetch_assoc()) {
-        $products[$row['product_id']] = $row;
+        $products[intval($row['product_id'])] = $row;
     }
     foreach ($productIds as $pid) {
         if (!isset($products[$pid])) {
@@ -215,6 +215,10 @@ function place_order(): void {
     foreach ($cart as $pid => $item) {
         $price = floatval($products[$pid]['price']);
         $qty = intval($item['quantity']);
+        $stock = intval($products[$pid]['stock'] ?? 0);
+        if ($qty > $stock) {
+            respond_json(['error' => sprintf('庫存不足：%s 目前僅剩 %d 件', $products[$pid]['name'] ?? '商品', $stock)], 422);
+        }
         $orderItems[] = [
             'product_id' => $pid,
             'quantity' => $qty,
@@ -388,7 +392,7 @@ function place_order(): void {
         $order_id = $insertOrder->insert_id;
 
         $itemStmt = $db->prepare("INSERT INTO order_items (order_id, product_id, quantity, $priceColumn) VALUES (?, ?, ?, ?)");
-        $stockStmt = $db->prepare('UPDATE products SET stock = stock - ? WHERE product_id = ?');
+        $stockStmt = $db->prepare('UPDATE products SET stock = stock - ? WHERE product_id = ? AND stock >= ?');
         $hasStockMovements = table_exists($db, 'stock_movements');
         $stockMovementStmt = null;
         if ($hasStockMovements) {
@@ -402,9 +406,9 @@ function place_order(): void {
             }
 
             // Deduct stock from products table
-            $stockStmt->bind_param('ii', $oi['quantity'], $oi['product_id']);
-            if (!$stockStmt->execute()) {
-                throw new Exception('Failed to update product stock');
+            $stockStmt->bind_param('iii', $oi['quantity'], $oi['product_id'], $oi['quantity']);
+            if (!$stockStmt->execute() || $stockStmt->affected_rows === 0) {
+                throw new Exception('Insufficient stock for product ' . $oi['product_id']);
             }
 
             // Record stock movement if table exists
@@ -445,6 +449,10 @@ function place_order(): void {
     } catch (Throwable $e) {
         $db->rollback();
         error_log('place_order failed: ' . $e->getMessage());
+        $message = $e->getMessage();
+        if (strpos($message, 'Insufficient stock') !== false) {
+            respond_json(['error' => '庫存不足，請重新確認購物車商品庫存'], 422);
+        }
         respond_json(['error' => 'Failed to place order'], 500);
     }
 

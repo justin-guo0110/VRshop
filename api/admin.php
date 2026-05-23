@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/notification_helpers.php';
 $user = require_admin();
 
 $action = $_GET['action'] ?? '';
@@ -75,6 +76,9 @@ switch ($action) {
         break;
     case 'save_featured_products':
         save_featured_products_config();
+        break;
+    case 'get_top_sold_products':
+        get_top_sold_products();
         break;
     case 'get_sidebar_ads':
         get_sidebar_ads_config();
@@ -609,6 +613,32 @@ function save_featured_products_config(): void {
     ]);
 }
 
+function get_top_sold_products(): void {
+    $db = get_db();
+    $sql = 'SELECT p.product_id, p.name, p.category, p.price, p.is_active,
+                   COALESCE(SUM(oi.quantity), 0) AS sold_count
+            FROM products p
+            LEFT JOIN order_items oi ON oi.product_id = p.product_id
+            LEFT JOIN orders o ON o.order_id = oi.order_id AND o.status IN ("pending", "accepted", "preparing", "shipping", "done")
+            WHERE p.is_active = 1
+            GROUP BY p.product_id
+            ORDER BY sold_count DESC, p.product_id DESC
+            LIMIT 6';
+    $res = $db->query($sql);
+    if (!$res) {
+        respond_json(['error' => 'Load top sold products failed'], 500);
+        return;
+    }
+
+    $topProducts = [];
+    while ($row = $res->fetch_assoc()) {
+        $row['sold_count'] = intval($row['sold_count'] ?? 0);
+        $topProducts[] = $row;
+    }
+
+    respond_json(['success' => true, 'top_products' => $topProducts]);
+}
+
 function sidebar_ads_file_path(): string {
     return __DIR__ . '/../storage/sidebar_ads.json';
 }
@@ -1056,12 +1086,25 @@ function update_order_status(): void {
     $db = get_db();
     $order_id = intval($_POST['order_id'] ?? 0);
     $status = $_POST['status'] ?? '';
-    $allowed = ['pending', 'preparing', 'shipping', 'done'];
+    $cancelStatus = get_order_cancel_status($db);
+    $allowed = ['pending', 'accepted', 'preparing', 'shipping', 'done'];
+    if ($cancelStatus !== null) {
+        $allowed[] = $cancelStatus;
+    }
     if (!$order_id || !in_array($status, $allowed, true)) {
         respond_json(['error' => 'Invalid data'], 422);
     }
+
+    $statusType = get_order_status_type($db);
+    if ($status === 'accepted' && strpos($statusType, "'pending'") !== false && strpos($statusType, "'accepted'") === false) {
+        $status = 'pending';
+    }
+    if (($status === 'cancelled' || $status === 'canceled') && $cancelStatus !== null && $status !== $cancelStatus) {
+        $status = $cancelStatus;
+    }
+
     $db->begin_transaction();
-    $currentStmt = $db->prepare('SELECT status FROM orders WHERE order_id = ? FOR UPDATE');
+    $currentStmt = $db->prepare('SELECT member_id, status FROM orders WHERE order_id = ? FOR UPDATE');
     $currentStmt->bind_param('i', $order_id);
     $currentStmt->execute();
     $currentRes = $currentStmt->get_result();
@@ -1071,6 +1114,8 @@ function update_order_status(): void {
         respond_json(['error' => 'Order not found'], 404);
     }
 
+    $memberId = intval($current['member_id'] ?? 0);
+    $isCancellation = $cancelStatus !== null && $status === $cancelStatus;
     $wasFinal = in_array($current['status'], ['shipping', 'done'], true);
     $willFinal = in_array($status, ['shipping', 'done'], true);
     $hasStockMovements = table_exists($db, 'stock_movements');
@@ -1121,11 +1166,112 @@ function update_order_status(): void {
     $stmt = $db->prepare('UPDATE orders SET status = ? WHERE order_id = ?');
     $stmt->bind_param('si', $status, $order_id);
     if ($stmt->execute()) {
+        if ($isCancellation && $memberId > 0) {
+            $created = create_member_notification(
+                $db,
+                $memberId,
+                '訂單不成立通知',
+                sprintf('您的訂單 #%d 已被管理員標記為不成立，如有問題請聯繫客服。', $order_id),
+                'order',
+                '../views/orders.php'
+            );
+            if (!$created) {
+                error_log(sprintf('Failed to create cancellation notification for order %d member %d', $order_id, $memberId));
+            }
+        }
         $db->commit();
         respond_json(['success' => true]);
     }
     $db->rollback();
     respond_json(['error' => 'Update failed'], 500);
+}
+
+function get_order_status_type(mysqli $db): string {
+    $statusColumnRes = $db->query("SHOW COLUMNS FROM orders LIKE 'status'");
+    $statusColumn = $statusColumnRes ? $statusColumnRes->fetch_assoc() : null;
+    return strtolower((string)($statusColumn['Type'] ?? ''));
+}
+
+function get_order_cancel_status(mysqli $db): ?string {
+    $statusType = get_order_status_type($db);
+    if (strpos($statusType, "'cancelled'") !== false) {
+        return 'cancelled';
+    }
+    if (strpos($statusType, "'canceled'") !== false) {
+        return 'canceled';
+    }
+    if (preg_match('/^enum\((.*)\)$/', $statusType, $matches)) {
+        $values = array_map(fn($v) => trim($v, "'"), explode(',', $matches[1]));
+        if (!in_array('cancelled', $values, true)) {
+            $values[] = 'cancelled';
+            $newEnum = "enum('" . implode("','", $values) . "')";
+            $default = "'pending'";
+            $alterSql = "ALTER TABLE orders MODIFY COLUMN status $newEnum NOT NULL DEFAULT $default";
+            if ($db->query($alterSql)) {
+                return 'cancelled';
+            }
+        }
+    }
+    return null;
+}
+
+function delete_order(): void {
+    $db = get_db();
+    $order_id = intval($_POST['order_id'] ?? 0);
+    if (!$order_id) {
+        respond_json(['error' => 'Order id required'], 422);
+    }
+
+    $db->begin_transaction();
+    try {
+        $orderStmt = $db->prepare('SELECT member_id, status FROM orders WHERE order_id = ? FOR UPDATE');
+        $orderStmt->bind_param('i', $order_id);
+        $orderStmt->execute();
+        $order = $orderStmt->get_result()->fetch_assoc();
+        if (!$order) {
+            $db->rollback();
+            respond_json(['error' => 'Order not found'], 404);
+        }
+
+        $cancelStatus = get_order_cancel_status($db);
+        if ($cancelStatus === null) {
+            $db->rollback();
+            respond_json(['error' => 'Order cancellation not supported by schema'], 500);
+        }
+
+        if (($order['status'] ?? '') === $cancelStatus) {
+            $db->commit();
+            respond_json(['success' => true]);
+        }
+
+        $updateStmt = $db->prepare('UPDATE orders SET status = ? WHERE order_id = ?');
+        $updateStmt->bind_param('si', $cancelStatus, $order_id);
+        if (!$updateStmt->execute()) {
+            throw new Exception('Failed to update order status');
+        }
+
+        $memberId = intval($order['member_id'] ?? 0);
+        if ($memberId > 0) {
+            $created = create_member_notification(
+                $db,
+                $memberId,
+                '訂單不成立通知',
+                sprintf('您的訂單 #%d 已被管理員標記為不成立，如有問題請聯繫客服。', $order_id),
+                'order',
+                '../views/orders.php'
+            );
+            if (!$created) {
+                error_log(sprintf('Failed to create delete_order notification for order %d member %d', $order_id, $memberId));
+            }
+        }
+
+        $db->commit();
+        respond_json(['success' => true]);
+    } catch (Throwable $e) {
+        $db->rollback();
+        error_log('delete_order failed: ' . $e->getMessage());
+        respond_json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+    }
 }
 
 function list_products(): void {
@@ -1224,37 +1370,6 @@ function delete_product(): void {
     respond_json(['error' => 'Delete failed'], 500);
 }
 
-function delete_order(): void {
-    $db = get_db();
-    $order_id = intval($_POST['order_id'] ?? 0);
-    
-    if (!$order_id) {
-        respond_json(['error' => 'Order id required'], 422);
-    }
-    
-    $db->begin_transaction();
-    
-    try {
-        // 先刪除訂單項目
-        $deleteItemsStmt = $db->prepare('DELETE FROM order_items WHERE order_id = ?');
-        $deleteItemsStmt->bind_param('i', $order_id);
-        $deleteItemsStmt->execute();
-        
-        // 再刪除訂單
-        $deleteOrderStmt = $db->prepare('DELETE FROM orders WHERE order_id = ?');
-        $deleteOrderStmt->bind_param('i', $order_id);
-        if ($deleteOrderStmt->execute()) {
-            $db->commit();
-            respond_json(['success' => true]);
-        } else {
-            $db->rollback();
-            respond_json(['error' => 'Delete failed'], 500);
-        }
-    } catch (Exception $e) {
-        $db->rollback();
-        respond_json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
-    }
-}
 
 function dashboard_stats(): void {
     $db = get_db();

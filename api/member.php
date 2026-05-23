@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/notification_helpers.php';
 
 $action = $_GET['action'] ?? '';
 $user = require_login();
@@ -22,6 +23,12 @@ switch ($action) {
         break;
     case 'delete_address':
         delete_address($user);
+        break;
+    case 'list_notifications':
+        list_notifications($user);
+        break;
+    case 'mark_notification_read':
+        mark_notification_read($user);
         break;
     default:
         respond_json(['error' => 'Unknown action'], 400);
@@ -117,4 +124,23 @@ function delete_address(array $user): void {
         respond_json(['success' => true]);
     }
     respond_json(['error' => 'Delete failed'], 500);
+}
+
+function list_notifications(array $user): void {
+    $db = get_db();
+    $notifications = list_member_notifications($db, intval($user['member_id']));
+    respond_json(['notifications' => $notifications]);
+}
+
+function mark_notification_read(array $user): void {
+    $notification_id = intval($_POST['notification_id'] ?? 0);
+    if ($notification_id <= 0) {
+        respond_json(['error' => 'Notification id required'], 422);
+    }
+    $db = get_db();
+    $updated = mark_member_notification_read($db, intval($user['member_id']), $notification_id);
+    if ($updated) {
+        respond_json(['success' => true]);
+    }
+    respond_json(['error' => 'Update failed or notification not found'], 500);
 }

@@ -119,7 +119,7 @@ function hydrate_cart_snapshot(mysqli $db, array $cart): array {
 
     $placeholders = implode(',', array_fill(0, count($productIds), '?'));
     $types = str_repeat('i', count($productIds));
-    $stmt = $db->prepare("SELECT product_id, name, price, image_url, category, is_active FROM products WHERE product_id IN ($placeholders)");
+    $stmt = $db->prepare("SELECT product_id, name, price, image_url, category, stock, is_active FROM products WHERE product_id IN ($placeholders)");
     $stmt->bind_param($types, ...$productIds);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -143,7 +143,8 @@ function hydrate_cart_snapshot(mysqli $db, array $cart): array {
             'price' => $product['price'],
             'quantity' => $qty,
             'image_url' => $product['image_url'],
-            'category' => $product['category'] ?? ''
+            'category' => $product['category'] ?? '',
+            'stock' => intval($product['stock'] ?? 0)
         ];
     }
 

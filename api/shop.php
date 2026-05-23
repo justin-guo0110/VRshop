@@ -241,53 +241,28 @@ function load_featured_products_config_from_db(mysqli $db): ?array {
 
 function featured_products(): void {
     $db = get_db();
-    $config = load_featured_products_config_from_db($db);
-    if (!is_array($config)) {
-        $config = load_featured_products_config_from_file();
-    }
-    if (!is_array($config)) {
-        $config = default_featured_products_config();
+    $sql = 'SELECT p.product_id, p.name, p.category, p.description, p.price, p.stock, p.image_url, p.is_active,
+                   COALESCE(SUM(oi.quantity), 0) AS sold_count
+            FROM products p
+            LEFT JOIN order_items oi ON oi.product_id = p.product_id
+            LEFT JOIN orders o ON o.order_id = oi.order_id AND o.status IN ("pending", "accepted", "preparing", "shipping", "done")
+            WHERE p.is_active = 1
+            GROUP BY p.product_id
+            ORDER BY sold_count DESC, p.product_id DESC
+            LIMIT 6';
+
+    $res = $db->query($sql);
+    if (!$res) {
+        respond_json(['error' => 'Load featured products failed'], 500);
+        return;
     }
 
-    $map = [];
-    foreach ($config as $idx => $row) {
-        if (!is_array($row)) continue;
-        $pid = intval($row['product_id'] ?? 0);
-        if ($pid <= 0) continue;
-        $badge = trim((string)($row['badge'] ?? ''));
-        $map[$pid] = [
-            'order' => intval($idx),
-            'badge' => $badge !== '' ? $badge : '精選推薦',
-        ];
-    }
-
+    $badges = ['最多人購買', '熱銷推薦', '回購人氣王', '今日熱銷', '高評價商品', '限量精選'];
     $products = [];
-
-    if (!empty($map)) {
-        $ids = array_keys($map);
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $types = str_repeat('i', count($ids));
-        $sql = "SELECT product_id, name, category, description, price, stock, image_url, is_active
-                FROM products
-                WHERE is_active = 1 AND product_id IN ($placeholders)";
-        $stmt = $db->prepare($sql);
-        $stmt->bind_param($types, ...$ids);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        while ($row = $res->fetch_assoc()) {
-            $pid = intval($row['product_id']);
-            $row['featured_badge'] = $map[$pid]['badge'] ?? '精選推薦';
-            $row['_order'] = $map[$pid]['order'] ?? 999;
-            $products[] = $row;
-        }
-
-        usort($products, function ($a, $b) {
-            return ($a['_order'] ?? 999) <=> ($b['_order'] ?? 999);
-        });
-        foreach ($products as &$p) {
-            unset($p['_order']);
-        }
-        unset($p);
+    while ($row = $res->fetch_assoc()) {
+        $row['sold_count'] = intval($row['sold_count'] ?? 0);
+        $row['featured_badge'] = $badges[count($products)] ?? '熱銷人氣';
+        $products[] = $row;
     }
 
     if (count($products) < 6) {
@@ -311,9 +286,9 @@ function featured_products(): void {
         }
         $stmt->execute();
         $res = $stmt->get_result();
-        $fallbackLabels = ['最多人購買', '店長推薦', '回購人氣王', '今日熱銷', '高評價商品', '限量精選'];
         while ($row = $res->fetch_assoc()) {
-            $row['featured_badge'] = $fallbackLabels[count($products)] ?? '精選推薦';
+            $row['sold_count'] = 0;
+            $row['featured_badge'] = '熱銷人氣';
             $products[] = $row;
         }
     }

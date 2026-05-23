@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadProductDetail();
     bindAdmin();
     bindResetPassword();
+    app.loadNotificationBadge();
+    app.loadNotificationsPage();
 });
 
 function bindUserWelcomeDropdown() {
@@ -998,7 +1000,7 @@ app.addToCart = async function (product_id, quantity = 1) {
     quantity = parseInt(quantity, 10);
     if (!quantity || quantity <= 0) quantity = 1;
     const res = await api.post('../api/cart.php?action=add', { product_id, quantity });
-    if (res.success === false) {
+    if (!res.success) {
         app.toast(res.error || '加入購物車失敗', 'error');
         return;
     }
@@ -1038,6 +1040,7 @@ app.renderCartList = function (items, selectedIds = []) {
         const checked = useSelection ? selectedSet.has(String(item.product_id)) : true;
         const div = document.createElement('div');
         div.className = 'cart-item';
+        const stockText = typeof item.stock !== 'undefined' ? `庫存：${item.stock}` : '';
         div.innerHTML = `
             <div style="display:flex;gap:10px;align-items:center;">
                 <input
@@ -1053,10 +1056,11 @@ app.renderCartList = function (items, selectedIds = []) {
                     <p><strong>${item.name}</strong></p>
                     <p>單價：$${Number(item.price).toFixed(2)}</p>
                     <p>小計：$${subtotal.toFixed(2)}</p>
+                    ${stockText ? `<p style="margin:0;color:#666;">${stockText}</p>` : ''}
                 </div>
             </div>
             <div style="margin-top:8px;">
-                <input type="number" min="1" value="${item.quantity}" data-qty="${item.product_id}" style="width:80px;">
+                <input type="number" min="1" max="${(item.stock || 0) > 0 ? item.stock : 1}" value="${item.quantity}" data-qty="${item.product_id}" style="width:80px;">
                 <button class="btn btn-secondary update-cart" data-id="${item.product_id}">更新數量</button>
                 <button class="btn btn-secondary remove-cart" data-id="${item.product_id}">刪除商品</button>
             </div>
@@ -1116,7 +1120,7 @@ app.initCartPage = function () {
                 return;
             }
             const updateRes = await api.post('../api/cart.php?action=update', { product_id: updateId, quantity: qty });
-            if (updateRes.success === false) {
+            if (!updateRes.success) {
                 app.toast(updateRes.error || '更新數量失敗', 'error');
                 return;
             }
@@ -1176,7 +1180,7 @@ app.loadCheckoutCart = async function () {
     let html = '';
     items.forEach((item) => {
         const lineSubtotal = Number(item.price) * Number(item.quantity);
-        const itemId = `checkout-item-${item.product_id}`;
+        const stockText = typeof item.stock !== 'undefined' ? `庫存：${item.stock}` : '';
         html += `
             <div class="checkout-item" data-product-id="${item.product_id}">
                 <input type="checkbox" class="item-checkbox" data-product-id="${item.product_id}" checked>
@@ -1184,17 +1188,16 @@ app.loadCheckoutCart = async function () {
                 <div class="checkout-item-info">
                     <div class="checkout-item-name">${item.name}</div>
                     <div class="checkout-item-price">$${Number(item.price).toFixed(2)}/件</div>
+                    ${stockText ? `<div class="checkout-item-stock" style="color:#666;font-size:0.9rem;">${stockText}</div>` : ''}
                 </div>
                 
                 <div class="checkout-item-controls">
                     <div class="quantity-control">
                         <button class="qty-btn-minus" data-product-id="${item.product_id}">−</button>
-                        <input type="number" class="qty-input" data-product-id="${item.product_id}" value="${item.quantity}" min="1" max="999">
+                        <input type="number" class="qty-input" data-product-id="${item.product_id}" value="${item.quantity}" min="1" max="${(item.stock || 0) > 0 ? item.stock : 1}">
                         <button class="qty-btn-plus" data-product-id="${item.product_id}">+</button>
                     </div>
-                    
                     <div class="checkout-item-subtotal">$${lineSubtotal.toFixed(2)}</div>
-                    
                     <button class="btn-delete" data-product-id="${item.product_id}">🗑️ 刪除</button>
                 </div>
             </div>
@@ -1231,7 +1234,13 @@ app.loadCheckoutCart = async function () {
     document.querySelectorAll('.qty-input').forEach(input => {
         input.addEventListener('change', async (e) => {
             const productId = e.target.dataset.productId;
-            const newQty = Math.max(1, parseInt(e.target.value) || 1);
+            const maxQty = Math.max(1, parseInt(e.target.max || '999') || 999);
+            let newQty = Math.max(1, parseInt(e.target.value) || 1);
+            if (newQty > maxQty) {
+                newQty = maxQty;
+                e.target.value = newQty;
+                app.toast('已調整為可購買的最大庫存數量', 'warning');
+            }
             const item = window.checkoutCartItems[productId];
             if (item) {
                 item.quantity = newQty;
@@ -1242,7 +1251,7 @@ app.loadCheckoutCart = async function () {
                         product_id: productId,
                         quantity: newQty
                     });
-                    if (updateRes.success === false) {
+                    if (!updateRes.success) {
                         app.toast(updateRes.error || '更新數量失敗', 'error');
                         await app.loadCheckoutCart();
                         return;
@@ -1270,7 +1279,13 @@ app.loadCheckoutCart = async function () {
             const productId = e.target.dataset.productId;
             const input = document.querySelector(`.qty-input[data-product-id="${productId}"]`);
             if (input) {
-                input.value = Math.max(1, parseInt(input.value) || 1) + 1;
+                const current = Math.max(1, parseInt(input.value) || 1);
+                const maxQty = Math.max(1, parseInt(input.max || '999') || 999);
+                if (current >= maxQty) {
+                    app.toast('已達最大庫存數量', 'warning');
+                    return;
+                }
+                input.value = current + 1;
                 input.dispatchEvent(new Event('change', { bubbles: true }));
             }
         });
@@ -2119,6 +2134,98 @@ app.escapeHtml = function (value) {
 };
 
 app.currentOrderFilter = 'all';
+
+app.loadNotificationBadge = async function () {
+    const badge = document.getElementById('headerNotificationBadge');
+    if (!badge) return;
+    try {
+        const res = await api.get('../api/member.php?action=list_notifications');
+        if (res.error) {
+            console.error('Notification badge API error:', res.error);
+            badge.hidden = true;
+            return;
+        }
+        const notifications = Array.isArray(res.notifications) ? res.notifications : [];
+        const unreadCount = notifications.filter(item => Number(item.is_read) === 0).length;
+        const badgeTargets = [badge, document.getElementById('notificationsLinkBadge')].filter(Boolean);
+        if (unreadCount > 0) {
+            const text = unreadCount > 99 ? '99+' : String(unreadCount);
+            badgeTargets.forEach(el => {
+                el.textContent = text;
+                el.classList.add('has-unread');
+                el.hidden = false;
+            });
+        } else {
+            badgeTargets.forEach(el => {
+                el.textContent = '';
+                el.classList.remove('has-unread');
+                el.hidden = true;
+            });
+        }
+    } catch (err) {
+        console.error('Failed to load notification badge:', err);
+        badge.hidden = true;
+    }
+};
+
+app.loadNotificationsPage = async function () {
+    const wrap = document.getElementById('notificationsList');
+    if (!wrap) return;
+    wrap.innerHTML = '<p style="padding:20px;text-align:center;color:#6b7280;">載入中...</p>';
+    try {
+        const res = await api.get('../api/member.php?action=list_notifications');
+        if (res.error) {
+            console.error('Notifications API error:', res.error);
+            wrap.innerHTML = `<p style="padding:20px;text-align:center;color:#ef4444;">載入通知失敗：${app.escapeHtml(res.error)}</p>`;
+            return;
+        }
+        const notifications = Array.isArray(res.notifications) ? res.notifications : [];
+        if (!notifications.length) {
+            wrap.innerHTML = '<p style="padding:20px;text-align:center;color:#6b7280;">目前沒有通知。</p>';
+            return;
+        }
+        const html = notifications.map(item => {
+            const readClass = item.is_read ? 'notification-read' : 'notification-unread';
+            return `
+                <div class="notification-card ${readClass}" style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:14px;background:${item.is_read ? '#f8fafc' : '#ffffff'};">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+                        <div>
+                            <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">${app.escapeHtml(item.title)}</div>
+                            <div style="color:#475569;font-size:0.95rem;line-height:1.6;">${app.escapeHtml(item.message)}</div>
+                        </div>
+                        <div style="text-align:right;min-width:120px;">
+                            <div style="color:#94a3b8;font-size:0.85rem;margin-bottom:8px;">${app.escapeHtml(item.created_at)}</div>
+                            <button class="btn btn-sm mark-notification-read" data-id="${item.notification_id}" style="background:${item.is_read ? '#94a3b8' : '#0f766e'};color:#fff;">${item.is_read ? '已讀' : '標為已讀'}</button>
+                        </div>
+                    </div>
+                    ${item.data_url ? `<div style="margin-top:12px;"><a href="${app.escapeHtml(item.data_url)}" style="color:#0f766e;text-decoration:underline;">查看詳情</a></div>` : ''}
+                </div>
+            `;
+        }).join('');
+        wrap.innerHTML = html;
+        wrap.querySelectorAll('.mark-notification-read').forEach(button => {
+            button.addEventListener('click', async function () {
+                const id = parseInt(button.dataset.id, 10);
+                if (!id || button.disabled) return;
+                try {
+                    const result = await api.post('../api/member.php?action=mark_notification_read', { notification_id: id });
+                    if (result.success) {
+                        button.textContent = '已讀';
+                        button.disabled = true;
+                        button.style.background = '#94a3b8';
+                        app.loadNotificationBadge();
+                    } else {
+                        app.toast(result.error || '更新通知狀態失敗', 'error');
+                    }
+                } catch (err) {
+                    app.toast('更新通知狀態失敗', 'error');
+                }
+            });
+        });
+    } catch (err) {
+        wrap.innerHTML = '<p style="padding:20px;text-align:center;color:#ef4444;">無法載入通知，請稍後再試。</p>';
+    }
+};
 
 app.loadOrders = async function (statusFilter = app.currentOrderFilter || 'all') {
     const wrap = document.getElementById('ordersList');

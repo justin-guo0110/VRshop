@@ -299,17 +299,15 @@
                     <table class="admin-table" id="featuredProductsAdminTable">
                         <thead>
                             <tr>
-                                <th style="width:84px;">排序</th>
-                                <th>商品</th>
-                                <th style="width:260px;">推薦標籤</th>
+                                <th style="width:84px;">排名</th>
+                                <th>商品名稱</th>
+                                <th style="width:140px;">已售出數量</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
-
-                    <div style="display:flex;gap:10px;align-items:center;margin-top:12px;">
-                        <button type="button" class="btn btn-primary" id="saveFeaturedProductsBtn">儲存熱門商品</button>
-                        <span id="featuredProductsMsg" style="font-size:13px;color:#64748b;"></span>
+                    <div style="margin-top:12px;color:#64748b;font-size:14px;">
+                        本列表會自動依商品實際銷售數量更新，無需手動儲存。
                     </div>
                 </div>
             </div>
@@ -908,7 +906,7 @@ async function loadOrders() {
 
         orders.forEach(o => {
             const tr = document.createElement('tr');
-            const status = o.status || 'accepted';
+            const status = (o.status === 'pending' ? 'accepted' : (o.status || 'accepted'));
             tr.innerHTML = `
                 <td>#${escapeHtml(o.order_id)}</td>
                 <td>${escapeHtml(o.name || o.email || '-')}</td>
@@ -919,7 +917,7 @@ async function loadOrders() {
                     <select class="order-status-select" data-order-id="${escapeHtml(o.order_id)}" style="margin-right:5px;">
                         ${['accepted', 'preparing', 'shipping', 'done', 'cancelled'].map(s => `<option value="${s}" ${s === status ? 'selected' : ''}>${orderStatusLabels[s]}</option>`).join('')}
                     </select>
-                    <button class="btn btn-sm btn-danger delete-order-btn" data-order-id="${escapeHtml(o.order_id)}" style="padding:4px 8px;">刪除</button>
+                    <button class="btn btn-sm btn-danger delete-order-btn" data-order-id="${escapeHtml(o.order_id)}" style="padding:4px 8px;">訂單不成立</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -949,7 +947,7 @@ async function loadOrders() {
         tbody.querySelectorAll('.delete-order-btn').forEach(btn => {
             btn.addEventListener('click', async function () {
                 const orderId = btn.getAttribute('data-order-id');
-                if (!confirm(`確定要刪除訂單 #${orderId} 嗎？`)) {
+                if (!confirm(`確定要將訂單 #${orderId} 標記為不成立嗎？`)) {
                     return;
                 }
                 try {
@@ -959,10 +957,10 @@ async function loadOrders() {
                     if (result.success) {
                         loadOrders();
                     } else {
-                        alert('刪除失敗：' + (result.error || '未知錯誤'));
+                        alert('標記失敗：' + (result.error || '未知錯誤'));
                     }
                 } catch (err) {
-                    alert('刪除訂單失敗');
+                    alert('變更訂單狀態失敗');
                 }
             });
         });
@@ -1117,94 +1115,29 @@ async function loadCustomers() {
 
 async function loadFeaturedProductsAdmin() {
     const tbody = document.querySelector('#featuredProductsAdminTable tbody');
-    const msg = document.getElementById('featuredProductsMsg');
     if (!tbody) return;
 
-    if (msg) {
-        msg.textContent = '';
-        msg.style.color = '#64748b';
-    }
-
     try {
-        const data = await opsApi.get('../api/admin.php?action=get_featured_products');
-        const configRows = Array.isArray(data.featured_products) ? data.featured_products : [];
-        const products = Array.isArray(data.products) ? data.products.filter(p => Number(p.is_active) === 1) : [];
-
-        const productOptions = ['<option value="0">-- 請選擇商品 --</option>']
-            .concat(products.map(p => `<option value="${p.product_id}">${escapeHtml(p.name)} (${escapeHtml(p.category || '未分類')})</option>`));
-
-        const defaults = ['最多人購買', '店長推薦', '回購人氣王', '今日熱銷', '高評價商品', '限量精選'];
+        const data = await opsApi.get('../api/admin.php?action=get_top_sold_products');
+        const products = Array.isArray(data.top_products) ? data.top_products : [];
 
         tbody.innerHTML = '';
-        for (let i = 0; i < 6; i++) {
-            const rowConfig = configRows[i] || {};
-            const pid = Number(rowConfig.product_id || 0);
-            const badge = rowConfig.badge ? String(rowConfig.badge) : defaults[i];
+        if (products.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="color:#64748c;text-align:center;">目前尚無銷售資料</td></tr>';
+            return;
+        }
 
+        products.slice(0, 6).forEach((product, index) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>#${i + 1}</td>
-                <td>
-                    <select class="admin-input featured-product-select" data-index="${i}" style="width:100%;">
-                        ${productOptions.join('')}
-                    </select>
-                </td>
-                <td>
-                    <input type="text" class="admin-input featured-product-badge" data-index="${i}" value="${escapeHtml(badge)}" maxlength="24" placeholder="例如：最多人購買">
-                </td>
+                <td>#${index + 1}</td>
+                <td>${escapeHtml(product.name || '')}</td>
+                <td style="text-align:right;">${escapeHtml(String(product.sold_count || 0))}</td>
             `;
             tbody.appendChild(tr);
-            const selectEl = tr.querySelector('.featured-product-select');
-            if (selectEl) selectEl.value = String(pid);
-        }
-
-        const saveBtn = document.getElementById('saveFeaturedProductsBtn');
-        if (saveBtn && !saveBtn.dataset.bound) {
-            saveBtn.dataset.bound = '1';
-            saveBtn.addEventListener('click', saveFeaturedProductsAdmin);
-        }
-    } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="3" style="color:#dc2626;">熱門商品設定載入失敗</td></tr>';
-    }
-}
-
-async function saveFeaturedProductsAdmin() {
-    const msg = document.getElementById('featuredProductsMsg');
-    const rows = [];
-    for (let i = 0; i < 6; i++) {
-        const selectEl = document.querySelector(`.featured-product-select[data-index="${i}"]`);
-        const badgeEl = document.querySelector(`.featured-product-badge[data-index="${i}"]`);
-        rows.push({
-            product_id: Number(selectEl?.value || 0),
-            badge: String(badgeEl?.value || '').trim()
         });
-    }
-
-    try {
-        const res = await opsApi.post('../api/admin.php?action=save_featured_products', {
-            featured_json: JSON.stringify(rows)
-        });
-
-        if (res.success) {
-            if (msg) {
-                msg.textContent = '已儲存，首頁熱門商品已更新';
-                msg.style.color = '#0f766e';
-            }
-        } else if (msg) {
-            let detailText = '';
-            if (res.details && typeof res.details === 'object') {
-                const dbMsg = res.details.db ? `DB: ${res.details.db}` : '';
-                const fileMsg = res.details.file ? `File: ${res.details.file}` : '';
-                detailText = [dbMsg, fileMsg].filter(Boolean).join(' | ');
-            }
-            msg.textContent = detailText ? `${res.error || '儲存失敗'} (${detailText})` : (res.error || '儲存失敗');
-            msg.style.color = '#dc2626';
-        }
     } catch (error) {
-        if (msg) {
-            msg.textContent = '儲存失敗';
-            msg.style.color = '#dc2626';
-        }
+        tbody.innerHTML = '<tr><td colspan="3" style="color:#dc2626;">熱門商品資料載入失敗</td></tr>';
     }
 }
 

@@ -43,7 +43,7 @@ $currentUser = $_SESSION['user'] ?? null;
             </nav>
             <div class="user-info">
                 <?php if ($currentUser && ($currentUser['role'] ?? '') === 'admin'): ?>
-                    <div class="nav-dropdown">
+                    <div class="nav-dropdown admin-dropdown">
                         <a href="#" class="nav-dropdown-toggle">⚙️ 管理</a>
                         <div class="nav-dropdown-menu">
                             <a href="../views/admin.php?page=dashboard">📊 銷售看板</a>
@@ -63,10 +63,12 @@ $currentUser = $_SESSION['user'] ?? null;
                     <div class="nav-dropdown user-welcome-dropdown" id="userWelcomeDropdown">
                         <button type="button" class="nav-dropdown-toggle welcome-toggle" id="userWelcomeToggle" aria-expanded="false" aria-controls="userWelcomeMenu">
                             歡迎 <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['email']); ?>
+                            <span class="notification-badge" id="headerNotificationBadge" hidden></span>
                             <span style="font-size:11px;opacity:.9;">▼</span>
                         </button>
                         <div class="nav-dropdown-menu user-dropdown-menu" id="userWelcomeMenu">
                             <a href="../views/profile.php">個人資料</a>
+                            <a href="../views/notifications.php">通知中心<span class="notification-badge" id="notificationsLinkBadge" hidden></span></a>
                             <a href="../views/coupons.php">我的優惠券</a>
                             <?php if (($currentUser['role'] ?? '') !== 'admin'): ?>
                                 <a href="../views/orders.php">我的訂單</a>
@@ -88,6 +90,33 @@ $currentUser = $_SESSION['user'] ?? null;
             </div>
         </div>
     </header>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminDropdown = document.querySelector('.nav-dropdown.admin-dropdown');
+            if (!adminDropdown) return;
+
+            const toggle = adminDropdown.querySelector('.nav-dropdown-toggle');
+            if (!toggle) return;
+
+            toggle.addEventListener('click', function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                adminDropdown.classList.toggle('open');
+            });
+
+            document.addEventListener('click', function(event) {
+                if (!adminDropdown.contains(event.target)) {
+                    adminDropdown.classList.remove('open');
+                }
+            });
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    adminDropdown.classList.remove('open');
+                }
+            });
+        });
+    </script>
     <main class="container">
 
    

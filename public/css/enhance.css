@@ -120,6 +120,12 @@ h1, h2, h3, .logo {
     animation: slideDown 0.2s ease;
 }
 
+.nav-dropdown.admin-dropdown:hover .nav-dropdown-menu {
+    display: none;
+}
+
+.nav-dropdown.admin-dropdown.open .nav-dropdown-menu,
+.nav-dropdown.admin-dropdown.open:hover .nav-dropdown-menu,
 .nav-dropdown.open .nav-dropdown-menu {
     display: block;
     animation: slideDown 0.2s ease;
@@ -928,6 +934,29 @@ a:hover {
 .admin-order-badge-done {
     background: #ecfeff;
     color: #0f766e;
+}
+
+.notification-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    vertical-align: middle;
+}
+
+.notification-badge.hidden,
+.notification-badge[hidden] {
+    display: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

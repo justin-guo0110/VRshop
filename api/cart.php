@@ -70,14 +70,25 @@ function cart_add(): void {
         respond_json(['error' => 'Invalid data'], 422);
     }
     $db = get_db();
-    $stmt = $db->prepare('SELECT product_id, name, price, image_url, category FROM products WHERE product_id = ? AND is_active = 1');
+    $stmt = $db->prepare('SELECT product_id, name, price, image_url, category, stock FROM products WHERE product_id = ? AND is_active = 1');
     $stmt->bind_param('i', $product_id);
     $stmt->execute();
     $product = $stmt->get_result()->fetch_assoc();
     if (!$product) {
         respond_json(['error' => 'Product not found'], 404);
     }
-    add_product_to_cart(intval($product['product_id']), $quantity, $product);
+    $stock = intval($product['stock'] ?? 0);
+    $existingQuantity = intval($_SESSION['cart'][$product_id]['quantity'] ?? 0);
+    $newQuantity = $existingQuantity + $quantity;
+    if ($stock <= 0) {
+        respond_json(['error' => '商品已售完'], 422);
+    }
+    if ($newQuantity > $stock) {
+        respond_json(['error' => '庫存不足，僅剩 ' . $stock . ' 件可購買'], 422);
+    }
+    if (!add_product_to_cart(intval($product['product_id']), $quantity, $product)) {
+        respond_json(['error' => '加入購物車失敗，請確認庫存後再試'], 422);
+    }
 
     respond_json(['success' => true]);
 }
@@ -89,7 +100,7 @@ function add_product_to_cart(int $productId, int $quantity, ?array $product = nu
 
     if (!is_array($product)) {
         $db = get_db();
-        $stmt = $db->prepare('SELECT product_id, name, price, image_url, category FROM products WHERE product_id = ? AND is_active = 1');
+        $stmt = $db->prepare('SELECT product_id, name, price, image_url, category, stock FROM products WHERE product_id = ? AND is_active = 1');
         if (!$stmt) {
             return false;
         }
@@ -99,6 +110,12 @@ function add_product_to_cart(int $productId, int $quantity, ?array $product = nu
     }
 
     if (!$product) {
+        return false;
+    }
+
+    $stock = intval($product['stock'] ?? 0);
+    $currentQty = intval($_SESSION['cart'][$productId]['quantity'] ?? 0);
+    if ($stock <= 0 || $currentQty + $quantity > $stock) {
         return false;
     }
 
@@ -248,7 +265,7 @@ function cart_add_promo_bundle(): void {
         $qty = max(1, intval($row['quantity']));
         $ok = add_product_to_cart($pid, $qty, $productMap[$pid]);
         if (!$ok) {
-            respond_json(['error' => '加入組合商品失敗，請稍後再試'], 500);
+            respond_json(['error' => '加入組合商品失敗，庫存不足或商品已售完'], 422);
         }
         $added[] = [
             'product_id' => $pid,
@@ -275,6 +292,26 @@ function cart_update(): void {
     } else {
         if (!isset($_SESSION['cart'][$product_id])) {
             respond_json(['error' => 'Item not in cart'], 404);
+        }
+        $db = get_db();
+        $stmt = $db->prepare('SELECT stock FROM products WHERE product_id = ? AND is_active = 1');
+        $stmt->bind_param('i', $product_id);
+        $stmt->execute();
+        $product = $stmt->get_result()->fetch_assoc();
+        if (!$product) {
+            respond_json(['error' => 'Product not found'], 404);
+        }
+        $stock = intval($product['stock'] ?? 0);
+        if ($stock <= 0) {
+            unset($_SESSION['cart'][$product_id]);
+            $memberId = current_member_id();
+            if ($memberId > 0) {
+                delete_member_cart_item($memberId, $product_id);
+            }
+            respond_json(['error' => '商品已售完，已從購物車移除'], 422);
+        }
+        if ($quantity > $stock) {
+            respond_json(['error' => '庫存不足，僅剩 ' . $stock . ' 件可購買'], 422);
         }
         $_SESSION['cart'][$product_id]['quantity'] = $quantity;
     }
