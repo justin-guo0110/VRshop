@@ -74,8 +74,10 @@ if (!isset($_SESSION['user'])) {
                 <h3>選擇超商門市</h3>
                 <p class="checkout-note" style="margin-bottom:12px;">可先到官方地圖查門市，再填入門市資訊。</p>
                 <div class="pickup-store-links">
-                    <a class="btn btn-secondary btn-sm" href="https://emap.pcsc.com.tw/" target="_blank" rel="noopener noreferrer">7-ELEVEN 地圖(手動)</a>
-                    <a class="btn btn-secondary btn-sm" href="https://www.family.com.tw/Marketing/Map/" target="_blank" rel="noopener noreferrer">全家地圖(手動)</a>
+                    <a class="btn btn-secondary btn-sm" href="https://emap.pcsc.com.tw/" target="_blank"
+                        rel="noopener noreferrer">7-ELEVEN 地圖(手動)</a>
+                    <a class="btn btn-secondary btn-sm" href="https://www.family.com.tw/Marketing/Map/" target="_blank"
+                        rel="noopener noreferrer">全家地圖(手動)</a>
                     <button type="button" class="btn btn-secondary btn-sm" id="clearPickupStoreBtn">清除常用門市</button>
                 </div>
                 <div class="pickup-store-form">
@@ -120,31 +122,14 @@ if (!isset($_SESSION['user'])) {
 
             <section class="card checkout-section" id="creditCardSection">
                 <h3>信用卡資訊</h3>
-                <div class="pickup-store-form">
-                    <label>
-                        <span>持卡人姓名</span>
-                        <input type="text" id="cardHolderName" placeholder="例如：CHEN DA MING" maxlength="50" autocomplete="cc-name">
-                    </label>
-                    <label>
-                        <span>卡號</span>
-                        <input type="text" id="cardNumber" placeholder="0000 0000 0000 0000" maxlength="23" autocomplete="cc-number" inputmode="numeric">
-                    </label>
-                    <div class="card-inline-fields">
-                        <label>
-                            <span>到期日</span>
-                            <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5" autocomplete="cc-exp" inputmode="numeric">
-                        </label>
-                        <label>
-                            <span>安全碼</span>
-                            <input type="password" id="cardCvv" placeholder="CVV" maxlength="4" autocomplete="cc-csc" inputmode="numeric">
-                        </label>
-                    </div>
-                    <label class="card-save-option">
-                        <input type="checkbox" id="saveCardInfo" value="1">
-                        <span>記住卡片資訊（不儲存安全碼）</span>
-                    </label>
-                    <button type="button" class="btn btn-secondary btn-sm checkout-inline-action" id="clearSavedCardBtn">清除已記住卡片</button>
+
+                <div id="checkoutCardList">
+                    <p>載入付款方式中...</p>
                 </div>
+
+                <a class="btn add-address-btn" href="./profile.php#cardSection">
+                    + 新增付款方式
+                </a>
             </section>
 
             <section class="card checkout-section">

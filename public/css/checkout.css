@@ -582,7 +582,16 @@
     border-color: var(--primary);
     background: #f8fffe;
 }
+#checkoutCardList .option-item:has(input:checked) {
+    border-color: var(--primary);
+    background: #f8fffe;
 
+
+}
+
+#checkoutCardList .option-item strong {
+    color: #0f766e;
+}
 @media (max-width: 768px) {
     .checkout-progress-card {
         top: 74px;

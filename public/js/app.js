@@ -5,7 +5,7 @@ const api = {
             method: 'POST',
             credentials: 'same-origin'
         };
-        
+
         if (data instanceof FormData) {
             options.body = data;
             // Don't set Content-Type header for FormData, browser will set it automatically
@@ -13,7 +13,7 @@ const api = {
             options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
             options.body = new URLSearchParams(data);
         }
-        
+
         return fetch(url, options).then(r => r.json());
     }
 };
@@ -49,7 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
     bindSearch();
     loadProductDetail();
     bindAdmin();
+    bindCards();
     bindResetPassword();
+    loadCheckoutCards();
     app.loadNotificationBadge();
     app.loadNotificationsPage();
 });
@@ -136,7 +138,7 @@ function setupLoginPageTabs() {
     });
 }
 
-window.switchTab = function(target) {
+window.switchTab = function (target) {
     document.querySelectorAll('.login-tab').forEach(btn => {
         btn.classList.remove('active');
         if (btn.dataset.target === target) {
@@ -527,17 +529,17 @@ async function bindSearch() {
     categoryBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            
+
             // 更新按鈕狀態
             categoryBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             // 更新表單分類值
             const categoryField = form.querySelector('[name="category"]');
             if (categoryField) {
                 categoryField.value = btn.dataset.category || '';
             }
-            
+
             // 重新搜尋
             currentPage = 1;
             fetchProducts(Object.fromEntries(new FormData(form)));
@@ -569,7 +571,7 @@ async function loadProductDetail() {
                     <h2>${p.name}</h2>
                     <p class="price">$${Number(p.price).toFixed(2)}</p>
                     <p style="color:#666;">${p.description || ''}</p>
-                    <p style="margin:10px 0 0;"><strong>庫存：</strong> <span class="stock-badge ${inStock? 'in':'out'}" style="font-weight:800;">${inStock ? p.stock : '缺貨'}</span></p>
+                    <p style="margin:10px 0 0;"><strong>庫存：</strong> <span class="stock-badge ${inStock ? 'in' : 'out'}" style="font-weight:800;">${inStock ? p.stock : '缺貨'}</span></p>
                     <p style="margin:6px 0 0;"><strong>分類：</strong> ${p.category || ''}</p>
 
                     <div style="display:flex;gap:10px;align-items:center;margin-top:14px;">
@@ -609,17 +611,17 @@ function bindAdmin() {
         try {
             const res = await api.get('../api/admin.php?action=list_orders');
             const orders = res.orders || [];
-            
+
             // 計算統計資料
             const totalOrders = orders.length;
             const pendingOrders = orders.filter(o => ['accepted', 'pending', 'preparing'].includes(o.status)).length;
             const totalRevenue = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
-            
+
             // 更新頁面上的統計卡片
             document.getElementById('statTotalOrders').textContent = totalOrders;
             document.getElementById('statPending').textContent = pendingOrders;
             document.getElementById('statTotalRevenue').textContent = '$' + totalRevenue.toFixed(2);
-            
+
             // 載入最近訂單
             const recentOrdersTable = document.getElementById('recentOrdersTable');
             if (recentOrdersTable) {
@@ -648,32 +650,32 @@ function bindAdmin() {
             const res = await api.get('../api/admin.php?action=list_orders');
             const ordersTable = document.getElementById('ordersTable');
             if (!ordersTable) return;
-            
+
             let orders = res.orders || [];
-            
+
             // 按狀態篩選
             if (filterStatus !== 'all') {
                 orders = orders.filter(o => o.status === filterStatus);
             }
-            
+
             // 按關鍵字搜尋
             if (searchKeyword) {
                 const keyword = searchKeyword.toLowerCase();
-                orders = orders.filter(o => 
+                orders = orders.filter(o =>
                     String(o.order_id).includes(keyword) ||
                     (o.name || '').toLowerCase().includes(keyword) ||
                     (o.email || '').toLowerCase().includes(keyword)
                 );
             }
-            
+
             const tbody = ordersTable.querySelector('tbody');
             tbody.innerHTML = '';
-            
+
             if (orders.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">沒有找到符合的訂單</td></tr>';
                 return;
             }
-            
+
             orders.forEach(o => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -684,7 +686,7 @@ function bindAdmin() {
                     <td>${o.created_at}</td>
                     <td>
                         <select data-order="${o.order_id}" style="margin-right:5px;">
-                            ${['accepted','preparing','shipping','done','cancelled'].map(s => `<option value="${s}" ${s===o.status?'selected':''}>${app.statusText(s)}</option>`).join('')}
+                            ${['accepted', 'preparing', 'shipping', 'done', 'cancelled'].map(s => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${app.statusText(s)}</option>`).join('')}
                         </select>
                         <button class="btn btn-sm btn-danger delete-order" data-id="${o.order_id}" style="padding:4px 8px;">刪除</button>
                     </td>
@@ -702,7 +704,7 @@ function bindAdmin() {
             const res = await api.get('../api/admin.php?action=list_products');
             const productsTable = document.getElementById('productsTable');
             if (!productsTable) return;
-            
+
             const tbody = productsTable.querySelector('tbody');
             tbody.innerHTML = '';
             (res.products || []).forEach(p => {
@@ -737,19 +739,19 @@ function bindAdmin() {
         item.addEventListener('click', async (e) => {
             e.preventDefault();
             const page = item.getAttribute('data-page');
-            
+
             // 更新導航狀態
             document.querySelectorAll('.admin-nav-item').forEach(i => i.classList.remove('active'));
             item.classList.add('active');
-            
+
             // 隱藏所有頁面
             document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
-            
+
             // 顯示目標頁面
             const targetPage = document.getElementById(page + 'Page');
             if (targetPage) {
                 targetPage.classList.add('active');
-                
+
                 // 根據頁面載入相應資料
                 if (page === 'dashboard') loadDashboard();
                 else if (page === 'orders') loadOrders();
@@ -775,14 +777,14 @@ function bindAdmin() {
             const status = btn.getAttribute('data-status');
             const searchInput = document.querySelector('.admin-toolbar input[type="text"]');
             const searchKeyword = searchInput ? searchInput.value : '';
-            
+
             document.querySelectorAll('.order-filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             await loadOrders(status, searchKeyword);
         });
     });
-    
+
     // 訂單搜尋
     const orderSearchInput = document.querySelector('.admin-toolbar input[type="text"]');
     if (orderSearchInput) {
@@ -801,7 +803,7 @@ function bindAdmin() {
         if (orderId) {
             await api.post('../api/admin.php?action=update_order_status', { order_id: orderId, status: e.target.value });
         }
-        
+
         const toggleId = e.target.getAttribute('data-toggle');
         if (toggleId) {
             await api.post('../api/admin.php?action=update_product_status', { product_id: toggleId, is_active: e.target.checked ? 1 : 0 });
@@ -827,7 +829,7 @@ function bindAdmin() {
                 }
             }
         }
-        
+
         // 商品刪除
         const deleteId = e.target.getAttribute('data-delete');
         if (deleteId) {
@@ -845,7 +847,7 @@ function bindAdmin() {
                 }
             }
         }
-        
+
         // 訂單刪除
         const deleteOrderId = e.target.getAttribute('data-id');
         if (e.target.classList.contains('delete-order') && deleteOrderId) {
@@ -886,13 +888,13 @@ function bindAdmin() {
     const newProductForm = document.getElementById('newProductForm');
     const cancelProductBtn = document.getElementById('cancelProductBtn');
     const createProductBtn = document.getElementById('createProductBtn');
-    
+
     if (newProductBtn) {
         newProductBtn.addEventListener('click', () => {
             newProductForm.style.display = newProductForm.style.display === 'none' ? 'block' : 'none';
         });
     }
-    
+
     if (cancelProductBtn) {
         cancelProductBtn.addEventListener('click', () => {
             newProductForm.style.display = 'none';
@@ -904,7 +906,7 @@ function bindAdmin() {
             document.getElementById('newProductImageUrl').value = '';
         });
     }
-    
+
     if (createProductBtn) {
         createProductBtn.addEventListener('click', async () => {
             const formData = new FormData();
@@ -914,7 +916,7 @@ function bindAdmin() {
             formData.append('stock', document.getElementById('newProductStock').value);
             formData.append('description', document.getElementById('newProductDescription').value);
             formData.append('image_url', document.getElementById('newProductImageUrl').value);
-            
+
             try {
                 const res = await api.post('../api/admin.php?action=create_product', formData);
                 if (res.success) {
@@ -1176,7 +1178,7 @@ app.loadCheckoutCart = async function () {
         if (totalsBox) totalsBox.style.display = 'none';
         return;
     }
-    
+
     let html = '';
     items.forEach((item) => {
         const lineSubtotal = Number(item.price) * Number(item.quantity);
@@ -1203,9 +1205,9 @@ app.loadCheckoutCart = async function () {
             </div>
         `;
     });
-    
+
     wrap.innerHTML = html;
-    
+
     // 設定購物車資料
     window.checkoutCartItems = {};
     items.forEach(item => {
@@ -1216,7 +1218,7 @@ app.loadCheckoutCart = async function () {
             quantity: Number(item.quantity)
         };
     });
-    
+
     // 繫結核取方塊事件
     document.querySelectorAll('.item-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
@@ -1229,7 +1231,7 @@ app.loadCheckoutCart = async function () {
             }
         });
     });
-    
+
     // 繫結數量調整事件
     document.querySelectorAll('.qty-input').forEach(input => {
         input.addEventListener('change', async (e) => {
@@ -1262,7 +1264,7 @@ app.loadCheckoutCart = async function () {
                     await app.loadCheckoutCart();
                     return;
                 }
-                
+
                 // 更新小計和樣式
                 const itemDiv = e.target.closest('.checkout-item');
                 const subtotal = item.price * newQty;
@@ -1272,7 +1274,7 @@ app.loadCheckoutCart = async function () {
             }
         });
     });
-    
+
     // 繫結加/減按鈕事件
     document.querySelectorAll('.qty-btn-plus').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -1290,7 +1292,7 @@ app.loadCheckoutCart = async function () {
             }
         });
     });
-    
+
     document.querySelectorAll('.qty-btn-minus').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const productId = e.target.dataset.productId;
@@ -1301,7 +1303,7 @@ app.loadCheckoutCart = async function () {
             }
         });
     });
-    
+
     // 繫結刪除按鈕事件
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -1316,7 +1318,7 @@ app.loadCheckoutCart = async function () {
             }
         });
     });
-    
+
     if (subtotalEl) subtotalEl.textContent = '$0'; // 將在 updateCheckoutTotals 更新
     if (totalsBox) totalsBox.style.display = '';
     app.updateCheckoutTotals();
@@ -1794,17 +1796,13 @@ app.initCheckoutPage = function () {
     const pickupStoreName = document.getElementById('pickupStoreName');
     const pickupStoreAddress = document.getElementById('pickupStoreAddress');
     const creditCardSection = document.getElementById('creditCardSection');
-    const cardHolderName = document.getElementById('cardHolderName');
-    const cardNumber = document.getElementById('cardNumber');
-    const cardExpiry = document.getElementById('cardExpiry');
-    const cardCvv = document.getElementById('cardCvv');
-    const saveCardInfo = document.getElementById('saveCardInfo');
-    const clearSavedCardBtn = document.getElementById('clearSavedCardBtn');
+
+
     const clearPickupStoreBtn = document.getElementById('clearPickupStoreBtn');
     let placing = false;
 
     const userKey = 'guest';
-    const cardStorageKey = `vrshop_saved_card_${userKey}`;
+
     const pickupStorageKey = `vrshop_saved_pickup_${userKey}`;
 
     const togglePickupStoreSection = () => {
@@ -1820,17 +1818,7 @@ app.initCheckoutPage = function () {
     };
 
     const applySavedCard = () => {
-        try {
-            const raw = localStorage.getItem(cardStorageKey);
-            if (!raw) return;
-            const saved = JSON.parse(raw);
-            if (cardHolderName) cardHolderName.value = saved.holder || '';
-            if (cardNumber) cardNumber.value = saved.number || '';
-            if (cardExpiry) cardExpiry.value = saved.expiry || '';
-            if (saveCardInfo) saveCardInfo.checked = true;
-        } catch (err) {
-            // Ignore parse errors and continue checkout.
-        }
+        loadCheckoutCards();
     };
 
     const applySavedPickupStore = () => {
@@ -1847,13 +1835,6 @@ app.initCheckoutPage = function () {
         }
     };
 
-    const clearCardFields = () => {
-        if (cardHolderName) cardHolderName.value = '';
-        if (cardNumber) cardNumber.value = '';
-        if (cardExpiry) cardExpiry.value = '';
-        if (cardCvv) cardCvv.value = '';
-        if (saveCardInfo) saveCardInfo.checked = false;
-    };
 
     const clearPickupFields = () => {
         if (pickupStoreBrand) pickupStoreBrand.value = '';
@@ -1862,38 +1843,8 @@ app.initCheckoutPage = function () {
         if (pickupStoreAddress) pickupStoreAddress.value = '';
     };
 
-    if (cardNumber) {
-        cardNumber.addEventListener('input', () => {
-            const digits = cardNumber.value.replace(/\D/g, '').slice(0, 16);
-            cardNumber.value = digits.replace(/(.{4})/g, '$1 ').trim();
-        });
-    }
-    if (cardExpiry) {
-        cardExpiry.addEventListener('input', () => {
-            const digits = cardExpiry.value.replace(/\D/g, '').slice(0, 4);
-            if (digits.length >= 3) {
-                cardExpiry.value = `${digits.slice(0, 2)}/${digits.slice(2)}`;
-            } else {
-                cardExpiry.value = digits;
-            }
-        });
-    }
-    if (cardCvv) {
-        cardCvv.addEventListener('input', () => {
-            cardCvv.value = cardCvv.value.replace(/\D/g, '').slice(0, 4);
-        });
-    }
 
-    if (clearSavedCardBtn) {
-        clearSavedCardBtn.addEventListener('click', () => {
-            localStorage.removeItem(cardStorageKey);
-            clearCardFields();
-            if (msg) {
-                msg.textContent = '已清除記住的信用卡資訊';
-                msg.className = 'message success';
-            }
-        });
-    }
+
 
     if (clearPickupStoreBtn) {
         clearPickupStoreBtn.addEventListener('click', () => {
@@ -1979,41 +1930,26 @@ app.initCheckoutPage = function () {
         }
 
         if (paymentRadio.value === '信用卡') {
-            const holder = (cardHolderName?.value || '').trim();
-            const numberDigits = (cardNumber?.value || '').replace(/\D/g, '');
-            const expiryRaw = (cardExpiry?.value || '').trim();
-            const cvv = (cardCvv?.value || '').trim();
-            const expiryMatch = expiryRaw.match(/^(\d{2})\/(\d{2})$/);
 
-            if (!holder || numberDigits.length !== 16 || !expiryMatch || cvv.length < 3) {
+            const selectedCard =
+                document.querySelector(
+                    'input[name="card_id"]:checked'
+                );
+
+            if (!selectedCard) {
+
                 if (msg) {
-                    msg.textContent = '請完整填寫信用卡資訊（姓名、16 碼卡號、到期日、安全碼）';
-                    msg.className = 'message error';
+                    msg.textContent =
+                        '請選擇付款卡片';
+
+                    msg.className =
+                        'message error';
                 }
+
                 return;
+
             }
 
-            const month = Number(expiryMatch[1]);
-            const year = 2000 + Number(expiryMatch[2]);
-            const now = new Date();
-            const expDate = new Date(year, month, 0, 23, 59, 59);
-            if (month < 1 || month > 12 || expDate < now) {
-                if (msg) {
-                    msg.textContent = '信用卡到期日無效或已過期';
-                    msg.className = 'message error';
-                }
-                return;
-            }
-
-            if (saveCardInfo?.checked) {
-                localStorage.setItem(cardStorageKey, JSON.stringify({
-                    holder,
-                    number: numberDigits.replace(/(.{4})/g, '$1 ').trim(),
-                    expiry: expiryRaw
-                }));
-            } else {
-                localStorage.removeItem(cardStorageKey);
-            }
         }
 
         if (shippingRadio.value === '超商取貨') {
@@ -2465,7 +2401,7 @@ app.initOrderSuccessPage = async function () {
     try {
         const res = await api.get(`../api/orders.php?action=get_order_detail&order_id=${orderId}`);
         if (!res.order) {
-            const errorMsg = res.error === '找不到此訂單' 
+            const errorMsg = res.error === '找不到此訂單'
                 ? '此訂單不存在或無法存取'
                 : '訂單明細載入失敗';
             detailWrap.innerHTML = `<div class="order-detail-card">${errorMsg}，請至「我的訂單」檢視。<br><br><button class="btn btn-secondary" onclick="location.href='./orders.php'">前往我的訂單</button></div>`;
@@ -2503,3 +2439,363 @@ document.addEventListener('DOMContentLoaded', () => {
     app.initOrderSuccessPage();
     maybeShowLuckyWheelAfterLogin();
 });
+function bindCards() {
+
+    const form = document.getElementById('cardForm');
+
+    if (!form) return;
+
+    loadCards();
+    const cardNumberInput =
+        form.querySelector(
+            '[name="card_number"]'
+        );
+
+    const expiryInput =
+        form.querySelector(
+            '[name="expiry"]'
+        );
+
+    const cvvInput =
+        form.querySelector(
+            '[name="cvv"]'
+        );
+
+    if (cardNumberInput) {
+        cardNumberInput.addEventListener('input', function () {
+            let digits = this.value.replace(/\D/g, '').slice(0, 16);
+
+            this.value = digits
+                .replace(/(.{4})/g, '$1 ')
+                .trim();
+
+            this.setSelectionRange(this.value.length, this.value.length);
+        });
+    }
+
+    if (expiryInput) {
+        expiryInput.addEventListener('input', function () {
+            let digits = this.value.replace(/\D/g, '').slice(0, 4);
+
+            if (digits.length > 2) {
+                this.value = digits.slice(0, 2) + '/' + digits.slice(2);
+            } else {
+                this.value = digits;
+            }
+
+            this.setSelectionRange(this.value.length, this.value.length);
+        });
+    }
+    if (cvvInput) {
+        cvvInput.type =
+            'password';
+    }
+    form.addEventListener(
+        'submit',
+        async (e) => {
+
+            e.preventDefault();
+
+            const data =
+                new FormData(form);
+
+            try {
+
+                const result =
+                    await api.post(
+                        '../api/member.php?action=create_card',
+                        data
+                    );
+
+                const msg =
+                    document.getElementById(
+                        'cardMessage'
+                    );
+
+                if (!result.success) {
+
+                    if (msg) {
+                        msg.textContent =
+                            result.error ||
+                            '新增付款方式失敗';
+
+                        msg.className =
+                            'message error';
+                    }
+
+                    return;
+                }
+
+                form.reset();
+
+                loadCards();
+
+                if (msg) {
+                    msg.textContent =
+                        '新增成功';
+
+                    msg.className =
+                        'message success';
+                }
+
+            } catch (err) {
+
+                const msg =
+                    document.getElementById(
+                        'cardMessage'
+                    );
+
+                if (msg) {
+
+                    msg.textContent =
+                        err.message
+                        ||
+                        err.error
+                        ||
+                        '新增付款方式失敗';
+
+                    msg.className =
+                        'message error';
+
+                }
+
+                console.error(err);
+
+            }
+
+        }
+    );
+}
+
+async function loadCards() {
+
+    const list =
+        document.getElementById(
+            'cardList'
+        );
+
+    if (!list) return;
+
+    try {
+
+        const result =
+            await api.get(
+                '../api/member.php?action=list_cards'
+            );
+
+        list.innerHTML = '';
+
+        (result.cards || []).forEach(
+            card => {
+
+                const div =
+                    document.createElement(
+                        'div'
+                    );
+
+                div.className = 'address-item';
+                div.style.position = 'relative';
+
+                div.innerHTML = `
+
+<div class="address-item-content">
+
+<div class="address-item-name">
+
+${card.card_brand}
+****
+${card.card_last4}
+
+</div>
+
+<label
+style="
+display:flex;
+gap:6px;
+align-items:center;
+
+font-weight:700;
+
+white-space:nowrap;
+
+position:absolute;
+
+top:24px;
+right:28px;
+"
+>
+
+<input
+type="checkbox"
+class="default-card-checkbox"
+${card.is_default == 1 ? 'checked' : ''}
+onchange="
+setDefaultCard(
+${card.card_id},
+this
+)
+"
+>
+
+預設
+
+</label>
+
+<div class="address-item-info">
+
+<div>
+${card.card_holder}
+</div>
+
+<div>
+到期日：
+${card.expiry}
+</div>
+
+</div>
+
+</div>
+
+<div class="address-item-actions">
+
+<button
+type="button"
+class="btn btn-danger"
+onclick="
+deleteCard(
+${card.card_id}
+)">
+
+刪除
+
+</button>
+
+</div>
+`;
+
+                list.appendChild(
+                    div
+                );
+
+            }
+        );
+
+    } catch (err) {
+
+        console.error(err);
+
+    }
+}
+
+async function deleteCard(
+    cardId
+) {
+
+    const data =
+        new FormData();
+
+    data.append(
+        'card_id',
+        cardId
+    );
+
+    await api.post(
+        '../api/member.php?action=delete_card',
+        data
+    );
+
+    loadCards();
+
+}
+
+async function setDefaultCard(cardId, checkbox) {
+    document
+        .querySelectorAll('.default-card-checkbox')
+        .forEach(cb => {
+            cb.checked = false;
+        });
+
+    checkbox.checked = true;
+
+    const data = new FormData();
+    data.append('card_id', cardId);
+
+    const res = await api.post(
+        '../api/member.php?action=set_default_card',
+        data
+    );
+
+    if (!res.success) {
+        alert('設定預設卡失敗');
+    }
+}
+async function loadCheckoutCards() {
+
+    const list =
+        document.getElementById(
+            'checkoutCardList'
+        );
+
+    if (!list) return;
+
+    try {
+
+        const result =
+            await api.get(
+                '../api/member.php?action=list_cards'
+            );
+
+        const cards =
+            result.cards || [];
+
+        if (!cards.length) {
+
+            list.innerHTML =
+                '<p style="text-align: center; color: var(--muted);">尚未新增付款方式，請先新增付款卡。</p>';
+
+            return;
+
+        }
+
+        list.innerHTML =
+            cards.map(card => `
+
+<label class="option-item">
+<input
+type="radio"
+name="card_id"
+value="${card.card_id}"
+${card.is_default ? 'checked' : ''}
+>
+
+<span>
+
+<strong>
+${card.card_brand}
+**** ${card.card_last4}
+</strong>
+
+<small>
+${card.card_holder}
+｜
+${card.expiry}
+</small>
+
+</span>
+
+</label>
+
+`).join('');
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+        list.innerHTML =
+            '<p>載入失敗</p>';
+
+    }
+
+}
