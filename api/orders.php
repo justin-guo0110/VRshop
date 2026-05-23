@@ -387,7 +387,7 @@ function place_order(): void {
         $insertOrder = $db->prepare($sql);
         $insertOrder->bind_param($types, ...$values);
         if (!$insertOrder->execute()) {
-            throw new Exception('Failed to place order');
+        throw new Exception('Failed to place order');
         }
         $order_id = $insertOrder->insert_id;
 
@@ -396,14 +396,18 @@ function place_order(): void {
         $hasStockMovements = table_exists($db, 'stock_movements');
         $stockMovementStmt = null;
         if ($hasStockMovements) {
-            $stockMovementStmt = $db->prepare('INSERT INTO stock_movements (product_id, variant_id, movement_type, quantity, reference_type, reference_id, notes, created_by) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)');
+            $stockMovementStmt = $db->prepare(
+    'INSERT INTO stock_movements
+    (product_id, movement_type, delta, ref_type, ref_id, note)
+    VALUES (?, ?, ?, ?, ?, ?)'
+);
         }
 
         foreach ($orderItems as $oi) {
             $itemStmt->bind_param('iiid', $order_id, $oi['product_id'], $oi['quantity'], $oi['price']);
             if (!$itemStmt->execute()) {
-                throw new Exception('Failed to insert order items');
-            }
+    throw new Exception('Order item error: ' . $itemStmt->error);
+}
 
             // Deduct stock from products table
             $stockStmt->bind_param('iii', $oi['quantity'], $oi['product_id'], $oi['quantity']);
@@ -412,16 +416,26 @@ function place_order(): void {
             }
 
             // Record stock movement if table exists
-            if ($hasStockMovements && $stockMovementStmt) {
-                $movementType = 'order';
-                $referenceType = 'order';
-                $notes = 'Order #' . $order_id;
-                $createdBy = $user['member_id'];
-                $stockMovementStmt->bind_param('isissis', $oi['product_id'], $movementType, $oi['quantity'], $referenceType, $order_id, $notes, $createdBy);
-                if (!$stockMovementStmt->execute()) {
-                    error_log('Failed to record stock movement for product ' . $oi['product_id']);
-                }
-            }
+           if ($hasStockMovements && $stockMovementStmt) {
+    $delta = -intval($oi['quantity']);
+    $movementType = 'order';
+    $referenceType = 'order';
+    $notes = 'Order #' . $order_id;
+
+    $stockMovementStmt->bind_param(
+        'isisis',
+        $oi['product_id'],
+        $movementType,
+        $delta,
+        $referenceType,
+        $order_id,
+        $notes
+    );
+
+    if (!$stockMovementStmt->execute()) {
+        throw new Exception('Stock movement error: ' . $stockMovementStmt->error);
+    }
+}
         }
 
         if ($couponRow) {
@@ -453,7 +467,9 @@ function place_order(): void {
         if (strpos($message, 'Insufficient stock') !== false) {
             respond_json(['error' => '庫存不足，請重新確認購物車商品庫存'], 422);
         }
-        respond_json(['error' => 'Failed to place order'], 500);
+        respond_json([
+    'error' => $e->getMessage()
+], 500);
     }
 
     foreach (array_keys($cart) as $orderedPid) {
