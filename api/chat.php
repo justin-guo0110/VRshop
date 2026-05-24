@@ -32,14 +32,16 @@ switch ($action) {
 function get_messages($userId, $sessionId) {
     $db = get_db();
     $currentUser = current_user();
+    $role = $currentUser['role'] ?? null;
 
     // 如果是管理員 → 撈全部訊息
-    if ($currentUser['role'] === 'admin') {
+    if ($role === 'admin') {
         $stmt = $db->prepare("SELECT * FROM chat_messages ORDER BY created_at ASC");
     }
     // 如果是登入會員 → 撈自己的訊息
     else if ($userId) {
-        $stmt = $db->prepare("SELECT * FROM chat_messages ORDER BY created_at ASC");
+        $stmt = $db->prepare("SELECT * FROM chat_messages WHERE user_id = ? ORDER BY created_at ASC");
+        $stmt->bind_param("i", $userId);
     }
     // 未登入 → 用 session 查詢
     else {
