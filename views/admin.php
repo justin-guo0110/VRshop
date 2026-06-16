@@ -84,6 +84,7 @@
                     </div>
                     <div class="order-status-filters">
                         <button type="button" class="order-filter-btn active" data-status="all">全部</button>
+                        <button type="button" class="order-filter-btn" data-status="pending">待確認</button>
                         <button type="button" class="order-filter-btn" data-status="accepted">已接單</button>
                         <button type="button" class="order-filter-btn" data-status="preparing">準備中</button>
                         <button type="button" class="order-filter-btn" data-status="shipping">運送中</button>
@@ -509,12 +510,13 @@ const opsApi = {
 };
 
 const orderStatusLabels = {
-    pending: '已接單',      // 舊資料相容
+    pending: '待確認',
     accepted: '已接單',
     preparing: '準備中',
     shipping: '運送中',
     done: '已完成',
-    cancelled: '已取消'
+    cancelled: '已取消',
+    canceled: '已取消'
 };
 
 let currentOrderStatus = 'all';
@@ -885,7 +887,12 @@ async function loadOrders() {
 
         let orders = allOrders;
         if (currentOrderStatus !== 'all') {
-            orders = orders.filter(o => o.status === currentOrderStatus);
+            orders = orders.filter(o => {
+                if (currentOrderStatus === 'cancelled') {
+                    return o.status === 'cancelled' || o.status === 'canceled';
+                }
+                return o.status === currentOrderStatus;
+            });
         }
 
         if (currentOrderKeyword !== '') {
@@ -906,18 +913,18 @@ async function loadOrders() {
 
         orders.forEach(o => {
             const tr = document.createElement('tr');
-            const status = (o.status === 'pending' ? 'accepted' : (o.status || 'accepted'));
+            const isCancelled = o.status === 'cancelled' || o.status === 'canceled';
+            const displayStatus = isCancelled ? 'cancelled' : (o.status || 'accepted');
             tr.innerHTML = `
                 <td>#${escapeHtml(o.order_id)}</td>
                 <td>${escapeHtml(o.name || o.email || '-')}</td>
-                <td><span class="badge">${escapeHtml(orderStatusLabels[status] || status)}</span></td>
+                <td><span class="badge">${escapeHtml(orderStatusLabels[displayStatus] || displayStatus)}</span></td>
                 <td>$${Number(o.total_amount || 0).toFixed(2)}</td>
                 <td>${escapeHtml(o.created_at || '-')}</td>
                 <td>
-                    <select class="order-status-select" data-order-id="${escapeHtml(o.order_id)}" style="margin-right:5px;">
-                        ${['accepted', 'preparing', 'shipping', 'done', 'cancelled'].map(s => `<option value="${s}" ${s === status ? 'selected' : ''}>${orderStatusLabels[s]}</option>`).join('')}
-                    </select>
-                    <button class="btn btn-sm btn-danger delete-order-btn" data-order-id="${escapeHtml(o.order_id)}" style="padding:4px 8px;">訂單不成立</button>
+                    ${isCancelled ? `<span class="badge" style="background:#c2410c;color:#fff;border:none;">已取消</span>` : `<select class="order-status-select" data-order-id="${escapeHtml(o.order_id)}" style="margin-right:5px;">
+                        ${['pending', 'accepted', 'preparing', 'shipping', 'done'].map(s => `<option value="${s}" ${s === displayStatus ? 'selected' : ''}>${orderStatusLabels[s]}</option>`).join('')}
+                    </select><button class="btn btn-sm btn-danger delete-order-btn" data-order-id="${escapeHtml(o.order_id)}" style="padding:4px 8px;">訂單不成立</button>`}
                 </td>
             `;
             tbody.appendChild(tr);

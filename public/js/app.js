@@ -2036,7 +2036,7 @@ app.initCheckoutPage = function () {
 
 app.statusText = function (status) {
     switch (status) {
-        case 'pending': return '已接單';  // 舊資料相容
+        case 'pending': return '待確認';
         case 'accepted': return '已接單';
         case 'preparing': return '備貨中';
         case 'shipping': return '運送中';
@@ -2054,9 +2054,7 @@ app.normalizeOrderStatus = function (status, refundStatus) {
     if ((refundStatus || '') === 'approved') {
         return 'cancelled';
     }
-    const raw = status || 'accepted';
-    // Backward compatibility: old records may still store pending.
-    return raw === 'pending' ? 'accepted' : raw;
+    return status || 'accepted';
 };
 
 app.escapeHtml = function (value) {

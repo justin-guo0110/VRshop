@@ -1087,6 +1087,7 @@ function update_order_status(): void {
     $order_id = intval($_POST['order_id'] ?? 0);
     $status = $_POST['status'] ?? '';
     $cancelStatus = get_order_cancel_status($db);
+    ensure_order_status_accepts_accepted($db);
     $allowed = ['pending', 'accepted', 'preparing', 'shipping', 'done'];
     if ($cancelStatus !== null) {
         $allowed[] = $cancelStatus;
@@ -1116,52 +1117,6 @@ function update_order_status(): void {
 
     $memberId = intval($current['member_id'] ?? 0);
     $isCancellation = $cancelStatus !== null && $status === $cancelStatus;
-    $wasFinal = in_array($current['status'], ['shipping', 'done'], true);
-    $willFinal = in_array($status, ['shipping', 'done'], true);
-    $hasStockMovements = table_exists($db, 'stock_movements');
-
-    if ($willFinal && !$wasFinal) {
-        $itemsStmt = $db->prepare('SELECT oi.product_id, oi.quantity, p.stock FROM order_items oi JOIN products p ON oi.product_id = p.product_id WHERE oi.order_id = ? FOR UPDATE');
-        $itemsStmt->bind_param('i', $order_id);
-        $itemsStmt->execute();
-        $itemsRes = $itemsStmt->get_result();
-        $items = $itemsRes->fetch_all(MYSQLI_ASSOC);
-        foreach ($items as $item) {
-            if ($item['stock'] < $item['quantity']) {
-                $db->rollback();
-                respond_json(['error' => 'Insufficient stock for order items'], 422);
-            }
-        }
-        foreach ($items as $item) {
-            $updateStock = $db->prepare('UPDATE products SET stock = stock - ? WHERE product_id = ?');
-            if (!$updateStock) {
-                $db->rollback();
-                respond_json(['error' => 'Prepare stock update failed'], 500);
-            }
-            $qty = intval($item['quantity']);
-            $pid = intval($item['product_id']);
-            $updateStock->bind_param('ii', $qty, $pid);
-            if (!$updateStock->execute()) {
-                $db->rollback();
-                respond_json(['error' => 'Stock update failed'], 500);
-            }
-
-            if ($hasStockMovements) {
-                $mv = $db->prepare('INSERT INTO stock_movements (product_id, movement_type, delta, ref_type, ref_id, note) VALUES (?, \'ship\', ?, \'order\', ?, ?)');
-                if (!$mv) {
-                    $db->rollback();
-                    respond_json(['error' => 'Prepare movement log failed'], 500);
-                }
-                $delta = -$qty;
-                $note = 'Order #' . $order_id;
-                $mv->bind_param('iiis', $pid, $delta, $order_id, $note);
-                if (!$mv->execute()) {
-                    $db->rollback();
-                    respond_json(['error' => 'Movement log failed'], 500);
-                }
-            }
-        }
-    }
 
     $stmt = $db->prepare('UPDATE orders SET status = ? WHERE order_id = ?');
     $stmt->bind_param('si', $status, $order_id);
@@ -1190,6 +1145,41 @@ function get_order_status_type(mysqli $db): string {
     $statusColumnRes = $db->query("SHOW COLUMNS FROM orders LIKE 'status'");
     $statusColumn = $statusColumnRes ? $statusColumnRes->fetch_assoc() : null;
     return strtolower((string)($statusColumn['Type'] ?? ''));
+}
+
+function ensure_order_status_accepts_accepted(mysqli $db): void {
+    $statusType = get_order_status_type($db);
+    if (strpos($statusType, "'accepted'") !== false) {
+        return;
+    }
+    if (!preg_match('/^enum\((.*)\)$/', $statusType, $matches)) {
+        return;
+    }
+    preg_match_all("/'([^']*)'/", $matches[1], $valueMatches);
+    $values = $valueMatches[1] ?? [];
+    if (in_array('accepted', $values, true)) {
+        return;
+    }
+    $desiredOrder = ['pending', 'accepted', 'preparing', 'shipping', 'done'];
+    $newValues = [];
+    foreach ($desiredOrder as $val) {
+        if ($val === 'accepted' || in_array($val, $values, true)) {
+            $newValues[] = $val;
+        }
+    }
+    foreach ($values as $val) {
+        if (!in_array($val, $newValues, true)) {
+            $newValues[] = $val;
+        }
+    }
+    $escaped = array_map(function ($val) use ($db) {
+        return $db->real_escape_string($val);
+    }, $newValues);
+    $newEnum = "ENUM('" . implode("','", $escaped) . "')";
+    $alterSql = "ALTER TABLE orders MODIFY COLUMN status $newEnum NOT NULL DEFAULT 'pending'";
+    if (!$db->query($alterSql)) {
+        error_log('Failed to add accepted status to orders.status: ' . $db->error);
+    }
 }
 
 function get_order_cancel_status(mysqli $db): ?string {
@@ -1382,7 +1372,7 @@ function dashboard_stats(): void {
         'total_revenue' => 0.0
     ];
 
-    $res1 = $db->query("SELECT COUNT(*) AS c FROM orders WHERE status IN ('accepted','preparing')");
+    $res1 = $db->query("SELECT COUNT(*) AS c FROM orders WHERE status IN ('pending','accepted','preparing')");
     $stats['pending_count'] = intval($res1->fetch_assoc()['c'] ?? 0);
 
     $res2 = $db->query("SELECT COUNT(*) AS c, COALESCE(SUM(total_amount),0) AS revenue FROM orders WHERE DATE(created_at) = CURDATE()");

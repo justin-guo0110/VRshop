@@ -177,7 +177,7 @@ CREATE TABLE `orders` (
   `member_id` int(11) NOT NULL,
   `address_id` int(11) DEFAULT NULL,
   `total_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `status` enum('pending','preparing','shipping','done') NOT NULL DEFAULT 'pending',
+  `status` enum('pending','accepted','preparing','shipping','done') NOT NULL DEFAULT 'pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`order_id`),
   KEY `member_id` (`member_id`),

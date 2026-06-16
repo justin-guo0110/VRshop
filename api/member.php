@@ -186,6 +186,10 @@ function list_cards(array $user): void
          ORDER BY is_default DESC, card_id DESC'
     );
 
+    if (!$stmt) {
+        respond_json(['error' => 'Load cards failed: ' . $db->error], 500);
+    }
+
     $stmt->bind_param('i', $user['member_id']);
     $stmt->execute();
 
@@ -281,6 +285,10 @@ function create_card(array $user): void
         VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
 
+    if (!$stmt) {
+        respond_json(['error' => 'Create card failed: ' . $db->error], 500);
+    }
+
     $stmt->bind_param(
         'isssssi',
         $user['member_id'],
@@ -300,7 +308,7 @@ function create_card(array $user): void
     }
 
     respond_json([
-        'error' => '新增失敗'
+        'error' => '新增失敗: ' . $stmt->error
     ], 500);
 }
 

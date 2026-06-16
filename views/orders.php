@@ -20,6 +20,7 @@ if (!isset($_SESSION['user'])) {
     </div>
     <div class="orders-filters" id="ordersFilters" aria-label="訂單分類">
         <button type="button" class="orders-filter-btn is-active" data-status="all">全部</button>
+        <button type="button" class="orders-filter-btn" data-status="pending">待確認</button>
         <button type="button" class="orders-filter-btn" data-status="accepted">已接單</button>
         <button type="button" class="orders-filter-btn" data-status="refund_pending">退單審核中</button>
         <button type="button" class="orders-filter-btn" data-status="preparing">備貨中</button>

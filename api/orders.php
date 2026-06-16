@@ -371,7 +371,9 @@ function place_order(): void {
     if ($statusColumnRes) {
         $statusColumn = $statusColumnRes->fetch_assoc();
         $statusType = strtolower((string)($statusColumn['Type'] ?? ''));
-        if (strpos($statusType, "'accepted'") !== false) {
+        if (strpos($statusType, "'pending'") !== false) {
+            $initialStatus = 'pending';
+        } elseif (strpos($statusType, "'accepted'") !== false) {
             $initialStatus = 'accepted';
         }
     }
@@ -416,26 +418,26 @@ function place_order(): void {
             }
 
             // Record stock movement if table exists
-           if ($hasStockMovements && $stockMovementStmt) {
-    $delta = -intval($oi['quantity']);
-    $movementType = 'order';
-    $referenceType = 'order';
-    $notes = 'Order #' . $order_id;
+            if ($hasStockMovements && $stockMovementStmt) {
+                $delta = -intval($oi['quantity']);
+                $movementType = 'ship';
+                $referenceType = 'order';
+                $notes = 'Order #' . $order_id;
 
-    $stockMovementStmt->bind_param(
-        'isisis',
-        $oi['product_id'],
-        $movementType,
-        $delta,
-        $referenceType,
-        $order_id,
-        $notes
-    );
+                $stockMovementStmt->bind_param(
+                    'isisis',
+                    $oi['product_id'],
+                    $movementType,
+                    $delta,
+                    $referenceType,
+                    $order_id,
+                    $notes
+                );
 
-    if (!$stockMovementStmt->execute()) {
-        throw new Exception('Stock movement error: ' . $stockMovementStmt->error);
-    }
-}
+                if (!$stockMovementStmt->execute()) {
+                    throw new Exception('Stock movement error: ' . $stockMovementStmt->error);
+                }
+            }
         }
 
         if ($couponRow) {

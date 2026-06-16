@@ -7,7 +7,8 @@ function get_db(): mysqli {
     static $conn = null;
     if ($conn === null) {
         // Default to local XAMPP settings; production can override via env vars.
-        $dbHost = getenv('DB_HOST') ?: '127.0.0.1';
+        // Use localhost so PHP connects through the UNIX socket on XAMPP/macOS.
+        $dbHost = getenv('DB_HOST') ?: 'localhost';
         $dbUser = getenv('DB_USER') ?: 'root';
         $dbPass = getenv('DB_PASS') ?: '';
         $dbName = getenv('DB_NAME') ?: 'vr_mall';
